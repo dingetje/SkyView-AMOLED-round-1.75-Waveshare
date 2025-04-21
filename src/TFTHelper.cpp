@@ -6,6 +6,7 @@
 #include "TrafficHelper.h"
 #include "TFTHelper.h"
 #include "WiFiHelper.h"
+#include "BatteryHelper.h"
 // #include <Adafruit_GFX.h>    // Core graphics library
 // #include "Arduino_GFX_Library.h"
 #include "Arduino_DriveBus_Library.h"
@@ -86,6 +87,60 @@ buddy_info_t buddies[] = {
 };
 
 unsigned long drawTime = 0;
+
+float batteryToPercentage(float voltage) {
+  if (voltage >= 4.2) return 100.0;
+  if (voltage <= 3.0) return 0.0;
+
+  // Extended voltage-percentage mapping
+  float voltageLevels[] = {4.14, 4.00, 3.9, 3.8, 3.7, 3.6, 3.5, 3.4, 3.3, 3.2, 3.0};
+  float percentages[] = {100, 95, 90, 75, 55, 40, 25, 10, 5, 2, 0};
+
+  for (int i = 0; i < 11; i++) { // Loop through voltage levels
+      if (voltage > voltageLevels[i + 1]) {
+          // Linear interpolation between two points
+          return percentages[i] + ((voltage - voltageLevels[i]) /
+              (voltageLevels[i + 1] - voltageLevels[i])) * (percentages[i + 1] - percentages[i]);
+      }
+  }
+  return 0.0; // Fallback
+}
+void draw_battery() {
+    //Battery indicator
+    uint16_t battery_x = 295;
+    uint16_t battery_y = 35;
+    float battery = 0;
+    uint8_t batteryPercentage = 0;
+    uint16_t batt_color = TFT_CYAN;
+      // draw battery symbol
+   
+    
+    battery = Battery_voltage();
+    Serial.print(F(" Battery= "));  Serial.println(battery);
+    batteryPercentage = (int)batteryToPercentage(battery);
+    // float percentage = (((battery - 3.2) + 0.001) / (4.2 - 3.2)) * 100.0;
+    // batteryPercentage = percentage > 100.0 ? 100 : round(percentage);
+    Serial.print(F(" Batterypercentage= "));  Serial.println(batteryPercentage);
+
+    if (battery < 3.65 &&  battery >= 3.5) {
+      batt_color = TFT_YELLOW;
+    } else if (battery < 3.5) {
+      batt_color = TFT_RED;
+    } else  {
+      batt_color = TFT_CYAN;
+    }
+    sprite.drawRoundRect(battery_x, battery_y, 32, 20, 3, batt_color);
+    sprite.fillRect(battery_x + 32, battery_y + 7, 2, 7, batt_color);
+    int fillWidth = (int)(30 * ((float)batteryPercentage / 100));
+    Serial.print(F("Fill width = "));
+    Serial.println(fillWidth);
+    sprite.fillRect(battery_x + 2, battery_y + 3, fillWidth, 14, batt_color);
+    // sprite.fillRect(battery_x + 2, battery_y + 3, (int)(30 * (batteryPercentage / 100)), 14, batt_color);
+    sprite.setCursor(battery_x, battery_y + 24, 4);
+    sprite.setTextColor(TFT_WHITE, TFT_BLACK);
+    sprite.printf("%d%%", batteryPercentage); // Use %% to print the % character
+}
+
 void draw_first()
 {
   sprite.fillSprite(TFT_BLACK);
@@ -119,41 +174,6 @@ void draw_first()
   delay(2000);
 
 }
-// void battery_draw() {
-//   if (millis() - Battery_TimeMarker > 60000) {
-//     // disableLoopWDT();
-//     // battery = amoled.getBattVoltage() * 0.001;
-//     battery = amoled.SY.getBattVoltage() * 0.001;
-//     chargeStatus = amoled.SY.chargeStatus();
-//     // enableLoopWDT();
-//     // battery = 3.7;
-
-//     if (chargeStatus == 0) {
-//       if (battery < 3.7 &&  battery > 3.3) {
-//         batt_color = TFT_YELLOW;
-//       } else if (battery < 3.3) {
-//         batt_color = TFT_RED;
-//       } else  {
-//         batt_color = TFT_CYAN;
-//       }
-//     }
-//     batterySprite.setSwapBytes(1);
-//     batterySprite.fillSprite(TFT_BLACK);
-//     batterySprite.drawRoundRect(0, 0, 44, 20, 3, batt_color);
-//     batterySprite.fillRect(0 + 44, 0 + 4, 6, 10, batt_color);
-//     Serial.print(F(" Battery= "));  Serial.println(battery);
-//     batteryPercentage = ((battery - 3.3) / (4.2 - 3.3)) * 100.0 > 100.0 ? 100 : (int)((battery - 3.3) / (4.2 - 3.3) * 100.0);
-//     Serial.print(F(" Batterypercentage= "));  Serial.println(batteryPercentage);
-//     batterySprite.fillRect(0 + 2, 0 + 3, (int)(batteryPercentage / 5) + 20, 14, batt_color);
-//     if (chargeStatus == 1 || chargeStatus == 2) { //draw charging icon  
-//       batterySprite.fillTriangle(15, 14, 26, 14, 26, 0, TFT_WHITE);
-//       batterySprite.fillTriangle(17, 10, 17, 20, 29, 10, TFT_WHITE);
-//     }
-//     batterySprite.setCursor(0 + 52, 0, 4);
-//     batterySprite.printf("%d%%", batteryPercentage); // Use %% to print the % character
-//     Battery_TimeMarker = millis();
-//   }
-// }
 
 void TFT_setup(void) {
   pinMode(LCD_EN, OUTPUT);

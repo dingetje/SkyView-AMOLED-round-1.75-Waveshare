@@ -9,7 +9,7 @@
 #include "EEPROMHelper.h"
 #include "NMEAHelper.h"
 #include "GDL90Helper.h"
-#include "BatteryHelper.h"
+
 
 
 unsigned long Battery_TimeMarker = 0;
@@ -30,8 +30,6 @@ TFT_eSprite TextPopSprite = TFT_eSprite(&tft);
 
 uint8_t TFT_current = 1;
 uint8_t pages =0;
-uint32_t battery = 0;
-uint8_t batteryPercentage = 0;
 uint16_t lock_x = 110;
 uint16_t lock_y = 380;
 bool isLocked = false;
@@ -74,7 +72,7 @@ void TFT_draw_text() {
       } else {
         lock_color = TFT_LIGHTGREY;
       }
-      
+
       j++;
 
     }
@@ -212,23 +210,7 @@ void TFT_draw_text() {
   bearingSprite.fillTriangle(40, 0, 40, 53, 78, 26, TFT_CYAN);
   bearingSprite.setPivot(39, 27);
   bearingSprite.pushRotated(&sprite, bearing - 90);
-  //Battery indicator
-  uint16_t battery_x = 295;
-  uint16_t battery_y = 35;
-    // draw battery symbol
-  sprite.drawRoundRect(battery_x, battery_y, 32, 20, 3, TFT_CYAN);
-  sprite.fillRect(battery_x + 32, battery_y + 7, 2, 7, TFT_CYAN);
-  
-  if  (millis() - Battery_TimeMarker > 60000) {
-    battery = Battery_voltage();
-    Serial.print(F(" Battery= "));  Serial.println(battery);
-    batteryPercentage = (int)((battery - 3300) / (4200 - 3300)) * 100.0;
-    Serial.print(F(" Batterypercentage= "));  Serial.println(batteryPercentage);
-    Battery_TimeMarker = millis();
-  }
-  sprite.fillRect(battery_x , battery_y + 2, (int)(batteryPercentage / 5) + 5, 14, TFT_CYAN);
-  sprite.setCursor(battery_x, battery_y + 24, 4);
-  sprite.printf("%d%%", batteryPercentage); // Use %% to print the % character
+  draw_battery();
   if (pages > 1) {
     for (int i = 1; i <= pages; i++)
     { uint16_t wd = (pages -1) * 18; // width of frame 8px per circle + 8px between circles
@@ -272,6 +254,8 @@ void TFT_text_Draw_Message(const char *msg1, const char *msg2)
       sprite.drawString(msg1, LCD_WIDTH / 2, LCD_HEIGHT / 2 - 26, 4);
       sprite.drawString(msg2, LCD_WIDTH / 2, LCD_HEIGHT / 2 + 26, 4);
     }
+    //Battery indicator
+    draw_battery();
     //draw settings icon
     sprite.setSwapBytes(true);
     sprite.pushImage(320, 360, 36, 36, settings_icon_small);
@@ -300,7 +284,6 @@ void TFT_text_Draw_Message(const char *msg1, const char *msg2)
 void TFT_text_loop()
 {
   if (isTimeToDisplay()) {
-    Serial.println("TFT_text_loop - Time to display");
     bool hasData = settings->protocol == PROTOCOL_NMEA  ? NMEA_isConnected()  :
                    settings->protocol == PROTOCOL_GDL90 ? GDL90_isConnected() :
                    false;
@@ -340,11 +323,12 @@ void TFT_text_next()
     Serial.print("TFT_current: ");
     Serial.println(TFT_current);
     TextPopSprite.createSprite(233, 40);
-    TextPopSprite.fillSprite(TFT_BLACK);
-    TextPopSprite.setTextColor(TFT_ORANGE, TFT_BLACK);
-    TextPopSprite.setTextDatum(MC_DATUM);
     TextPopSprite.setSwapBytes(true);
-    TextPopSprite.drawString("NEXT", 115, 20, 4);
+    TextPopSprite.fillSprite(TFT_BLACK);
+    TextPopSprite.setTextColor(TFT_GREEN, TFT_BLACK);
+    TextPopSprite.setFreeFont(&Orbitron_Light_32);
+    TextPopSprite.setCursor(0, 40);
+    TextPopSprite.printf("PAGE UP");
 
     
     TextPopSprite.pushToSprite(&sprite, 50, 260, TFT_BLACK);
@@ -364,18 +348,19 @@ void TFT_text_next()
 void TFT_text_prev()
 {
   TextPopSprite.createSprite(233, 40);
-  TextPopSprite.fillSprite(TFT_BLACK);
-  TextPopSprite.setTextColor(TFT_ORANGE, TFT_BLACK);
-  TextPopSprite.setTextDatum(MC_DATUM);
   TextPopSprite.setSwapBytes(true);
+  TextPopSprite.fillSprite(TFT_BLACK);
+  TextPopSprite.setTextColor(TFT_BLUEBUTTON, TFT_BLACK);
+  TextPopSprite.setFreeFont(&Orbitron_Light_32);
+  TextPopSprite.setCursor(0, 40);  
 
   if (TFT_current > 1) {
     TFT_current--;
     Serial.print("TFT_current: ");
     Serial.println(TFT_current);
-    TextPopSprite.drawString("PREV", 115, 20, 4);
+    TextPopSprite.printf("PAGE DOWN");
   } else {
-    TextPopSprite.drawString("NO PREV", 115, 20, 4);
+    TextPopSprite.printf("LAST PAGE");
   }
   TextPopSprite.pushToSprite(&sprite, 50, 130, TFT_BLACK);
   if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {

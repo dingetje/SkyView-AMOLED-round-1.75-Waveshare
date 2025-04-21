@@ -79,7 +79,6 @@ void Input_loop() {
 void setup()
 {
   hw_info.soc = SoC_setup(); // Has to be very first procedure in the execution order
-
   delay(300);
   Serial.begin(SERIAL_OUT_BR); Serial.println();
 
@@ -88,16 +87,16 @@ void setup()
   Serial.print(SoC->name);
   Serial.print(F(" FW.REV: " SKYVIEW_FIRMWARE_VERSION " DEV.ID: "));
   Serial.println(String(SoC->getChipId(), HEX));
+  Serial.print(F(" FLASH ID: "));
+  Serial.println(String(SoC->getFlashId(), HEX));
+  Serial.print(F(" PSRAM FOUND: "));
+  Serial.println(ESP.getPsramSize() / 1024);
+  Serial.print(F(" FLASH SIZE: "));
+  Serial.print(ESP.getFlashChipSize() / 1024);
+  Serial.println(F(" KB"));
   Serial.println(F("Copyright (C) 2019-2021 Linar Yusupov. All rights reserved."));
   // Serial.flush();
-     // Check if PSRAM is available
-  if (psramFound()) {
-  Serial.println("PSRAM is enabled and available!");
-  Serial.printf("Total PSRAM: %d bytes\n", ESP.getPsramSize());
-  Serial.printf("Free PSRAM: %d bytes\n", ESP.getFreePsram());
-  } else {
-  Serial.println("PSRAM is NOT enabled or not available!");
-  }
+
   EEPROM_setup();
   if (settings == NULL || SoC == NULL || SoC->Bluetooth == NULL) {
     Serial.println("Error: Null pointer detected!");
@@ -238,9 +237,11 @@ void shutdown(const char *msg)
   WiFi_fini();
 #if defined(USE_EPAPER)
   EPD_fini(msg);
+#elif defined(USE_TFT)
+  ESP32_TFT_fini(msg);
 #endif /* USE_EPAPER */
 #if defined(BUTTONS)
   SoC->Button_fini();
 #endif /* BUTTONS */
-  SoC_fini();
+  ESP32_fini();
 }

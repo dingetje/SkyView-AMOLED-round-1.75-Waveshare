@@ -247,7 +247,9 @@ void TFT_radar_Draw_Message(const char *msg1, const char *msg2)
       sprite.drawString(msg1, LCD_WIDTH / 2, LCD_HEIGHT / 2 - 66, 4);
       sprite.drawString(msg2, LCD_WIDTH / 2, LCD_HEIGHT / 2 + 26, 4);
     }
-      //draw settings icon
+    //Battery indicator
+    draw_battery();  
+    //draw settings icon
     sprite.setSwapBytes(true);
     sprite.pushImage(320, 360, 36, 36, settings_icon_small);
     if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
@@ -400,7 +402,7 @@ static void TFT_Draw_Radar()
         // float tgtSin;
         // float tgtCos;
         float climb;
-        int color;
+        uint16_t color;
 
         bool isTeam = (Container[i].ID == settings->team);
 
@@ -859,11 +861,12 @@ void TFT_radar_zoom()
 {
   if (EPD_zoom < ZOOM_HIGH) EPD_zoom++;
   sprite2.createSprite(120, 40);
-  sprite2.fillSprite(TFT_BLACK);
-  sprite2.setTextColor(TFT_ORANGE, TFT_BLACK);
-  sprite2.setTextDatum(MC_DATUM);
   sprite2.setSwapBytes(true);
-  sprite2.drawString("ZOOM IN", 60, 20, 4);
+  sprite2.fillSprite(TFT_BLACK);
+  sprite2.setTextColor(TFT_GREEN, TFT_BLACK);
+  sprite2.setFreeFont(&Orbitron_Light_32);
+  sprite2.setCursor(0, 40);
+  sprite2.printf("ZOOM +");
   sprite2.pushToSprite(&sprite, 173, 120, TFT_BLACK);
   if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
     lcd_PushColors(6, 0, 466, 466, (uint16_t*)sprite.getPointer());
@@ -879,11 +882,12 @@ void TFT_radar_unzoom()
 {
   if (EPD_zoom > ZOOM_LOWEST) EPD_zoom--;
   sprite2.createSprite(120, 40);
-  sprite2.fillSprite(TFT_BLACK);
-  sprite2.setTextColor(TFT_ORANGE, TFT_BLACK);
-  sprite2.setTextDatum(MC_DATUM);
   sprite2.setSwapBytes(true);
-  sprite2.drawString("ZOOM OUT", 60, 20, 4);
+  sprite2.fillSprite(TFT_BLACK);
+  sprite2.setTextColor(TFT_GREEN, TFT_BLACK);
+  sprite2.setFreeFont(&Orbitron_Light_32);
+  sprite2.setCursor(0, 40);
+  sprite2.printf("ZOOM +");
   
   sprite2.pushToSprite(&sprite, 173, 330, TFT_BLACK);
   if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {

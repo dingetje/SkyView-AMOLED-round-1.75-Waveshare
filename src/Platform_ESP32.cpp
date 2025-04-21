@@ -27,18 +27,19 @@
 #include <flashchips.h>
 
 #include "SoCHelper.h"
-#include "EPDHelper.h"
+// #include "EPDHelper.h"
 #include "TFTHelper.h"
 #include "EEPROMHelper.h"
 #include "WiFiHelper.h"
 #include "BluetoothHelper.h"
+#include "TouchHelper.h"
 
 #include "SkyView.h"
 
 #include <battery.h>
-#include <SD.h>
+// #include <SD.h>
 
-#include "uCDB.hpp"
+// #include "uCDB.hpp"
 
 #include "driver/i2s.h"
 
@@ -49,6 +50,8 @@
 #define TIME_TO_SLEEP  28        /* Time ESP32 will go to sleep (in seconds) */
 
 WebServer server ( 80 );
+extern TFT_eSPI tft;
+extern TFT_eSprite sprite;
 
 #if defined(USE_EPAPER)
 /*
@@ -156,12 +159,31 @@ static uint32_t ESP32_getFlashId()
   return g_rom_flashchip.device_id;
 }
 
+void ESP32_TFT_fini(const char *msg)
+{
+  if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
+    sprite.fillSprite(TFT_BLACK);
+    sprite.setTextColor(TFT_BLUEBUTTON, TFT_BLACK);
+    sprite.setFreeFont(&Orbitron_Light_32);
+    uint16_t wd = sprite.textWidth(msg);
+
+    sprite.setCursor(LCD_WIDTH / 2 - wd /2, LCD_HEIGHT /2 + 20);
+    sprite.printf(msg);
+  
+    lcd_brightness(255);
+    lcd_PushColors(display_column_offset, 0, 466, 466, (uint16_t*)sprite.getPointer());
+    xSemaphoreGive(spiMutex);
+  } else {
+    Serial.println("Failed to acquire SPI semaphore!");
+  }
+}
+
 void ESP32_fini()
 {
-  // esp_wifi_stop();
-  esp_bt_controller_disable();
-  SPI.end();
+  WiFi_fini();
+  // SPI.end();
   Serial.println("Putting device to deep sleep...");
+  delay(1000);
   lcd_sleep();
   EEPROM_store();
   delay(1000);
@@ -214,36 +236,40 @@ static void ESP32_setup()
    */
 
   if (psramFound()) {
-    switch(flash_id)
-    {
-    case MakeFlashId(GIGADEVICE_ID, GIGADEVICE_GD25LQ32):
-      /* ESP32-WROVER module */
-      hw_info.revision = HW_REV_T8_1_8;
-      break;
-    case MakeFlashId(ST_ID, XMC_XM25QH128C):
-      /* custom ESP32-WROVER-E module with 16 MB flash */
-      hw_info.revision = HW_REV_T5_1;
-      break;
-    default:
-      hw_info.revision = HW_REV_UNKNOWN;
-      break;
-    }
+         // Check if PSRAM is available
+
+    hw_info.revision = HW_REV_H741_01;
+    // switch(flash_id)
+    // {
+    // case MakeFlashId(GIGADEVICE_ID, GIGADEVICE_GD25LQ32):
+    //   /* ESP32-WROVER module */
+    //   hw_info.revision = HW_REV_T8_1_8;
+    //   break;
+    // case MakeFlashId(ST_ID, XMC_XM25QH128C):
+    //   /* custom ESP32-WROVER-E module with 16 MB flash */
+    //   hw_info.revision = HW_REV_T5_1;
+    //   break;
+    // default:
+    //   hw_info.revision = HW_REV_UNKNOWN;
+    //   break;
+    // }
   } else {
-    switch(flash_id)
-    {
-    case MakeFlashId(GIGADEVICE_ID, GIGADEVICE_GD25Q32):
-      hw_info.revision = HW_REV_DEVKIT;
-      break;
-    case MakeFlashId(WINBOND_NEX_ID, WINBOND_NEX_W25Q32_V):
-      hw_info.revision = HW_REV_T5S_1_9;
-      break;
-    case MakeFlashId(BOYA_ID, BOYA_BY25Q32AL):
-      hw_info.revision = HW_REV_T5S_2_8;
-      break;
-    default:
-      hw_info.revision = HW_REV_UNKNOWN;
-      break;
-    }
+    Serial.println("PSRAM is NOT enabled or not available!");
+    // switch(flash_id)
+    // {
+    // case MakeFlashId(GIGADEVICE_ID, GIGADEVICE_GD25Q32):
+    //   hw_info.revision = HW_REV_DEVKIT;
+    //   break;
+    // case MakeFlashId(WINBOND_NEX_ID, WINBOND_NEX_W25Q32_V):
+    //   hw_info.revision = HW_REV_T5S_1_9;
+    //   break;
+    // case MakeFlashId(BOYA_ID, BOYA_BY25Q32AL):
+    //   hw_info.revision = HW_REV_T5S_2_8;
+    //   break;
+    // default:
+    //   hw_info.revision = HW_REV_UNKNOWN;
+    //   break;
+    // }
   }
   Serial.println(hw_info.revision);
 }
@@ -338,8 +364,7 @@ static float ESP32_Battery_voltage()
   float voltage = ((float) read_voltage()) * 0.001 ;
 
   /* T5 has voltage divider 100k/100k on board */
-  return (settings->adapter == ADAPTER_TTGO_T5S    ||
-          settings->adapter == ADAPTER_TTGO_T5_4_7 ?
+  return (settings->adapter == ADAPTER_TTGO_T5_4_7 ?
           2 * voltage : voltage);
 }
 
@@ -1178,6 +1203,7 @@ const SoC_ops_t ESP32_ops = {
   ESP32_setup,
   ESP32_fini,
   ESP32_getChipId,
+  ESP32_getFlashId,
   ESP32_EEPROM_begin,
   ESP32_WiFi_setOutputPower,
   ESP32_WiFi_hostname,

@@ -60,10 +60,11 @@ void Battery_loop()
     float voltage = SoC->Battery_voltage();
 
     if ( hw_info.model    == SOFTRF_MODEL_SKYVIEW &&
-        (hw_info.revision == HW_REV_T5S_1_9 || hw_info.revision == HW_REV_T5S_2_8)) {
+        (hw_info.revision == HW_REV_H741_01)) {
 
       if (voltage > 2.0 && voltage < Battery_cutoff()) {
         if (Battery_cutoff_count > 3) {
+          ESP32_TFT_fini("LOW BATTERY");
           shutdown("LOW BATTERY");
         } else {
           Battery_cutoff_count++;
