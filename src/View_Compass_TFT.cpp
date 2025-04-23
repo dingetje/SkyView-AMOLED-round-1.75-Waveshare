@@ -54,6 +54,7 @@ void TFT_compass_loop() {
         compas2Sprite.printf("%d", ThisAircraft.Track, TFT_BLACK);
         compas2Sprite.pushToSprite(&sprite, 0, 0, TFT_BLACK);
         if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
+            lcd_set_colour_enhance;
             lcd_PushColors(6, 0, 466, 466, (uint16_t*)sprite.getPointer());
             lcd_brightness(255);
             xSemaphoreGive(spiMutex);

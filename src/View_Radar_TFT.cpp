@@ -381,9 +381,11 @@ static void TFT_Draw_Radar()
         x = radar_x + radar_w / 2;
         y = radar_y + radar_w / 2 + radius - tbh / 2; 
         sprite.drawString("S", x, y, 4);
+        scale = 3;
         break;
     case DIRECTION_TRACK_UP:
-        //defined later in the code
+        //Radar defined later in the code
+        scale = 2;
         break;
     default:
   /* TBD */
@@ -533,7 +535,18 @@ static void TFT_Draw_Radar()
             pgSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
             break;
             case 9: //Aircraft
+              gaSprite.createSprite(70, 70);
+              gaSprite.fillSprite(TFT_BLACK);
+              gaSprite.setColorDepth(16);
+              gaSprite.setSwapBytes(true);
+              gaSprite.pushImage(0, 0, 70, 70, GA);
+              gaSprite.setPivot(35, 35);
+              sprite.setPivot(radar_center_x + x, radar_center_y - y);
+              gaSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
+              break;
+            case 10: //Aircraft
               aircraft.createSprite(60, 48);
+              aircraft.setColorDepth(16);
               aircraft.setSwapBytes(1);
               aircraft.fillSprite(TFT_BLACK);
               aircraft.pushImage(0, 0, 60, 48, aircraft_small);
@@ -553,7 +566,9 @@ static void TFT_Draw_Radar()
           default:
             Serial.print(F("Unexpected AcftType value: "));
             Serial.println(Container[i].AcftType);
+            gaSprite.createSprite(70, 70);
             gaSprite.fillSprite(TFT_BLACK);
+            gaSprite.setColorDepth(16);
             gaSprite.setSwapBytes(true);
             gaSprite.pushImage(0, 0, 70, 70, GA);
             gaSprite.setPivot(35, 35);
@@ -625,6 +640,8 @@ static void TFT_Draw_Radar()
 
     // draw own aircaft
     ownAcrft.createSprite(36, 36);  
+    ownAcrft.setColorDepth(16);
+    ownAcrft.setSwapBytes(true);
     ownAcrft.fillSprite(TFT_BLACK);
     ownAcrft.setPivot(18, 18);
     sprite_center_x = 18;
@@ -650,26 +667,26 @@ static void TFT_Draw_Radar()
     // sprite_center_y + 3 * (int) own_Points[0][1],4,
     // TFT_DARKGREY, TFT_DARKGREY);
         /////// double line
-    ownAcrft.drawWideLine(sprite_center_x + 3 * (int) own_Points[0][0],
-    sprite_center_y + 3 * (int) own_Points[0][1],
-    sprite_center_x + 3 * (int) own_Points[1][0],
-    sprite_center_y + 3 * (int) own_Points[1][1],2,
-    TFT_WHITE, TFT_BLACK);
-    ownAcrft.drawWideLine(sprite_center_x + 3 * (int) own_Points[1][0],
-    sprite_center_y + 3 * (int) own_Points[1][1],
-    sprite_center_x + 3 * (int) own_Points[2][0],
-    sprite_center_y + 3 * (int) own_Points[2][1],2,
-    TFT_WHITE, TFT_BLACK); 
-    ownAcrft.drawWideLine(sprite_center_x + 3 * (int) own_Points[2][0],
-    sprite_center_y + 3 * (int) own_Points[2][1],
-    sprite_center_x + 3 * (int) own_Points[3][0],
-    sprite_center_y + 3 * (int) own_Points[3][1],2,
-    TFT_WHITE, TFT_BLACK);
-    ownAcrft.drawWideLine(sprite_center_x + 3 * (int) own_Points[3][0],
-    sprite_center_y + 3 * (int) own_Points[3][1],
-    sprite_center_x + 3 * (int) own_Points[0][0],
-    sprite_center_y + 3 * (int) own_Points[0][1],2,
-    TFT_WHITE, TFT_BLACK);
+    ownAcrft.drawWideLine(sprite_center_x + scale * (int) own_Points[0][0],
+    sprite_center_y + scale * (int) own_Points[0][1],
+    sprite_center_x + scale * (int) own_Points[1][0],
+    sprite_center_y + scale * (int) own_Points[1][1],2,
+    TFT_WHITE, TFT_DARKGREY);
+    ownAcrft.drawWideLine(sprite_center_x + scale * (int) own_Points[1][0],
+    sprite_center_y + scale * (int) own_Points[1][1],
+    sprite_center_x + scale * (int) own_Points[2][0],
+    sprite_center_y + scale * (int) own_Points[2][1],2,
+    TFT_WHITE, TFT_DARKGREY); 
+    ownAcrft.drawWideLine(sprite_center_x + scale * (int) own_Points[2][0],
+    sprite_center_y + scale * (int) own_Points[2][1],
+    sprite_center_x + scale * (int) own_Points[3][0],
+    sprite_center_y + scale * (int) own_Points[3][1],2,
+    TFT_WHITE, TFT_DARKGREY);
+    ownAcrft.drawWideLine(sprite_center_x + scale * (int) own_Points[3][0],
+    sprite_center_y + scale * (int) own_Points[3][1],
+    sprite_center_x + scale * (int) own_Points[0][0],
+    sprite_center_y + scale * (int) own_Points[0][1],2,
+    TFT_WHITE, TFT_DARKGREY);
     sprite.setPivot(233, 233);      
     switch (settings->orientation)
     {
@@ -860,14 +877,21 @@ void TFT_radar_loop()
 void TFT_radar_zoom()
 {
   if (EPD_zoom < ZOOM_HIGH) EPD_zoom++;
-  sprite2.createSprite(120, 40);
+  sprite2.createSprite(200, 200);
+  sprite2.setColorDepth(16);
   sprite2.setSwapBytes(true);
   sprite2.fillSprite(TFT_BLACK);
   sprite2.setTextColor(TFT_GREEN, TFT_BLACK);
   sprite2.setFreeFont(&Orbitron_Light_32);
-  sprite2.setCursor(0, 40);
+  sprite2.setCursor(40, 20);
   sprite2.printf("ZOOM +");
-  sprite2.pushToSprite(&sprite, 173, 120, TFT_BLACK);
+  sprite2.setCursor(60, 120);
+  sprite2.fillCircle(100, 100, 75, TFT_BLACK);
+  sprite2.printf("%d km", EPD_zoom == ZOOM_LOWEST ? 9 :
+                     EPD_zoom == ZOOM_LOW    ? 6 :
+                     EPD_zoom == ZOOM_MEDIUM ? 3 :
+                     EPD_zoom == ZOOM_HIGH   ? 1 : 1);
+  sprite2.pushToSprite(&sprite, 133, 133, TFT_BLACK);
   if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
     lcd_PushColors(6, 0, 466, 466, (uint16_t*)sprite.getPointer());
     xSemaphoreGive(spiMutex);
@@ -883,13 +907,19 @@ void TFT_radar_unzoom()
   if (EPD_zoom > ZOOM_LOWEST) EPD_zoom--;
   sprite2.createSprite(120, 40);
   sprite2.setSwapBytes(true);
+  sprite2.setColorDepth(16);
   sprite2.fillSprite(TFT_BLACK);
   sprite2.setTextColor(TFT_GREEN, TFT_BLACK);
   sprite2.setFreeFont(&Orbitron_Light_32);
-  sprite2.setCursor(0, 40);
-  sprite2.printf("ZOOM +");
-  
-  sprite2.pushToSprite(&sprite, 173, 330, TFT_BLACK);
+  sprite2.setCursor(40, 20);
+  sprite2.printf("ZOOM ");
+  sprite2.setCursor(60, 180);
+  sprite2.fillCircle(100, 100, 75, TFT_BLACK);
+  sprite2.printf("%d km", EPD_zoom == ZOOM_LOWEST ? 9 :
+                     EPD_zoom == ZOOM_LOW    ? 6 :
+                     EPD_zoom == ZOOM_MEDIUM ? 3 :
+                     EPD_zoom == ZOOM_HIGH   ? 1 : 1);
+  sprite2.pushToSprite(&sprite, 133, 133, TFT_BLACK);
   if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
     lcd_PushColors(6, 0, 466, 466, (uint16_t*)sprite.getPointer());
     xSemaphoreGive(spiMutex);
