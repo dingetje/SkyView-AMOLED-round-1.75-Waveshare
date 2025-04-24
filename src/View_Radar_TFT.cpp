@@ -534,7 +534,8 @@ static void TFT_Draw_Radar()
             sprite.setPivot(radar_center_x + x, radar_center_y - y);
             pgSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
             break;
-            case 9: //Aircraft
+            case 2: //Tow Aircraft
+            case 5: //Drop Aircraft
               gaSprite.createSprite(70, 70);
               gaSprite.fillSprite(TFT_BLACK);
               gaSprite.setColorDepth(16);
@@ -544,6 +545,7 @@ static void TFT_Draw_Radar()
               sprite.setPivot(radar_center_x + x, radar_center_y - y);
               gaSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
               break;
+            case 9: //Aircraft
             case 10: //Aircraft
               aircraft.createSprite(60, 48);
               aircraft.setColorDepth(16);
@@ -877,21 +879,21 @@ void TFT_radar_loop()
 void TFT_radar_zoom()
 {
   if (EPD_zoom < ZOOM_HIGH) EPD_zoom++;
-  sprite2.createSprite(200, 200);
+  sprite2.createSprite(220, 220);
   sprite2.setColorDepth(16);
   sprite2.setSwapBytes(true);
   sprite2.fillSprite(TFT_BLACK);
   sprite2.setTextColor(TFT_GREEN, TFT_BLACK);
   sprite2.setFreeFont(&Orbitron_Light_32);
-  sprite2.setCursor(40, 20);
+  sprite2.setCursor(50, 20);
   sprite2.printf("ZOOM +");
-  sprite2.setCursor(60, 120);
+  sprite2.setCursor(70, 120);
   sprite2.fillCircle(100, 100, 75, TFT_BLACK);
   sprite2.printf("%d km", EPD_zoom == ZOOM_LOWEST ? 9 :
                      EPD_zoom == ZOOM_LOW    ? 6 :
                      EPD_zoom == ZOOM_MEDIUM ? 3 :
                      EPD_zoom == ZOOM_HIGH   ? 1 : 1);
-  sprite2.pushToSprite(&sprite, 133, 133, TFT_BLACK);
+  sprite2.pushToSprite(&sprite, 123, 123, TFT_BLACK);
   if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
     lcd_PushColors(6, 0, 466, 466, (uint16_t*)sprite.getPointer());
     xSemaphoreGive(spiMutex);
@@ -905,21 +907,21 @@ void TFT_radar_zoom()
 void TFT_radar_unzoom()
 {
   if (EPD_zoom > ZOOM_LOWEST) EPD_zoom--;
-  sprite2.createSprite(120, 40);
+  sprite2.createSprite(220, 220);
   sprite2.setSwapBytes(true);
   sprite2.setColorDepth(16);
   sprite2.fillSprite(TFT_BLACK);
   sprite2.setTextColor(TFT_GREEN, TFT_BLACK);
   sprite2.setFreeFont(&Orbitron_Light_32);
-  sprite2.setCursor(40, 20);
-  sprite2.printf("ZOOM ");
-  sprite2.setCursor(60, 180);
+  sprite2.setCursor(50, 210);
+  sprite2.printf("ZOOM -");
+  sprite2.setCursor(70, 120);
   sprite2.fillCircle(100, 100, 75, TFT_BLACK);
   sprite2.printf("%d km", EPD_zoom == ZOOM_LOWEST ? 9 :
                      EPD_zoom == ZOOM_LOW    ? 6 :
                      EPD_zoom == ZOOM_MEDIUM ? 3 :
                      EPD_zoom == ZOOM_HIGH   ? 1 : 1);
-  sprite2.pushToSprite(&sprite, 133, 133, TFT_BLACK);
+  sprite2.pushToSprite(&sprite, 123, 123, TFT_BLACK);
   if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
     lcd_PushColors(6, 0, 466, 466, (uint16_t*)sprite.getPointer());
     xSemaphoreGive(spiMutex);

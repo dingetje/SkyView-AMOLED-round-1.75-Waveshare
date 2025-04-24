@@ -133,7 +133,7 @@ void TFT_draw_text() {
   sprite.fillSprite(TFT_BLACK);
   sprite.setTextColor(TFT_WHITE, TFT_BLACK);
 
-  sprite.drawString(traffic[TFT_current - 1].acftType == 7 ? "PG" : traffic[TFT_current - 1].acftType == 1 ? "G" : traffic[TFT_current - 1].acftType == 3 ? "H" : traffic[TFT_current - 1].acftType == 9 ? "A" : "GA", 87, 93, 4);
+  sprite.drawString(traffic[TFT_current - 1].acftType == 7 ? "PG" : traffic[TFT_current - 1].acftType == 1 ? "G" : traffic[TFT_current - 1].acftType == 3 ? "H" : traffic[TFT_current - 1].acftType == 9 ? "A" : String(traffic[TFT_current - 1].acftType), 87, 93, 4);
   sprite.drawSmoothRoundRect(84, 82, 6, 5, 40, 40, TFT_WHITE);
 
   sprite.drawString(id2_text, 140, 58, 4);
@@ -195,8 +195,8 @@ void TFT_draw_text() {
     sprite.drawSmoothArc(233, 233, 230, 225, constrain(270 - abs(traffic_vario) * 12, 190, 270), 270, traffic_vario > 3.5 ? TFT_RED : traffic_vario > 2 ? TFT_ORANGE : TFT_YELLOW, TFT_BLACK, true);
   }
   // Lock page
-  sprite.drawSmoothRoundRect(lock_x, lock_y, 6, 4, 30, 30, lock_color, TFT_BLACK);
-  sprite.drawArc(lock_x + (focusOn ? 15 : 25), lock_y, 8, 6, 90, 270, lock_color, TFT_BLACK);
+  sprite.drawSmoothRoundRect(lock_x, lock_y, 5, 3, 25, 25, lock_color, TFT_BLACK);
+  sprite.drawArc(lock_x + (focusOn ? 12 : 30), lock_y, 9, 7, 90, 270, lock_color, TFT_BLACK);
   //Airctafts
   sprite.setSwapBytes(true);
   sprite.pushImage(190, 370, 32, 32, aircrafts);

@@ -57,6 +57,8 @@ TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite sprite = TFT_eSprite(&tft);
 TFT_eSprite sprite2 = TFT_eSprite(&tft);
 TFT_eSprite batterySprite = TFT_eSprite(&tft);
+TFT_eSprite compasSprite = TFT_eSprite(&tft);
+TFT_eSprite compas2Sprite = TFT_eSprite(&tft);
 
 std::shared_ptr<Arduino_IIC_DriveBus> IIC_Bus =
   std::make_shared<Arduino_HWIIC>(IIC_SDA, IIC_SCL, &Wire);
@@ -242,32 +244,48 @@ void TFT_Mode(boolean next)
 
     if (TFT_view_mode == VIEW_MODE_RADAR) {
       if (next) {
-      TFT_view_mode = VIEW_MODE_TEXT;
-      EPD_display_frontpage = false;
+        TFT_view_mode = VIEW_MODE_TEXT;
+      // EPD_display_frontpage = false;
       }
       else {
         TFT_view_mode = VIEW_MODE_COMPASS;
-        EPD_display_frontpage = false;
+        compasSprite.createSprite(466, 466);
+        compasSprite.setColorDepth(16);
+        compasSprite.setSwapBytes(true);
+        compas2Sprite.createSprite(466, 466);
+        compas2Sprite.setColorDepth(16);
+        compas2Sprite.setSwapBytes(true);
+        // EPD_display_frontpage = false;
       }
 
 }   else if (TFT_view_mode == VIEW_MODE_TEXT) {
         if (next) {
           TFT_view_mode = VIEW_MODE_COMPASS;
-          EPD_display_frontpage = false;
+          compasSprite.createSprite(466, 466);
+          compasSprite.setColorDepth(16);
+          compasSprite.setSwapBytes(true);
+          compas2Sprite.createSprite(466, 466);
+          compas2Sprite.setColorDepth(16);
+          compas2Sprite.setSwapBytes(true);
+          // EPD_display_frontpage = false;
         }
         else {  
           TFT_view_mode = VIEW_MODE_RADAR;
-          EPD_display_frontpage = false;
+          // EPD_display_frontpage = false;
       }
     }
     else if (TFT_view_mode == VIEW_MODE_COMPASS) {
       if (next) {
         TFT_view_mode = VIEW_MODE_RADAR;
-        EPD_display_frontpage = false;
+        compasSprite.deleteSprite();
+        compas2Sprite.deleteSprite();
+        // EPD_display_frontpage = false;
       }
       else {
         TFT_view_mode = VIEW_MODE_TEXT; 
-        EPD_display_frontpage = false;
+        compasSprite.deleteSprite();
+        compas2Sprite.deleteSprite();
+        // EPD_display_frontpage = false;
     }
   }
     else if (TFT_view_mode == VIEW_MODE_SETTINGS) {
