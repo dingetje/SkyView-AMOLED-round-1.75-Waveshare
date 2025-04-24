@@ -10,18 +10,12 @@
 extern xSemaphoreHandle spiMutex;
 extern TFT_eSPI tft;
 extern TFT_eSprite sprite;
-TFT_eSprite compasSprite = TFT_eSprite(&tft);
-TFT_eSprite compas2Sprite = TFT_eSprite(&tft);
+extern TFT_eSprite compasSprite;
+extern TFT_eSprite compas2Sprite;
     
 
 void TFT_compass_loop() {
     if (isTimeToDisplay() && show_compass) {
-        compasSprite.createSprite(466, 466);
-        compasSprite.setColorDepth(16);
-        compasSprite.setSwapBytes(true);
-        compas2Sprite.createSprite(466, 466);
-        compas2Sprite.setColorDepth(16);
-        compas2Sprite.setSwapBytes(true);
         compasSprite.fillSprite(TFT_BLACK);
         sprite.fillSprite(TFT_BLACK);
         compasSprite.pushImage(0, 0, 466, 466, Compas466x466);
@@ -54,6 +48,7 @@ void TFT_compass_loop() {
         compas2Sprite.printf("%d", ThisAircraft.Track, TFT_BLACK);
         compas2Sprite.pushToSprite(&sprite, 0, 0, TFT_BLACK);
         if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
+            // lcd_set_colour_enhance();
             lcd_PushColors(6, 0, 466, 466, (uint16_t*)sprite.getPointer());
             lcd_brightness(255);
             xSemaphoreGive(spiMutex);

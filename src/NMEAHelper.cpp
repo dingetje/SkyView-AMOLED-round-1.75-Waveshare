@@ -463,7 +463,9 @@ void NMEA_loop()
         if (settings->bridge == BRIDGE_SERIAL)
             NMEA_bridge_buffer(c);
         else
+#if !defined(DISABLE_NMEAOUT)
             Serial.print(c);
+#endif
         NMEA_Parse_Character(c);
         NMEA_TimeMarker = millis();
       }

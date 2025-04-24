@@ -79,7 +79,7 @@ typedef struct traffic_by_dist_struct {
 
 /* alarm levels are defined in NMEAHelper.h */
 
-#define ENTRY_EXPIRATION_TIME   5 /* seconds */
+#define ENTRY_EXPIRATION_TIME   7 /* seconds */
 #define TRAFFIC_VECTOR_UPDATE_INTERVAL 2 /* seconds */
 #define TRAFFIC_UPDATE_INTERVAL_MS (TRAFFIC_VECTOR_UPDATE_INTERVAL * 1000)
 #define isTimeToUpdateTraffic() (millis() - UpdateTrafficTimeMarker > \

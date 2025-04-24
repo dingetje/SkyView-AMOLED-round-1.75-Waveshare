@@ -70,7 +70,13 @@ void tapHandler(int x, int y) {
     && TFT_view_mode == VIEW_MODE_SETTINGS) {
     //Sleep device and wake up on button press wake up button is PIN 0
     Serial.println("Going to Sleep ");
-    ESP32_fini();
+    // vTaskDelete(touchTaskHandle);
+    // touchTaskHandle = NULL;
+    shutdown("SLEEP");
+    // ESP32_TFT_fini("SLEEP");
+    // delay(1000);
+    // ESP32_fini();
+    // delay(1000);
   } 
   else if (LCD_WIDTH - x > 160 && LCD_WIDTH - x < 330 && LCD_HEIGHT - y > 410 && LCD_HEIGHT - y < 466
     && TFT_view_mode == VIEW_MODE_SETTINGS) {

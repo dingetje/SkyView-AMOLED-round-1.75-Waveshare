@@ -247,7 +247,9 @@ void TFT_radar_Draw_Message(const char *msg1, const char *msg2)
       sprite.drawString(msg1, LCD_WIDTH / 2, LCD_HEIGHT / 2 - 66, 4);
       sprite.drawString(msg2, LCD_WIDTH / 2, LCD_HEIGHT / 2 + 26, 4);
     }
-      //draw settings icon
+    //Battery indicator
+    draw_battery();  
+    //draw settings icon
     sprite.setSwapBytes(true);
     sprite.pushImage(320, 360, 36, 36, settings_icon_small);
     if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
@@ -379,9 +381,11 @@ static void TFT_Draw_Radar()
         x = radar_x + radar_w / 2;
         y = radar_y + radar_w / 2 + radius - tbh / 2; 
         sprite.drawString("S", x, y, 4);
+        scale = 3;
         break;
     case DIRECTION_TRACK_UP:
-        //defined later in the code
+        //Radar defined later in the code
+        scale = 2;
         break;
     default:
   /* TBD */
@@ -400,7 +404,7 @@ static void TFT_Draw_Radar()
         // float tgtSin;
         // float tgtCos;
         float climb;
-        int color;
+        uint16_t color;
 
         bool isTeam = (Container[i].ID == settings->team);
 
@@ -530,8 +534,21 @@ static void TFT_Draw_Radar()
             sprite.setPivot(radar_center_x + x, radar_center_y - y);
             pgSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
             break;
+            case 2: //Tow Aircraft
+            case 5: //Drop Aircraft
+              gaSprite.createSprite(70, 70);
+              gaSprite.fillSprite(TFT_BLACK);
+              gaSprite.setColorDepth(16);
+              gaSprite.setSwapBytes(true);
+              gaSprite.pushImage(0, 0, 70, 70, GA);
+              gaSprite.setPivot(35, 35);
+              sprite.setPivot(radar_center_x + x, radar_center_y - y);
+              gaSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
+              break;
             case 9: //Aircraft
+            case 10: //Aircraft
               aircraft.createSprite(60, 48);
+              aircraft.setColorDepth(16);
               aircraft.setSwapBytes(1);
               aircraft.fillSprite(TFT_BLACK);
               aircraft.pushImage(0, 0, 60, 48, aircraft_small);
@@ -551,7 +568,9 @@ static void TFT_Draw_Radar()
           default:
             Serial.print(F("Unexpected AcftType value: "));
             Serial.println(Container[i].AcftType);
+            gaSprite.createSprite(70, 70);
             gaSprite.fillSprite(TFT_BLACK);
+            gaSprite.setColorDepth(16);
             gaSprite.setSwapBytes(true);
             gaSprite.pushImage(0, 0, 70, 70, GA);
             gaSprite.setPivot(35, 35);
@@ -623,6 +642,8 @@ static void TFT_Draw_Radar()
 
     // draw own aircaft
     ownAcrft.createSprite(36, 36);  
+    ownAcrft.setColorDepth(16);
+    ownAcrft.setSwapBytes(true);
     ownAcrft.fillSprite(TFT_BLACK);
     ownAcrft.setPivot(18, 18);
     sprite_center_x = 18;
@@ -648,26 +669,26 @@ static void TFT_Draw_Radar()
     // sprite_center_y + 3 * (int) own_Points[0][1],4,
     // TFT_DARKGREY, TFT_DARKGREY);
         /////// double line
-    ownAcrft.drawWideLine(sprite_center_x + 3 * (int) own_Points[0][0],
-    sprite_center_y + 3 * (int) own_Points[0][1],
-    sprite_center_x + 3 * (int) own_Points[1][0],
-    sprite_center_y + 3 * (int) own_Points[1][1],2,
-    TFT_WHITE, TFT_BLACK);
-    ownAcrft.drawWideLine(sprite_center_x + 3 * (int) own_Points[1][0],
-    sprite_center_y + 3 * (int) own_Points[1][1],
-    sprite_center_x + 3 * (int) own_Points[2][0],
-    sprite_center_y + 3 * (int) own_Points[2][1],2,
-    TFT_WHITE, TFT_BLACK); 
-    ownAcrft.drawWideLine(sprite_center_x + 3 * (int) own_Points[2][0],
-    sprite_center_y + 3 * (int) own_Points[2][1],
-    sprite_center_x + 3 * (int) own_Points[3][0],
-    sprite_center_y + 3 * (int) own_Points[3][1],2,
-    TFT_WHITE, TFT_BLACK);
-    ownAcrft.drawWideLine(sprite_center_x + 3 * (int) own_Points[3][0],
-    sprite_center_y + 3 * (int) own_Points[3][1],
-    sprite_center_x + 3 * (int) own_Points[0][0],
-    sprite_center_y + 3 * (int) own_Points[0][1],2,
-    TFT_WHITE, TFT_BLACK);
+    ownAcrft.drawWideLine(sprite_center_x + scale * (int) own_Points[0][0],
+    sprite_center_y + scale * (int) own_Points[0][1],
+    sprite_center_x + scale * (int) own_Points[1][0],
+    sprite_center_y + scale * (int) own_Points[1][1],2,
+    TFT_WHITE, TFT_DARKGREY);
+    ownAcrft.drawWideLine(sprite_center_x + scale * (int) own_Points[1][0],
+    sprite_center_y + scale * (int) own_Points[1][1],
+    sprite_center_x + scale * (int) own_Points[2][0],
+    sprite_center_y + scale * (int) own_Points[2][1],2,
+    TFT_WHITE, TFT_DARKGREY); 
+    ownAcrft.drawWideLine(sprite_center_x + scale * (int) own_Points[2][0],
+    sprite_center_y + scale * (int) own_Points[2][1],
+    sprite_center_x + scale * (int) own_Points[3][0],
+    sprite_center_y + scale * (int) own_Points[3][1],2,
+    TFT_WHITE, TFT_DARKGREY);
+    ownAcrft.drawWideLine(sprite_center_x + scale * (int) own_Points[3][0],
+    sprite_center_y + scale * (int) own_Points[3][1],
+    sprite_center_x + scale * (int) own_Points[0][0],
+    sprite_center_y + scale * (int) own_Points[0][1],2,
+    TFT_WHITE, TFT_DARKGREY);
     sprite.setPivot(233, 233);      
     switch (settings->orientation)
     {
@@ -858,13 +879,21 @@ void TFT_radar_loop()
 void TFT_radar_zoom()
 {
   if (EPD_zoom < ZOOM_HIGH) EPD_zoom++;
-  sprite2.createSprite(120, 40);
-  sprite2.fillSprite(TFT_BLACK);
-  sprite2.setTextColor(TFT_ORANGE, TFT_BLACK);
-  sprite2.setTextDatum(MC_DATUM);
+  sprite2.createSprite(220, 220);
+  sprite2.setColorDepth(16);
   sprite2.setSwapBytes(true);
-  sprite2.drawString("ZOOM IN", 60, 20, 4);
-  sprite2.pushToSprite(&sprite, 173, 120, TFT_BLACK);
+  sprite2.fillSprite(TFT_BLACK);
+  sprite2.setTextColor(TFT_GREEN, TFT_BLACK);
+  sprite2.setFreeFont(&Orbitron_Light_32);
+  sprite2.setCursor(50, 20);
+  sprite2.printf("ZOOM +");
+  sprite2.setCursor(70, 120);
+  sprite2.fillCircle(100, 100, 75, TFT_BLACK);
+  sprite2.printf("%d km", EPD_zoom == ZOOM_LOWEST ? 9 :
+                     EPD_zoom == ZOOM_LOW    ? 6 :
+                     EPD_zoom == ZOOM_MEDIUM ? 3 :
+                     EPD_zoom == ZOOM_HIGH   ? 1 : 1);
+  sprite2.pushToSprite(&sprite, 123, 123, TFT_BLACK);
   if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
     lcd_PushColors(6, 0, 466, 466, (uint16_t*)sprite.getPointer());
     xSemaphoreGive(spiMutex);
@@ -878,14 +907,21 @@ void TFT_radar_zoom()
 void TFT_radar_unzoom()
 {
   if (EPD_zoom > ZOOM_LOWEST) EPD_zoom--;
-  sprite2.createSprite(120, 40);
-  sprite2.fillSprite(TFT_BLACK);
-  sprite2.setTextColor(TFT_ORANGE, TFT_BLACK);
-  sprite2.setTextDatum(MC_DATUM);
+  sprite2.createSprite(220, 220);
   sprite2.setSwapBytes(true);
-  sprite2.drawString("ZOOM OUT", 60, 20, 4);
-  
-  sprite2.pushToSprite(&sprite, 173, 330, TFT_BLACK);
+  sprite2.setColorDepth(16);
+  sprite2.fillSprite(TFT_BLACK);
+  sprite2.setTextColor(TFT_GREEN, TFT_BLACK);
+  sprite2.setFreeFont(&Orbitron_Light_32);
+  sprite2.setCursor(50, 210);
+  sprite2.printf("ZOOM -");
+  sprite2.setCursor(70, 120);
+  sprite2.fillCircle(100, 100, 75, TFT_BLACK);
+  sprite2.printf("%d km", EPD_zoom == ZOOM_LOWEST ? 9 :
+                     EPD_zoom == ZOOM_LOW    ? 6 :
+                     EPD_zoom == ZOOM_MEDIUM ? 3 :
+                     EPD_zoom == ZOOM_HIGH   ? 1 : 1);
+  sprite2.pushToSprite(&sprite, 123, 123, TFT_BLACK);
   if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
     lcd_PushColors(6, 0, 466, 466, (uint16_t*)sprite.getPointer());
     xSemaphoreGive(spiMutex);

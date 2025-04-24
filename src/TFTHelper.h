@@ -92,11 +92,13 @@ void TFT_text_prev();
 void TFT_text_Draw_Message(const char *, const char *);
 void TFT_compass_loop();
 void settings_page();
+void draw_battery();
 
 extern unsigned long TFTTimeMarker;
 extern bool EPD_display_frontpage;
 extern volatile int EPD_task_command;
 extern bool show_compass;
+extern xSemaphoreHandle spiMutex;
 
 /*
 static const uint8_t PROGMEM sleep_icon_128x128[] = {

@@ -163,7 +163,7 @@ extern bool loopTaskWDTEnabled;
 
 extern WebServer server;
 void ESP32_fini();
-
+void ESP32_TFT_fini(const char *msg);
 //#define BUILD_SKYVIEW_HD
 
 #endif /* PLATFORM_ESP32_H */
