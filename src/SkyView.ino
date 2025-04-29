@@ -115,7 +115,7 @@ void setup()
   settings->adb             = DB_NONE;
   settings->idpref          = ID_REG;
   settings->voice           = VOICE_OFF;
-  settings->aghost          = ANTI_GHOSTING_OFF;
+  settings->compass          = ANTI_GHOSTING_OFF;
   settings->filter          = TRAFFIC_FILTER_500M;
   settings->power_save      = POWER_SAVE_WIFI;
   settings->team            = 0x46BCDC;

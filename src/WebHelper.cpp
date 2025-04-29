@@ -135,7 +135,7 @@ void handleSettings() {
 <th align=left>Display adapter</th>\
 <td align=right>\
 <select name='adapter'>\
-<option %s value='%d'>e-Paper TTGO T5S</option>\
+<option %s value='%d'>T-Display AMOLED 1.75</option>\
 <!-- <option %s value='%d'>e-Paper TTGO T5 4.7</option> -->\
 <option %s value='%d'>e-Paper Waveshare ESP32</option>\
 <!-- <option %s value='%d'>OLED</option> -->\
@@ -388,14 +388,11 @@ void handleSettings() {
   snprintf_P ( offset, size,
     PSTR("\
 <tr>\
-<th align=left>e-Paper 'ghosts' removal</th>\
+<th align=left>Compass page</th>\
 <td align=right>\
-<select name='aghost'>\
+<select name='compass'>\
+<option %s value='%d'>on</option>\
 <option %s value='%d'>off</option>\
-<option %s value='%d'>auto</option>\
-<option %s value='%d'> 2 minutes</option>\
-<option %s value='%d'> 5 minutes</option>\
-<option %s value='%d'>10 minutes</option>\
 </select>\
 </td>\
 </tr>\
@@ -429,11 +426,8 @@ void handleSettings() {
 </form>\
 </body>\
 </html>"),
-    (settings->aghost     == ANTI_GHOSTING_OFF   ? "selected" : ""), ANTI_GHOSTING_OFF,
-    (settings->aghost     == ANTI_GHOSTING_AUTO  ? "selected" : ""), ANTI_GHOSTING_AUTO,
-    (settings->aghost     == ANTI_GHOSTING_2MIN  ? "selected" : ""), ANTI_GHOSTING_2MIN,
-    (settings->aghost     == ANTI_GHOSTING_5MIN  ? "selected" : ""), ANTI_GHOSTING_5MIN,
-    (settings->aghost     == ANTI_GHOSTING_10MIN ? "selected" : ""), ANTI_GHOSTING_10MIN,
+    (settings->compass     == COMPASS_ON   ? "selected" : ""), COMPASS_ON,
+    (settings->compass     == COMPASS_OFF  ? "selected" : ""), COMPASS_OFF,
     (settings->filter     == TRAFFIC_FILTER_OFF  ? "selected" : ""), TRAFFIC_FILTER_OFF,
     (settings->filter     == TRAFFIC_FILTER_500M ? "selected" : ""), TRAFFIC_FILTER_500M,
     (settings->filter     == TRAFFIC_FILTER_ALARM ? "selected" : ""), TRAFFIC_FILTER_ALARM,
@@ -498,10 +492,7 @@ void handleRoot() {
     SoC->getChipId() & 0xFFFFFF, SKYVIEW_FIRMWARE_VERSION,
     (SoC == NULL ? "NONE" : SoC->name),
     hr, min % 60, sec % 60, ESP.getFreeHeap(),
-    low_voltage ? "red" : "green", str_Vcc,
-    hw_info.display      == DISPLAY_EPD_2_7   ||
-    hw_info.display      == DISPLAY_EPD_4_7   ? "e-Paper" :
-    hw_info.display      == DISPLAY_OLED_2_4  ? "OLED" : "NONE",
+    low_voltage ? "red" : "green", str_Vcc,"AMOLED 1.75",
     settings->connection == CON_SERIAL        ? "Serial" :
     settings->connection == CON_BLUETOOTH_SPP ? "Bluetooth SPP" :
     settings->connection == CON_BLUETOOTH_LE  ? "Bluetooth LE" :
@@ -581,7 +572,6 @@ void handleRoot() {
  </table>\
 </body>\
 </html>"),
-    settings->bridge == BRIDGE_BT_SPP ? "Bluetooth SPP" :
     settings->bridge == BRIDGE_BT_LE  ? "Bluetooth LE" :
     settings->bridge == BRIDGE_UDP    ? "WiFi UDP" :
     settings->bridge == BRIDGE_SERIAL ? "Serial" : "NONE"
@@ -632,8 +622,8 @@ void handleInput() {
       settings->idpref = server.arg(i).toInt();
     } else if (server.argName(i).equals("voice")) {
       settings->voice = server.arg(i).toInt();
-    } else if (server.argName(i).equals("aghost")) {
-      settings->aghost = server.arg(i).toInt();
+    } else if (server.argName(i).equals("compass")) {
+      settings->compass = server.arg(i).toInt();
     } else if (server.argName(i).equals("filter")) {
       settings->filter = server.arg(i).toInt();
     } else if (server.argName(i).equals("power_save")) {
@@ -674,7 +664,7 @@ PSTR("<html>\
 <tr><th align=left>Aircrafts data</th><td align=right>%d</td></tr>\
 <tr><th align=left>ID preference</th><td align=right>%d</td></tr>\
 <tr><th align=left>Voice</th><td align=right>%d</td></tr>\
-<tr><th align=left>'Ghosts' removal</th><td align=right>%d</td></tr>\
+<tr><th align=left>Compass page</th><td align=right>%d</td></tr>\
 <tr><th align=left>Filter</th><td align=right>%d</td></tr>\
 <tr><th align=left>Power Save</th><td align=right>%d</td></tr>\
 <tr><th align=left>Team</th><td align=right>%06X</td></tr>\
@@ -686,7 +676,7 @@ PSTR("<html>\
   settings->adapter, settings->connection, settings->protocol,
   settings->baudrate, settings->server, settings->key, settings->bridge,
   settings->units, settings->vmode, settings->orientation, settings->zoom,
-  settings->adb, settings->idpref, settings->voice, settings->aghost,
+  settings->adb, settings->idpref, settings->voice, settings->compass,
   settings->filter, settings->power_save, settings->team
   );
 
