@@ -290,7 +290,6 @@ static void TFT_Draw_Radar()
   sprite.fillSprite(TFT_BLACK);
   sprite.setTextColor(TFT_GREEN, TFT_BLACK);
   sprite.setTextDatum(MC_DATUM);
-  lcd_brightness(255);
   sprite.setTextSize(1);
 
   uint16_t radar_x = 0;
@@ -749,9 +748,11 @@ static void TFT_Draw_Radar()
     switch (settings->orientation)
     {
     case DIRECTION_NORTH_UP:
+      lcd_brightness(225);
       lcd_PushColors(6, 0, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer()); 
       break;
     case DIRECTION_TRACK_UP:
+      lcd_brightness(225);
       lcd_PushColors(6, 0, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)radarSprite.getPointer()); 
       break;
     default:
@@ -879,23 +880,23 @@ void TFT_radar_loop()
 void TFT_radar_zoom()
 {
   if (EPD_zoom < ZOOM_HIGH) EPD_zoom++;
-  sprite2.createSprite(220, 220);
+  sprite2.createSprite(210, 210);
   sprite2.setColorDepth(16);
   sprite2.setSwapBytes(true);
   sprite2.fillSprite(TFT_BLACK);
   sprite2.setTextColor(TFT_GREEN, TFT_BLACK);
   sprite2.setFreeFont(&Orbitron_Light_32);
-  sprite2.setCursor(50, 20);
+  sprite2.setCursor(50, 60);
   sprite2.printf("ZOOM +");
   sprite2.setCursor(70, 120);
-  sprite2.fillCircle(100, 100, 75, TFT_BLACK);
+  // sprite2.fillCircle(100, 100, 75, TFT_BLACK);
   sprite2.printf("%d km", EPD_zoom == ZOOM_LOWEST ? 9 :
                      EPD_zoom == ZOOM_LOW    ? 6 :
                      EPD_zoom == ZOOM_MEDIUM ? 3 :
                      EPD_zoom == ZOOM_HIGH   ? 1 : 1);
-  sprite2.pushToSprite(&sprite, 123, 123, TFT_BLACK);
+  // sprite2.pushToSprite(&sprite, 123, 123, TFT_BLACK);
   if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
-    lcd_PushColors(6, 0, 466, 466, (uint16_t*)sprite.getPointer());
+    lcd_PushColors(128, 128, 210, 210, (uint16_t*)sprite2.getPointer());
     xSemaphoreGive(spiMutex);
   } else {
     Serial.println("Failed to acquire SPI semaphore!");
@@ -907,23 +908,23 @@ void TFT_radar_zoom()
 void TFT_radar_unzoom()
 {
   if (EPD_zoom > ZOOM_LOWEST) EPD_zoom--;
-  sprite2.createSprite(220, 220);
+  sprite2.createSprite(210, 210);
   sprite2.setSwapBytes(true);
   sprite2.setColorDepth(16);
   sprite2.fillSprite(TFT_BLACK);
   sprite2.setTextColor(TFT_GREEN, TFT_BLACK);
   sprite2.setFreeFont(&Orbitron_Light_32);
-  sprite2.setCursor(50, 210);
+  sprite2.setCursor(50, 176);
   sprite2.printf("ZOOM -");
   sprite2.setCursor(70, 120);
-  sprite2.fillCircle(100, 100, 75, TFT_BLACK);
+  // sprite2.fillCircle(100, 100, 75, TFT_BLACK);
   sprite2.printf("%d km", EPD_zoom == ZOOM_LOWEST ? 9 :
                      EPD_zoom == ZOOM_LOW    ? 6 :
                      EPD_zoom == ZOOM_MEDIUM ? 3 :
                      EPD_zoom == ZOOM_HIGH   ? 1 : 1);
-  sprite2.pushToSprite(&sprite, 123, 123, TFT_BLACK);
+  // sprite2.pushToSprite(&sprite, 123, 123, TFT_BLACK);
   if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
-    lcd_PushColors(6, 0, 466, 466, (uint16_t*)sprite.getPointer());
+    lcd_PushColors(128, 128, 210, 210, (uint16_t*)sprite2.getPointer());
     xSemaphoreGive(spiMutex);
   } else {
     Serial.println("Failed to acquire SPI semaphore!");

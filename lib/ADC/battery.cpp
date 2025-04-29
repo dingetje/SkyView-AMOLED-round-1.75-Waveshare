@@ -61,6 +61,8 @@ uint16_t read_voltage() {
   voltage *= BATT_FACTOR;
 #endif
   ESP_LOGD(TAG, "Raw: %d / Voltage: %dmV", adc_reading, voltage);
+#if defined(DEBUG_ADC)
   Serial.printf("Battery Raw: %d / Voltage: %dmV\r\n", adc_reading, voltage);
+#endif
   return voltage;
 }

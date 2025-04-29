@@ -24,7 +24,7 @@ extern xSemaphoreHandle spiMutex;
 // extern uint16_t read_voltage();
 extern TFT_eSPI tft;
 extern TFT_eSprite sprite;
-TFT_eSprite bearingSprite = TFT_eSprite(&tft);
+extern TFT_eSprite bearingSprite;
 TFT_eSprite TextPopSprite = TFT_eSprite(&tft);
 
 
@@ -37,7 +37,6 @@ uint16_t lock_color = TFT_LIGHTGREY;
 
 extern buddy_info_t buddies[];
 const char* buddy_name = " ";
-int   disp_alt, vertical;
 static int32_t focusOn = 0;
 
 void setFocusOn(bool on) {
@@ -105,9 +104,20 @@ void TFT_draw_text() {
           buddy_name = "Unknown";
       }
     }
-    // int oclock = ((bearing + 15) % 360) / 30;
-    vertical = (int) traffic[TFT_current - 1].fop->RelativeVertical;
-    int disp_alt = (int)((vertical + ThisAircraft.altitude) * 3);  //converting meter to feet
+    float alt_mult = 1.0;
+    switch (settings->units) {
+      case UNITS_METRIC:
+          alt_mult = 1.0;
+      case UNITS_IMPERIAL:
+      case UNITS_MIXED:
+          alt_mult = 3.28084;
+          break;
+      default:
+        alt_mult = 3.28084;
+          break;
+  }
+    int vertical = (int) traffic[TFT_current - 1].fop->RelativeVertical;
+    int disp_alt = (int)((vertical + ThisAircraft.altitude) * alt_mult);  //converting meter to feet
     float traffic_vario = (traffic[TFT_current - 1].climbrate);
     // float speed = (traffic[TFT_current - 1].fop->GroundSpeed);
 
@@ -144,10 +154,10 @@ void TFT_draw_text() {
   sprite.printf("Last seen: %ds ago", traffic[TFT_current - 1].lastSeen);
 
   sprite.drawRoundRect(150, 160, 170, 10, 5, TFT_CYAN);
-  sprite.fillRoundRect(150, 160, traffic[TFT_current - 1].lastSeen > 120 ? 1 : 170 - traffic[TFT_current - 1].lastSeen * 2, 10, 5, TFT_CYAN);
+  sprite.fillRoundRect(150, 160, traffic[TFT_current - 1].lastSeen > 5 ? 1 : 170 - traffic[TFT_current - 1].lastSeen * 30, 10, 5, TFT_CYAN);
 
   // sprite.drawString("Vertical", 27, 180, 4);
-  sprite.drawNumber((int)(traffic[TFT_current - 1].fop->RelativeVertical) * 3.28, 30, 213, 7);
+  sprite.drawNumber((int)(traffic[TFT_current - 1].fop->RelativeVertical) * alt_mult, 30, 213, 7);
   
   sprite.drawSmoothArc(233, 233, 230, 225, 0, 360, TFT_DARKGREY, TFT_BLACK, true);
 
@@ -178,13 +188,13 @@ void TFT_draw_text() {
   // sprite.drawWideLine(400, 322, 420, 322, 3, TFT_WHITE);
 
   if (vertical > 55) {
-    sprite.drawSmoothArc(233, 233, 230, 225, 90, constrain(90 + vertical / 10, 90, 150), vertical > 400 ? TFT_CYAN : TFT_RED, TFT_BLACK, true);
+    sprite.drawSmoothArc(233, 233, 230, 225, 90, constrain(90 + vertical / 10, 90, 150), vertical > 150 ? TFT_CYAN : TFT_RED, TFT_BLACK, true);
     sprite.drawString("+", 15, 226, 7);
     sprite.drawWideLine(15, 236, 25, 236, 6, TFT_WHITE); //draw plus
     sprite.drawWideLine(20, 231, 20, 241, 6, TFT_WHITE);
   }
   else if (vertical < -55) {
-    sprite.drawSmoothArc(233, 233, 230, 225, constrain(90 - abs(vertical) / 10, 30, 90), 90, vertical < -400 ? TFT_GREEN : TFT_RED, TFT_BLACK, true);
+    sprite.drawSmoothArc(233, 233, 230, 225, constrain(90 - abs(vertical) / 10, 30, 90), 90, vertical < -150 ? TFT_GREEN : TFT_RED, TFT_BLACK, true);
     // sprite.drawWideLine(15, 231, 25, 231, 6, TFT_WHITE); //draw minus
   }
   if (traffic_vario < -0.5) {
@@ -202,7 +212,7 @@ void TFT_draw_text() {
   sprite.pushImage(190, 370, 32, 32, aircrafts);
   sprite.drawNumber(Traffic_Count(), 240, 365, 6);
 
-  bearingSprite.createSprite(78, 54);
+  
   bearingSprite.fillSprite(TFT_BLACK);
   sprite.setPivot(233, 233);
 
@@ -234,6 +244,7 @@ void TFT_draw_text() {
     }
 
 }
+
 void TFT_text_Draw_Message(const char *msg1, const char *msg2)
 {
     // int16_t  tbx, tby;
@@ -322,18 +333,21 @@ void TFT_text_next()
     }
     Serial.print("TFT_current: ");
     Serial.println(TFT_current);
-    TextPopSprite.createSprite(233, 40);
+
+    TextPopSprite.createSprite(110, 98);
     TextPopSprite.setSwapBytes(true);
     TextPopSprite.fillSprite(TFT_BLACK);
-    TextPopSprite.setTextColor(TFT_GREEN, TFT_BLACK);
+    TextPopSprite.setTextColor(TFT_CYAN, TFT_BLACK);
     TextPopSprite.setFreeFont(&Orbitron_Light_32);
-    TextPopSprite.setCursor(0, 40);
-    TextPopSprite.printf("PAGE UP");
+    TextPopSprite.setCursor(0, 30);
+    TextPopSprite.printf("PAGE");
+    TextPopSprite.setTextDatum(BC_DATUM);
+    TextPopSprite.drawNumber(TFT_current, 55, 86);
 
     
-    TextPopSprite.pushToSprite(&sprite, 50, 260, TFT_BLACK);
+    // TextPopSprite.pushToSprite(&sprite, 50, 260, TFT_BLACK);
     if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
-      lcd_PushColors(6, 0, 466, 466, (uint16_t*)sprite.getPointer());
+      lcd_PushColors(178, 174, 110, 98, (uint16_t*)TextPopSprite.getPointer());
       xSemaphoreGive(spiMutex);
     } else {
       Serial.println("Failed to acquire SPI semaphore!");
@@ -347,24 +361,24 @@ void TFT_text_next()
 
 void TFT_text_prev()
 {
-  TextPopSprite.createSprite(233, 40);
-  TextPopSprite.setSwapBytes(true);
-  TextPopSprite.fillSprite(TFT_BLACK);
-  TextPopSprite.setTextColor(TFT_BLUEBUTTON, TFT_BLACK);
-  TextPopSprite.setFreeFont(&Orbitron_Light_32);
-  TextPopSprite.setCursor(0, 40);  
-
   if (TFT_current > 1) {
     TFT_current--;
-    Serial.print("TFT_current: ");
-    Serial.println(TFT_current);
-    TextPopSprite.printf("PAGE DOWN");
+
   } else {
-    TextPopSprite.printf("LAST PAGE");
+    TFT_current = pages;
   }
-  TextPopSprite.pushToSprite(&sprite, 50, 130, TFT_BLACK);
+  TextPopSprite.createSprite(110, 98);
+  TextPopSprite.setSwapBytes(true);
+  TextPopSprite.fillSprite(TFT_BLACK);
+  TextPopSprite.setTextColor(TFT_CYAN, TFT_BLACK);
+  TextPopSprite.setFreeFont(&Orbitron_Light_32);
+  TextPopSprite.setCursor(0, 30);
+  TextPopSprite.printf("PAGE");
+  TextPopSprite.setTextDatum(BC_DATUM);
+  TextPopSprite.drawNumber(TFT_current, 55, 86);
+
   if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
-    lcd_PushColors(6, 0, 466, 466, (uint16_t*)sprite.getPointer());
+    lcd_PushColors(178, 174, 110, 98, (uint16_t*)TextPopSprite.getPointer());
     xSemaphoreGive(spiMutex);
   } else {
     Serial.println("Failed to acquire SPI semaphore!");

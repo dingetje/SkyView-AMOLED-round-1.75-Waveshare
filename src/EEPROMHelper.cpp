@@ -75,7 +75,7 @@ void EEPROM_defaults()
     eeprom_block.field.settings.adapter       = ADAPTER_TTGO_T5S;
 #endif
 
-  eeprom_block.field.settings.connection      = CON_SERIAL;
+  eeprom_block.field.settings.connection      = CON_BLUETOOTH_LE;
   eeprom_block.field.settings.bridge          = BRIDGE_NONE;
   eeprom_block.field.settings.baudrate        = B38400;
   eeprom_block.field.settings.protocol        = PROTOCOL_NMEA;
@@ -84,13 +84,13 @@ void EEPROM_defaults()
   strcpy(eeprom_block.field.settings.server,    DEFAULT_AP_SSID);
   strcpy(eeprom_block.field.settings.key,       DEFAULT_AP_PSK);
 
-  eeprom_block.field.settings.units           = UNITS_METRIC;
+  eeprom_block.field.settings.units           = UNITS_MIXED;
   eeprom_block.field.settings.vmode           = VIEW_MODE_RADAR;
   eeprom_block.field.settings.zoom            = ZOOM_MEDIUM;
   eeprom_block.field.settings.adb             = DB_NONE;
   eeprom_block.field.settings.idpref          = ID_REG;
   eeprom_block.field.settings.voice           = VOICE_ON;
-  eeprom_block.field.settings.aghost          = ANTI_GHOSTING_OFF;
+  eeprom_block.field.settings.compass          = COMPASS_ON;
 
   eeprom_block.field.settings.filter          = TRAFFIC_FILTER_500M;
   eeprom_block.field.settings.power_save      = POWER_SAVE_NONE;
