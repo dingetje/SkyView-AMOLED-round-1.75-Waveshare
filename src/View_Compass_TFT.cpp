@@ -46,20 +46,18 @@ void TFT_compass_loop() {
 
             compas2Sprite.pushImage(255, 280, 32, 32, altitude2);
             compas2Sprite.setCursor(300, 290, 4);
-            float alt_mult;
             switch (settings->units) {
                 case UNITS_METRIC:
-                    alt_mult = 1;
+                    compas2Sprite.printf("%d m", (int)(ThisAircraft.altitude));
+                    break;
                 case UNITS_IMPERIAL:
                 case UNITS_MIXED:
-                    alt_mult = 3.28084;
+                    compas2Sprite.printf("%d ft", (int)(ThisAircraft.altitude * 3.28084));
                     break;
                 default:
-                    alt_mult = 3.28084;
+                    compas2Sprite.printf("%d ft", (int)(ThisAircraft.altitude * 3.28084));
                     break;
             }
-            compas2Sprite.printf("%d ft", (int)(ThisAircraft.altitude * 3.28084));            
-
             compas2Sprite.setCursor(190, 160, 7);
             compas2Sprite.printf("%d", ThisAircraft.Track, TFT_BLACK);
             // compas2Sprite.pushToSprite(&sprite, 0, 0, TFT_BLACK);

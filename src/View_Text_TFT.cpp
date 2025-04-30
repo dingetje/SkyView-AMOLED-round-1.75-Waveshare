@@ -108,8 +108,9 @@ void TFT_draw_text() {
     switch (settings->units) {
       case UNITS_METRIC:
           alt_mult = 1.0;
+          break;
       case UNITS_IMPERIAL:
-      case UNITS_MIXED:
+      case UNITS_MIXED: 
           alt_mult = 3.28084;
           break;
       default:
