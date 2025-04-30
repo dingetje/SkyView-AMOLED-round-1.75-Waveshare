@@ -245,32 +245,23 @@ void TFT_Mode(boolean next)
 
     if (TFT_view_mode == VIEW_MODE_RADAR) {
       if (next) {
-        TFT_view_mode = VIEW_MODE_TEXT;
-        bearingSprite.createSprite(78, 54);
-        bearingSprite.setColorDepth(16);
-        bearingSprite.setSwapBytes(true);
-        TFTTimeMarker = millis() + 1001;
-      // EPD_display_frontpage = false;
+        if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
+          TFT_view_mode = VIEW_MODE_TEXT;
+          bearingSprite.createSprite(78, 54);
+          bearingSprite.setColorDepth(16);
+          bearingSprite.setSwapBytes(true);
+          TFTTimeMarker = millis() + 1001;
+          xSemaphoreGive(spiMutex);
+          delay(10);
+        } else {
+          Serial.println("Failed to acquire SPI semaphore!");
+        }
       }
       else {
-        TFT_view_mode = VIEW_MODE_COMPASS;
-        // sprite.deleteSprite();
-        compasSprite.createSprite(466, 466);
-        compasSprite.setColorDepth(16);
-        compasSprite.setSwapBytes(true);
-        compas2Sprite.createSprite(466, 466);
-        compas2Sprite.setColorDepth(16);
-        compas2Sprite.setSwapBytes(true);
-        lcd_brightness(255);
-        TFTTimeMarker = millis() + 1001;
-        // EPD_display_frontpage = false;
-      }
-
-}   else if (TFT_view_mode == VIEW_MODE_TEXT) {
-        if (next) {
+        if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
           TFT_view_mode = VIEW_MODE_COMPASS;
           // sprite.deleteSprite();
-          bearingSprite.deleteSprite();
+          // bearingSprite.deleteSprite();
           compasSprite.createSprite(466, 466);
           compasSprite.setColorDepth(16);
           compasSprite.setSwapBytes(true);
@@ -279,13 +270,45 @@ void TFT_Mode(boolean next)
           compas2Sprite.setSwapBytes(true);
           lcd_brightness(255);
           TFTTimeMarker = millis() + 1001;
-          // EPD_display_frontpage = false;
+          xSemaphoreGive(spiMutex);
+          delay(10);
+        } else {
+          Serial.println("Failed to acquire SPI semaphore!");
         }
-        else {  
+      }
+
+}   else if (TFT_view_mode == VIEW_MODE_TEXT) {
+        if (next) {
+          if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
+            TFT_view_mode = VIEW_MODE_COMPASS;
+            // sprite.deleteSprite();
+            // bearingSprite.deleteSprite();
+            compasSprite.createSprite(466, 466);
+            compasSprite.setColorDepth(16);
+            compasSprite.setSwapBytes(true);
+            compas2Sprite.createSprite(466, 466);
+            compas2Sprite.setColorDepth(16);
+            compas2Sprite.setSwapBytes(true);
+            lcd_brightness(255);
+            TFTTimeMarker = millis() + 1001;
+            xSemaphoreGive(spiMutex);
+            delay(10);
+            // EPD_display_frontpage = false;
+          } else {
+            Serial.println("Failed to acquire SPI semaphore!");
+          }
+        }
+        else {
+          if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
           TFT_view_mode = VIEW_MODE_RADAR;
-          bearingSprite.deleteSprite();
-          TFTTimeMarker = millis() + 1001;
-          // EPD_display_frontpage = false;
+            bearingSprite.deleteSprite();
+            TFTTimeMarker = millis() + 1001;
+            xSemaphoreGive(spiMutex);
+            delay(10);
+            // EPD_display_frontpage = false;
+          } else {
+            Serial.println("Failed to acquire SPI semaphore!");
+          }
       }
     }
     else if (TFT_view_mode == VIEW_MODE_COMPASS) {
@@ -294,9 +317,9 @@ void TFT_Mode(boolean next)
           TFT_view_mode = VIEW_MODE_RADAR;
           compasSprite.deleteSprite();
           compas2Sprite.deleteSprite();
-          sprite.createSprite(466, 466);
-          sprite.setColorDepth(16);
-          sprite.setSwapBytes(true);
+          // sprite.createSprite(466, 466);
+          // sprite.setColorDepth(16);
+          // sprite.setSwapBytes(true);
           lcd_brightness(255);
           TFTTimeMarker = millis() + 1001;
           // EPD_display_frontpage = false;
@@ -311,12 +334,12 @@ void TFT_Mode(boolean next)
           TFT_view_mode = VIEW_MODE_TEXT; 
           compasSprite.deleteSprite();
           compas2Sprite.deleteSprite();
-          sprite.createSprite(466, 466);
-          sprite.setColorDepth(16);
-          sprite.setSwapBytes(true);
-          bearingSprite.createSprite(78, 54);
-          bearingSprite.setColorDepth(16);
-          bearingSprite.setSwapBytes(true);
+          // sprite.createSprite(466, 466);
+          // sprite.setColorDepth(16);
+          // sprite.setSwapBytes(true);
+          // bearingSprite.createSprite(78, 54);
+          // bearingSprite.setColorDepth(16);
+          // bearingSprite.setSwapBytes(true);
           lcd_brightness(255);
           TFTTimeMarker = millis() + 1001;
           // EPD_display_frontpage = false;
