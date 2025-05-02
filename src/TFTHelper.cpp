@@ -86,6 +86,7 @@ buddy_info_t buddies[] = {
   { 0x2006A8, "Katrina Wagner"},
   { 0x111F40, "Chris H" },
   { 0x1139D4, "Tom K" },
+  { 0x200AB6, "Jeremy P" },
   { 0xFFFFFFFF, NULL } // Sentinel value
 };
 
@@ -121,9 +122,7 @@ void draw_battery() {
     battery = Battery_voltage();
     Serial.print(F(" Battery= "));  Serial.println(battery);
     batteryPercentage = (int)batteryToPercentage(battery);
-    // float percentage = (((battery - 3.2) + 0.001) / (4.2 - 3.2)) * 100.0;
-    // batteryPercentage = percentage > 100.0 ? 100 : round(percentage);
-    Serial.print(F(" Batterypercentage= "));  Serial.println(batteryPercentage);
+    // Serial.print(F(" Batterypercentage= "));  Serial.println(batteryPercentage);
 
     if (battery < 3.65 &&  battery >= 3.5) {
       batt_color = TFT_YELLOW;
@@ -135,10 +134,10 @@ void draw_battery() {
     sprite.drawRoundRect(battery_x, battery_y, 32, 20, 3, batt_color);
     sprite.fillRect(battery_x + 32, battery_y + 7, 2, 7, batt_color);
     int fillWidth = (int)(30 * ((float)batteryPercentage / 100));
-    Serial.print(F("Fill width = "));
-    Serial.println(fillWidth);
+    // Serial.print(F("Fill width = "));
+    // Serial.println(fillWidth);
     sprite.fillRect(battery_x + 2, battery_y + 3, fillWidth, 14, batt_color);
-    // sprite.fillRect(battery_x + 2, battery_y + 3, (int)(30 * (batteryPercentage / 100)), 14, batt_color);
+
     sprite.setCursor(battery_x, battery_y + 24, 4);
     sprite.setTextColor(TFT_WHITE, TFT_BLACK);
     sprite.printf("%d%%", batteryPercentage); // Use %% to print the % character
