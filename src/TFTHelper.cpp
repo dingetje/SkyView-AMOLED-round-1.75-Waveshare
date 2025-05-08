@@ -29,6 +29,7 @@ bool EPD_display_frontpage = false;
 
 int prev_TFT_view_mode = 0;
 extern bool wifi_sta;
+extern bool TFTrefresh;
 
 
 
@@ -167,6 +168,7 @@ void draw_first()
   sprite.setTextSize(1);
 
   sprite.drawString("powered by SoftRF",233,293,4);
+  sprite.drawString(SKYVIEW_FIRMWARE_VERSION,180,400,2);
   lcd_PushColors(6, 0, 466, 466, (uint16_t*)sprite.getPointer());
   for (int i = 0; i <= 255; i++)
   {
@@ -268,6 +270,7 @@ void TFT_Mode(boolean next)
           compas2Sprite.setColorDepth(16);
           compas2Sprite.setSwapBytes(true);
           lcd_brightness(255);
+          TFTrefresh = true;
           TFTTimeMarker = millis() + 1001;
           xSemaphoreGive(spiMutex);
           delay(10);
@@ -290,6 +293,7 @@ void TFT_Mode(boolean next)
             compas2Sprite.setSwapBytes(true);
             lcd_brightness(255);
             TFTTimeMarker = millis() + 1001;
+            TFTrefresh = true;
             xSemaphoreGive(spiMutex);
             delay(10);
             // EPD_display_frontpage = false;
