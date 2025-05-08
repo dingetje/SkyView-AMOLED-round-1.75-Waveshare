@@ -94,6 +94,15 @@ void setup()
   Serial.print(F(" FLASH SIZE: "));
   Serial.print(ESP.getFlashChipSize() / 1024);
   Serial.println(F(" KB"));
+  //   if (!SPIFFS.begin(true)) {  // 'true' forces formatting if mount fails
+  //     Serial.println("SPIFFS initialization failed!");
+  // } else {
+  //     Serial.println("SPIFFS mounted successfully!");
+  // }
+  Serial.print("SPIFFS Total space: ");
+  Serial.println(SPIFFS.totalBytes());
+  Serial.print("SPIFFS Used space: ");
+  Serial.println(SPIFFS.usedBytes());
   Serial.println(F("Copyright (C) 2019-2021 Linar Yusupov. All rights reserved."));
   // Serial.flush();
 

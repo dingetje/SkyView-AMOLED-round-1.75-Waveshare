@@ -340,7 +340,7 @@ static void ESP32_swSer_enableRx(boolean arg)
 
 static uint32_t ESP32_maxSketchSpace()
 {
-  return 0x1E0000;
+  return 0x3F0000;
 }
 
 static void ESP32_WiFiUDP_stopAll()
