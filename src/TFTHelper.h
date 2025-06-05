@@ -99,6 +99,7 @@ extern bool EPD_display_frontpage;
 extern volatile int EPD_task_command;
 extern bool show_compass;
 extern xSemaphoreHandle spiMutex;
+extern bool isLabels;
 
 /*
 static const uint8_t PROGMEM sleep_icon_128x128[] = {

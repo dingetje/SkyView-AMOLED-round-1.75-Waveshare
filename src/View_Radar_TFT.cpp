@@ -25,7 +25,7 @@
 // #include <Fonts/FreeMono24pt7b.h>
 // #include <Fonts/FreeMonoBold12pt7b.h>
 // #include <Fonts/FreeMonoBold24pt7b.h>
-
+#include "View_Radar_TFT.h" // Include the text view header
 #include <TimeLib.h>
 
 #include "TrafficHelper.h"
@@ -65,6 +65,9 @@ TFT_eSprite gliderSprite = TFT_eSprite(&tft);
 TFT_eSprite radarSprite = TFT_eSprite(&tft);
 extern TFT_eSprite batterySprite;
 TFT_eSprite aircraft = TFT_eSprite(&tft);
+TFT_eSprite labelSprite = TFT_eSprite(&tft);
+
+extern buddy_info_t buddies[];
 
 
 
@@ -101,6 +104,8 @@ const float pg_PointsDown[ICON_TARGETS_POINTS][2] = {{-10,8},{10,8},{0,25}};
 
 uint8_t sprite_center_x = 18;
 uint8_t sprite_center_y = 18;
+
+String getInitials(const char *name);
 
 // 2D rotation
 // void EPD_2D_Rotate(float &tX, float &tY, float tCos, float tSin)
@@ -282,6 +287,7 @@ static void TFT_Draw_Radar()
   uint16_t y;
   char cog_text[6];
   int16_t scale;
+  uint16_t color;
   
   /* divider is distance range */
   int32_t divider = 2000; // default 2000m 
@@ -380,7 +386,7 @@ static void TFT_Draw_Radar()
         x = radar_x + radar_w / 2;
         y = radar_y + radar_w / 2 + radius - tbh / 2; 
         sprite.drawString("S", x, y, 4);
-        scale = 3;
+        scale = 2;
         break;
     case DIRECTION_TRACK_UP:
         //Radar defined later in the code
@@ -403,9 +409,26 @@ static void TFT_Draw_Radar()
         // float tgtSin;
         // float tgtCos;
         float climb;
-        uint16_t color;
+        
 
-        bool isTeam = (Container[i].ID == settings->team);
+        // bool isTeam = (Container[i].ID == settings->team);
+        bool isBuddy = false;
+        String initials = "  "; // Default initials
+        for (size_t i = 0; buddies[i].id != 0xFFFFFFFF; i++) {
+          if (buddies[i].id == Container[i].ID) {
+            isBuddy = true;
+            const char * name = buddies[i].name;
+            if (!name || name[0] == '\0') break;  // Handle empty names
+
+            initials = String(name[0]);  // First letter of first name
+            char *spacePos = strchr(name, ' '); // Find space separator
+          
+            if (spacePos && *(spacePos + 1) != '\0') {
+                initials += String(spacePos[1]); // First letter after space
+            }
+              break;
+          }
+        }
 
         rel_x = Container[i].RelativeEast;
         rel_y = Container[i].RelativeNorth;
@@ -469,8 +492,9 @@ static void TFT_Draw_Radar()
         Serial.println(ESP.getFreeHeap());
         Serial.println("TFT_Draw_Radar: Draw  Traffic");
 #endif
-        scale = Container[i].alarm_level + 1;
-        //color based on ClimbRate
+        // scale = Container[i].alarm_level + 1;
+        //color based on Vertical separation
+        Serial.print(F(" RelativeVertical="));  Serial.println(Container[i].RelativeVertical);
         if (now() - Container[i].timestamp >= TEAM_EXPIRATION_TIME) {
           color = TFT_DARKGREY;
         } else if (Container[i].RelativeVertical >  TFT_RADAR_V_THRESHOLD) {
@@ -483,98 +507,100 @@ static void TFT_Draw_Radar()
         switch (Container[i].AcftType)
         {
           case 1: //Glider
-                  //Container[i].alarm_level
+            if (!gliderSprite.created()) {
               gliderSprite.createSprite(70, 62);
               gliderSprite.fillSprite(TFT_BLACK);
               gliderSprite.setSwapBytes(true);
               gliderSprite.pushImage(0, 0, 70, 62, glider);
               gliderSprite.setPivot(35, 31);
-              sprite.setPivot(radar_center_x + x, radar_center_y - y);
-              gliderSprite.pushRotated(&sprite, Container[i].Track), TFT_BLACK;
-             
-            break;
+                }
+                sprite.setPivot(radar_center_x + x, radar_center_y - y);
+                gliderSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
+              break;
 
-          case 3:    //helicopter
-            helicopterSprite.createSprite(48, 64);
-            helicopterSprite.fillSprite(TFT_BLACK);
-            helicopterSprite.setSwapBytes(true);
-            helicopterSprite.pushImage(0, 0, 48, 64, helicopter);  
-            helicopterSprite.setPivot(24, 32);
+          case 3: // Helicopter
+            if (!helicopterSprite.created()) {
+              helicopterSprite.createSprite(48, 64);
+              helicopterSprite.fillSprite(TFT_BLACK);
+              helicopterSprite.setSwapBytes(true);
+              helicopterSprite.pushImage(0, 0, 48, 64, helicopter);
+              helicopterSprite.setPivot(24, 32);
+              }
             sprite.setPivot(radar_center_x + x, radar_center_y - y);
-        
             helicopterSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
-
             break;
           // case 6: //hang glider
 
 
           //   break;
-          case 7: //Paraglider -  draw target as triangle
-            sprite_center_x = 18;
-            sprite_center_y = 18;
-            color = TFT_RED;
-            pgSprite.createSprite(36, 36); 
-            pgSprite.fillSprite(TFT_BLACK);
-            pgSprite.setSwapBytes(1);
-            pgSprite.setPivot(18, 18);
-   
-            // const float pg_Points[ICON_ARROW_POINTS][2] = {{-12,14},{0,-16},{12,14},{0,4}};
-            pgSprite.drawWideLine(6, 32, 18, 2, 2, color, TFT_BLACK);
-            pgSprite.drawWideLine(18, 2, 30, 32, 2, color, TFT_BLACK);
-            pgSprite.drawWideLine(30, 32, 18, 22, 2, color, TFT_BLACK);
-            pgSprite.drawWideLine(18, 22, 6, 32, 2, color, TFT_BLACK);
-            if (isTeam) {
-              pgSprite.drawSmoothCircle(sprite_center_x,
-                sprite_center_y,
-                14, TFT_LIGHTGREY, TFT_BLACK);
-            }
-
-
+          case 7: // Paraglider
+            if (!pgSprite.created()) {
+              pgSprite.createSprite(36, 36);
+              pgSprite.fillSprite(TFT_BLACK);
+              pgSprite.setSwapBytes(true);
+              pgSprite.setPivot(18, 18);
+              }
+            pgSprite.drawWideLine(6, 32, 18, 2, 3, color, TFT_BLACK);
+            pgSprite.drawWideLine(18, 2, 30, 32, 3, color, TFT_BLACK);
+            pgSprite.drawWideLine(30, 32, 18, 22, 3, color, TFT_BLACK);
+            pgSprite.drawWideLine(18, 22, 6, 32, 3, color, TFT_BLACK);
+            if (isBuddy) {
+              pgSprite.fillCircle(sprite_center_x, sprite_center_y, 8, color);
+              }
             sprite.setPivot(radar_center_x + x, radar_center_y - y);
             pgSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
+              if (isLabels) {
+                if (!labelSprite.created()) {
+                  labelSprite.createSprite(30, 26); // Adjust size as needed
+                  labelSprite.fillSprite(TFT_BLACK);
+                  labelSprite.setTextColor(TFT_WHITE, TFT_BLACK);
+                  labelSprite.setPivot(15, 13); // Center pivot for rotation
+                }
+                labelSprite.drawString(initials, 0, 0, 4);
+                sprite.setPivot(radar_center_x + x + 35, radar_center_y - y - 13);
+                labelSprite.pushRotated(&sprite, ThisAircraft.Track, TFT_BLACK);
+              }
             break;
-            case 2: //Tow Aircraft
-            case 5: //Drop Aircraft
+          case 2: //Tow Aircraft
+          case 5: //Drop Aircraft
+          case 8: //General Aircraft
+            if (!gaSprite.created()) {
               gaSprite.createSprite(70, 70);
               gaSprite.fillSprite(TFT_BLACK);
               gaSprite.setColorDepth(16);
               gaSprite.setSwapBytes(true);
               gaSprite.pushImage(0, 0, 70, 70, GA);
               gaSprite.setPivot(35, 35);
-              sprite.setPivot(radar_center_x + x, radar_center_y - y);
-              gaSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
+                }
+                sprite.setPivot(radar_center_x + x, radar_center_y - y);
+                gaSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
               break;
-            case 9: //Aircraft
-            case 10: //Aircraft
+          case 9: //Aircraft
+          case 10: //Aircraft
+            if (!aircraft.created()) {
               aircraft.createSprite(60, 48);
               aircraft.setColorDepth(16);
-              aircraft.setSwapBytes(1);
+              aircraft.setSwapBytes(true);
               aircraft.fillSprite(TFT_BLACK);
               aircraft.pushImage(0, 0, 60, 48, aircraft_small);
               aircraft.setPivot(30, 24);
-              sprite.setPivot(radar_center_x + x, radar_center_y - y);
-              aircraft.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
+              }
+            sprite.setPivot(radar_center_x + x, radar_center_y - y);
+            aircraft.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
             break;
           case 11: //Baloon
-            sprite.fillSmoothCircle(radar_center_x + x,
-                          radar_center_y - y,
-                            18, TFT_RED);
+            sprite.fillSmoothCircle(radar_center_x + x, radar_center_y - y, 18, TFT_RED);
             sprite.fillRect(radar_center_x + x - 17, radar_center_y - y - 1, 34, 4, TFT_BLACK);
-            sprite.fillCircle(radar_center_x + x,
-                            radar_center_y - y + 2,
-                            4, TFT_BLACK);
+            sprite.fillCircle(radar_center_x + x, radar_center_y - y + 2, 4, TFT_BLACK);
             break;
           default:
-            Serial.print(F("Unexpected AcftType value: "));
-            Serial.println(Container[i].AcftType);
-            gaSprite.createSprite(70, 70);
-            gaSprite.fillSprite(TFT_BLACK);
-            gaSprite.setColorDepth(16);
-            gaSprite.setSwapBytes(true);
-            gaSprite.pushImage(0, 0, 70, 70, GA);
-            gaSprite.setPivot(35, 35);
-            sprite.setPivot(radar_center_x + x, radar_center_y - y);
-            gaSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
+          sprite.fillSmoothCircle(radar_center_x + x,
+            radar_center_y - y,
+              18, TFT_WHITE);
+          sprite.fillRect(radar_center_x + x - 17, radar_center_y - y - 1, 34, 4, TFT_BLACK);
+          sprite.fillCircle(radar_center_x + x,
+              radar_center_y - y + 2,
+              4, TFT_BLACK);
 
             break;
         }
@@ -694,6 +720,7 @@ static void TFT_Draw_Radar()
     case DIRECTION_NORTH_UP:
         // rotate relative to ThisAircraft.Track
         ownAcrft.pushRotated(&sprite, ThisAircraft.Track, TFT_BLACK);
+        sprite.setTextColor(TFT_GREEN, TFT_BLACK);
         sprite.setCursor(circle_mark1_x, circle_mark1_y);
         // divide scale by 2 , if resul hs a decimal point, print only point and the decimal
         sprite.drawString(zoom == 1 ? ".3" : zoom == 3 ? "1" : zoom == 6 ? "2" : "3", circle_mark1_x, circle_mark1_y, 4);   
@@ -726,15 +753,22 @@ static void TFT_Draw_Radar()
         x = radar_x + radar_w / 2 + radius - tbw / 2;
         y = radar_y + radar_w / 2;
         radarSprite.drawString("R", x, y, 4);
+        if (settings->filter == TRAFFIC_FILTER_500M) {
+          x = radar_x + radar_w / 2;
+          y = radar_y + radar_w / 2 + radius - tbh / 2; 
+          radarSprite.drawString("500", x, y, 4);
+        }
         //draw distance markers
         radarSprite.setCursor(circle_mark1_x, circle_mark1_y);
         // divide scale by 2 , if resul hs a decimal point, print only point and the decimal
         radarSprite.drawString(zoom == 1 ? ".3" : zoom == 3 ? "1" : zoom == 6 ? "2" : "3", circle_mark1_x, circle_mark1_y, 4);   
         radarSprite.drawString(zoom == 1 ? ".6" : zoom == 3 ? "2" : zoom == 6 ? "4" : "6", circle_mark2_x, circle_mark2_y, 4); ;
         radarSprite.drawNumber(zoom, circle_mark3_x, circle_mark3_y, 4);
-
+        // Draw crosshair in radar center
+        radarSprite.drawLine(radar_center_x - 10, radar_center_y, radar_center_x + 10, radar_center_y, TFT_GREEN);
+        radarSprite.drawLine(radar_center_x, radar_center_y - 10, radar_center_x, radar_center_y + 10, TFT_GREEN);
         // Draw Own Aircraft
-        ownAcrft.pushRotated(&radarSprite, 0, TFT_BLACK);
+        // ownAcrft.pushRotated(&radarSprite, 0, TFT_BLACK);
 
         break;
     default:

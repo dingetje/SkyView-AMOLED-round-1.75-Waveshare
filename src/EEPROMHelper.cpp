@@ -95,6 +95,7 @@ void EEPROM_defaults()
   eeprom_block.field.settings.filter          = TRAFFIC_FILTER_500M;
   eeprom_block.field.settings.power_save      = POWER_SAVE_NONE;
   eeprom_block.field.settings.team            = 0;
+  eeprom_block.field.settings.show_labels     = 1;
 }
 
 void EEPROM_store()

@@ -75,12 +75,13 @@ std::shared_ptr<Arduino_IIC_DriveBus> IIC_Bus =
 // TFT_eSPI tft = TFT_eSPI();
 // Adafruit_ST7789 tft = Adafruit_ST7789(SOC_GPIO_PIN_SS_TFT, SOC_GPIO_PIN_DC_TFT, SOC_GPIO_PIN_MOSI_TFT, SOC_GPIO_PIN_SCK_TFT, -1);
 buddy_info_t buddies[] = {
-  { 0x201076, "XCT_Vlad" },
+  { 0x201076, "XCT Vlad" },
   { 0x86D7FD, "T-Echo" },
   { 0xE18990, "ESP-Stick" },
   { 0x46CBDC, "Sense CapT1000" },
-  { 0x6254B0, "SenseCap2"},
+  { 0x6254B0, "Sense Cap2"},
   { 0x2006CD, "Tim Pentreath" },
+  { 0x1313F4, "Tim Pentreath" },
   { 0x201172, "Steve Wagner"},
   { 0x201066, "Katrina Wagner"},
   { 0x20069D, "Steve Wagner"},
@@ -457,9 +458,9 @@ void settings_page() {
 
     text_y = 320;
     sprite.setCursor(button_x - 300, text_y);
-    sprite.printf("Enable Wifi STA");
+    sprite.printf("Show Labels");
 
-    if (wifi_sta) {
+    if (isLabels) {
       settings_button(button_x, text_y, true);
 
     } else {
