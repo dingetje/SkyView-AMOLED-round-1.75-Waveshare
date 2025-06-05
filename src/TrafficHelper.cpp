@@ -77,14 +77,9 @@ void Traffic_Add()
               // if PFLAU with no recent history, track remains unknown
             }
           }
-          // Serial.print("Before assignment: ");
-          // Serial.print("cip->AcftType = "); Serial.println(cip->AcftType);
 
           *cip = fo;
 
-          // Serial.print("After assignment: ");
-          // Serial.print("cip->AcftType = "); Serial.println(cip->AcftType);
-          // *cip = fo;
           return;
         }
       }
@@ -100,7 +95,7 @@ void Traffic_Add()
             return;
         }
 
-        if (ThisAircraft.timestamp > Container[i].timestamp + ENTRY_EXPIRATION_TIME && Container[i].ID != settings->team) {
+        if (ThisAircraft.timestamp > Container[i].timestamp + ENTRY_EXPIRATION_TIME) {
             Container[i] = fo;            // overwrite expired
             return;
         }

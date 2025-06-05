@@ -38,10 +38,10 @@
 #define NAVBOX3_TITLE           "SCALE"
 #define NAVBOX4_TITLE           "BAT"
 
-#define isTimeToDisplay()       (millis() - TFTTimeMarker > 1000)
+#define isTimeToDisplay()       (millis() - TFTTimeMarker > 1100)
 #define maxof2(a,b)             (a > b ? a : b)
 
-#define TFT_RADAR_V_THRESHOLD   150      /* metres*/
+#define TFT_RADAR_V_THRESHOLD   150      /* 150 metres*/
 #define TEAM_EXPIRATION_TIME    120      /* seconds */
 
 #define TEXT_VIEW_LINE_LENGTH   13      /* characters */
