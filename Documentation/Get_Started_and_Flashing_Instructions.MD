@@ -14,8 +14,7 @@ Follow this process to flash the board for the first time:
     - Refer to the screenshot below and configure the files and addresses exactly as shown.
 
 
-![alt text](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/tree/main/Documentation/images/AMOLED_Board_Flashing_setting.png "Board Selection")
-
+![BoardSelection](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/blob/main/Documentation/images/AMOLED_Board_Flashing_setting.png)
 
 4. **Select the COM Port**:  
     - In the `COM:` dropdown list, select the COM port of the AMOLED board (after connecting it to your PC).
@@ -36,4 +35,4 @@ The SkyView software is now installed.
 For subsequent firmware updates, you can either repeat this method or use the much easier WebFlash process.
 
 
-![alt text](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/tree/main/Documentation/images/Flashing_Tool_Settings.png "Files and addresses")
+![Flashing Tool settings](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/tree/main/Documentation/images/Flashing_Tool_Settings.png)
