@@ -13,6 +13,10 @@ Follow this process to flash the board for the first time:
     - When starting the tool, specify the board as `ESP32-S3`.  
     - Refer to the screenshot below and configure the files and addresses exactly as shown.
 
+
+![alt text](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/tree/main/Documentation/images/AMOLED Board Flashing setting.png "Board Selection")
+
+
 4. **Select the COM Port**:  
     - In the `COM:` dropdown list, select the COM port of the AMOLED board (after connecting it to your PC).
 
@@ -30,3 +34,6 @@ Follow this process to flash the board for the first time:
 The SkyView software is now installed.  
 
 For subsequent firmware updates, you can either repeat this method or use the much easier WebFlash process.
+
+
+![alt text](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/tree/main/Documentation/imagesFlashing Tool Settings.png "Files and addresses")
