@@ -18,7 +18,7 @@
 
 #include <Arduino.h>
 #include <TimeLib.h>
-
+#include "SPIFFS.h"
 #include "SoCHelper.h"
 #include "WebHelper.h"
 #include "TrafficHelper.h"
@@ -560,21 +560,22 @@ void handleRoot() {
 
   snprintf_P ( offset, size,
     PSTR("\
-  <tr><th align=left>Bridge output</th><td align=right>%s</td></tr>\
- </table>\
- <hr>\
- <table width=100%%>\
-  <tr>\
-    <td align=left><input type=button onClick=\"location.href='/settings'\" value='Settings'></td>\
-    <td align=center><input type=button onClick=\"location.href='/about'\" value='About'></td>\
-    <td align=right><input type=button onClick=\"location.href='/firmware'\" value='Firmware update'></td>\
-  </tr>\
- </table>\
-</body>\
-</html>"),
-    settings->bridge == BRIDGE_BT_LE  ? "Bluetooth LE" :
-    settings->bridge == BRIDGE_UDP    ? "WiFi UDP" :
-    settings->bridge == BRIDGE_SERIAL ? "Serial" : "NONE"
+    <tr><th align=left>Bridge output</th><td align=right>%s</td></tr>\
+   </table>\
+   <hr>\
+   <table width=100%%>\
+    <tr>\
+      <td align=left><input type=button onClick=\"location.href='/settings'\" value='Settings'></td>\
+      <td align=center><input type=button onClick=\"location.href='/buddylist'\" value='Buddy List'></td>\
+      <td align=center><input type=button onClick=\"location.href='/about'\" value='About'></td>\
+      <td align=right><input type=button onClick=\"location.href='/firmware'\" value='Firmware update'></td>\
+    </tr>\
+   </table>\
+  </body>\
+  </html>"),
+      settings->bridge == BRIDGE_BT_LE  ? "Bluetooth LE" :
+      settings->bridge == BRIDGE_UDP    ? "WiFi UDP" :
+      settings->bridge == BRIDGE_SERIAL ? "Serial" : "NONE"
   );
 
   SoC->swSer_enableRx(false);
@@ -584,6 +585,36 @@ void handleRoot() {
   server.send ( 200, "text/html", Root_temp );
   SoC->swSer_enableRx(true);
   free(Root_temp);
+}
+
+void handleBuddyList() {
+  server.send(200, "text/html", R"rawliteral(
+<html>
+  <head>
+    <title>Buddy List Management</title>
+  </head>
+<body>
+  <h1>Upload or Download Buddy List</h1>
+  <input type="file" id="fileInput">
+  <button onclick="uploadFile()">Upload</button>
+  <button onclick="downloadFile()">Download</button>
+  <script>
+    function uploadFile() {
+      let file = document.getElementById('fileInput').files[0];
+      if (!file) return;
+      let formData = new FormData();
+      formData.append('file', file);
+      fetch('/upload-buddy', { method: 'POST', body: formData })
+      .then(response => alert('File uploaded successfully!'))
+      .catch(error => alert('Upload failed.'));
+    }
+    function downloadFile() {
+      window.location.href = '/download-buddy';
+    }
+  </script>
+</body>
+</html>
+  )rawliteral");
 }
 
 void handleInput() {
@@ -710,8 +741,52 @@ void handleNotFound() {
 
 void Web_setup()
 {
+  if (!SPIFFS.begin(true)) {
+    Serial.println("SPIFFS Mount Failed. Trying to format...");
+    // if (!SPIFFS.format()) {
+    //   Serial.println("SPIFFS Format Failed");
+    //   return;
+    // }
+    // if (!SPIFFS.begin()) {
+    //   Serial.println("SPIFFS Mount Failed again");
+    //   return;
+    // }
+  }
+
+  Serial.println("SPIFFS mounted successfully");
   server.on ( "/", handleRoot );
   server.on ( "/settings", handleSettings );
+  server.on("/buddylist", handleBuddyList);
+
+  server.on("/upload-buddy", HTTP_POST, []() {
+    server.send(200, "text/plain", "Buddy list uploaded");
+  }, []() {
+    HTTPUpload& upload = server.upload();
+    static File fsUploadFile;
+  
+    if (upload.status == UPLOAD_FILE_START) {
+      Serial.println("Starting upload: buddylist.txt");
+      fsUploadFile = SPIFFS.open("/buddylist.txt", FILE_WRITE);
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+      if (fsUploadFile)
+        fsUploadFile.write(upload.buf, upload.currentSize);
+    } else if (upload.status == UPLOAD_FILE_END) {
+      if (fsUploadFile)
+        fsUploadFile.close();
+      Serial.println("Upload complete.");
+    }
+  });
+  
+  server.on("/download-buddy", HTTP_GET, []() {
+    File file = SPIFFS.open("/buddylist.txt", "r");
+    if (!file || file.isDirectory()) {
+      server.send(404, "text/plain", "File not found");
+      return;
+    }
+    server.streamFile(file, "text/plain");
+    file.close();
+  });
+  
   server.on ( "/about", []() {
     SoC->swSer_enableRx(false);
     server.sendHeader(String(F("Cache-Control")), String(F("no-cache, no-store, must-revalidate")));

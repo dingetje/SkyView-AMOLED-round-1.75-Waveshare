@@ -31,7 +31,7 @@
 #include <Update.h>
 
 /* Maximum of tracked flying objects is now SoC-specific constant */
-#define MAX_TRACKING_OBJECTS  9
+#define MAX_TRACKING_OBJECTS  20
 
 #define SerialInput           Serial1
 /*HARDWARE SPECIFIC*/

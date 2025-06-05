@@ -28,7 +28,7 @@ bool IIC_Interrupt_Flag = false;
 unsigned long lastTapTime = 0;
 unsigned long debounceDelay = 100; // in milliseconds
 
-bool wifi_sta = false;
+bool isLabels = true;
 bool show_compass = true;;
 extern bool isLocked;
 
@@ -110,14 +110,16 @@ void tapHandler(int x, int y) {
     }
   } 
   else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 290 && LCD_HEIGHT - y < 350 && TFT_view_mode == VIEW_MODE_SETTINGS) {
-    //Enable Wifi Sation Mode
-    Serial.println("Changing Wifi Mode ");
-    if (!wifi_sta) {
-      wifi_sta = true;
+    //Enable Labels (Initials)
+    Serial.println("Toggle Labels ");
+    if (!isLabels) {
+      isLabels = true;
+      settings->show_labels = true;
       settings_page();
     }
     else {
-      wifi_sta = false;
+      isLabels = false;
+      settings->show_labels = false;
       settings_page();
     }
   } 
