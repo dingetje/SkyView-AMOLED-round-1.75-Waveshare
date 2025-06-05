@@ -35,4 +35,8 @@ The SkyView software is now installed.
 For subsequent firmware updates, you can either repeat this method or use the much easier WebFlash process.
 
 
-![Flashing Tool settings](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/tree/main/Documentation/images/Flashing_Tool_Settings.png)
+![Flashing-Tool-settings](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/tree/main/Documentation/images/Flashing_Tool_Settings.png)
+
+
+
+
