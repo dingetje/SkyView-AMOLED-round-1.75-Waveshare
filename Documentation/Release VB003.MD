@@ -1,10 +1,10 @@
-# H1 SkyView Release — **VB003**
+## SkyView Release — **VB003**
 
 I am excited to announce the release of **SkyView VB003**, packed with powerful new features to enhance your in-air situational awareness.
 
 ---
 
-## H2 What's New in VB003
+## What's New in VB003
 
 ** Labels & Buddy List**
 
