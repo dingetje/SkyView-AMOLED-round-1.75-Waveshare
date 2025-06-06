@@ -34,6 +34,8 @@ I am excited to announce the release of **SkyView VB003**, packed with powerful 
 
 - Watch the video above for instructions on how to **update SkyView firmware** via the built-in **Web Interface**.
 
+Link to the new Firmware:
+https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/blob/main/binaries/firmware.bin
 ---
 
 
