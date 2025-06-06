@@ -51,7 +51,9 @@
 #include "GDL90Helper.h"
 #include "TFTHelper.h"
 #include "TouchHelper.h"
+#include "BuddyHelper.h"
 
+#include "SPIFFS.h"
 #include "SkyView.h"
 // #include "TFTHelper.h"
 
@@ -76,6 +78,7 @@ void Input_loop() {
   }
 }
 
+
 void setup()
 {
   hw_info.soc = SoC_setup(); // Has to be very first procedure in the execution order
@@ -94,15 +97,20 @@ void setup()
   Serial.print(F(" FLASH SIZE: "));
   Serial.print(ESP.getFlashChipSize() / 1024);
   Serial.println(F(" KB"));
-  //   if (!SPIFFS.begin(true)) {  // 'true' forces formatting if mount fails
-  //     Serial.println("SPIFFS initialization failed!");
-  // } else {
-  //     Serial.println("SPIFFS mounted successfully!");
-  // }
+  if (!SPIFFS.begin(true)) {
+    Serial.println("SPIFFS Mount Failed");
+    return;
+  }
+  Serial.println("SPIFFS mounted successfully");
   Serial.print("SPIFFS Total space: ");
   Serial.println(SPIFFS.totalBytes());
   Serial.print("SPIFFS Used space: ");
   Serial.println(SPIFFS.usedBytes());
+
+  BuddyManager::readBuddyList("/buddylist.txt");  // Read buddy list from SPIFFS
+  // Print buddy list to serial
+  BuddyManager::printBuddyList();
+
   Serial.println(F("Copyright (C) 2019-2021 Linar Yusupov. All rights reserved."));
   // Serial.flush();
 

@@ -33,6 +33,7 @@
 #include "WiFiHelper.h"
 #include "BluetoothHelper.h"
 #include "TouchHelper.h"
+#include "BuddyHelper.h"
 
 #include "SkyView.h"
 
@@ -185,6 +186,7 @@ void ESP32_fini()
   Serial.println("Putting device to deep sleep...");
   delay(1000);
   lcd_sleep();
+  BuddyManager::clearBuddyList();
   EEPROM_store();
   delay(1000);
   gpio_hold_en(GPIO_NUM_0);

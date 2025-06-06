@@ -36,6 +36,7 @@
 #include "ApproxMath.h"
 
 #include "SkyView.h"
+#include "BuddyHelper.h"
 
 #include <TFT_eSPI.h> // Include the TFT_eSPI library
 #include <driver/display/CO5300.h>
@@ -62,12 +63,13 @@ TFT_eSprite gaSprite = TFT_eSprite(&tft);
 TFT_eSprite Acrft = TFT_eSprite(&tft);
 TFT_eSprite helicopterSprite = TFT_eSprite(&tft);
 TFT_eSprite gliderSprite = TFT_eSprite(&tft);
+TFT_eSprite hgSprite = TFT_eSprite(&tft);
 TFT_eSprite radarSprite = TFT_eSprite(&tft);
 extern TFT_eSprite batterySprite;
 TFT_eSprite aircraft = TFT_eSprite(&tft);
 TFT_eSprite labelSprite = TFT_eSprite(&tft);
 
-extern buddy_info_t buddies[];
+// extern buddy_info_t buddies[];
 
 
 
@@ -77,6 +79,8 @@ static navbox_t navbox3;
 static navbox_t navbox4;
 
 static int EPD_zoom = ZOOM_MEDIUM;
+
+bool blink = false;
 
 // #define ICON_AIRPLANE
 
@@ -92,9 +96,11 @@ const float epd_Arrow[ICON_ARROW_POINTS][2] = {{-6,5},{0,-6},{6,5},{0,2}};
 const float own_Points[ICON_ARROW_POINTS][2] = {{-6,5},{0,-6},{6,5},{0,2}};
 #endif //ICON_AIRPLANE
 #define ICON_TARGETS_POINTS 5
+#define HGLIDER_POINTS 6
 const float epd_Target[ICON_TARGETS_POINTS][2] = {{4,4},{0,-6},{-4,4},{-5,-3},{0,2}};
 // const float pg_Points[ICON_ARROW_POINTS][2] = {{-12,14},{0,-16},{12,14},{0,4}};
 const float pg_Points[ICON_ARROW_POINTS][2] = {{-36, 42}, {0, -48}, {36, 42}, {0, 12}};
+const float hg_points[HGLIDER_POINTS][2] = {{-42, 44}, {0, -50}, {42, 44}, {0, 18}, {-21, 31}, {21, 31}};
 
 #define PG_TARGETS_POINTS 3 // triangle
 const float pg_PointsUp[ICON_TARGETS_POINTS][2] = {{-10,8},{10,8},{0,-9}};
@@ -406,33 +412,19 @@ static void TFT_Draw_Radar()
 
         float rel_x;
         float rel_y;
+        bool level = false;
+        
         // float tgtSin;
         // float tgtCos;
-        float climb;
+        // float climb;
         
 
-        // bool isTeam = (Container[i].ID == settings->team);
-        bool isBuddy = false;
-        String initials = "  "; // Default initials
-        for (size_t i = 0; buddies[i].id != 0xFFFFFFFF; i++) {
-          if (buddies[i].id == Container[i].ID) {
-            isBuddy = true;
-            const char * name = buddies[i].name;
-            if (!name || name[0] == '\0') break;  // Handle empty names
-
-            initials = String(name[0]);  // First letter of first name
-            char *spacePos = strchr(name, ' '); // Find space separator
-          
-            if (spacePos && *(spacePos + 1) != '\0') {
-                initials += String(spacePos[1]); // First letter after space
-            }
-              break;
-          }
-        }
-
+        String initials = BuddyManager::getBuddyInitials(Container[i].ID);
+        bool isBuddy = (initials != "  ");
+        
         rel_x = Container[i].RelativeEast;
         rel_y = Container[i].RelativeNorth;
-        climb = Container[i].ClimbRate;
+        // float climb = Container[i].ClimbRate;
         // tgtSin = sin_approx(Container[i].Track);
         // tgtCos = cos_approx(Container[i].Track);
 
@@ -503,6 +495,7 @@ static void TFT_Draw_Radar()
           color = TFT_GREEN;
         } else {
           color = TFT_RED;
+          level = true; // level target
         }
         switch (Container[i].AcftType)
         {
@@ -514,8 +507,17 @@ static void TFT_Draw_Radar()
               gliderSprite.pushImage(0, 0, 70, 62, glider);
               gliderSprite.setPivot(35, 31);
                 }
-                sprite.setPivot(radar_center_x + x, radar_center_y - y);
-                gliderSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
+            sprite.setPivot(radar_center_x + x, radar_center_y - y);
+            gliderSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
+            if (level) {
+              if (blink) {
+                sprite.drawSmoothCircle(radar_center_x + x, radar_center_y - y, 10, color, TFT_BLACK);
+                sprite.drawSmoothCircle(radar_center_x + x, radar_center_y - y, 20, color, TFT_BLACK);
+                blink = false;
+              } else {
+                blink = true;
+              }
+            }
               break;
 
           case 3: // Helicopter
@@ -529,10 +531,26 @@ static void TFT_Draw_Radar()
             sprite.setPivot(radar_center_x + x, radar_center_y - y);
             helicopterSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
             break;
-          // case 6: //hang glider
+          case 6: //hang glider
+            if (!hgSprite.created()) {
+              hgSprite.createSprite(44, 44);
+              hgSprite.fillSprite(TFT_BLACK);
+              hgSprite.setSwapBytes(true);
+              hgSprite.setPivot(22, 22);
+              }
+            hgSprite.drawWideLine(0, 44, 22, 0, 3, color, TFT_BLACK);
+            hgSprite.drawWideLine(22, 0, 44, 44, 3, color, TFT_BLACK);
+            hgSprite.drawWideLine(44, 44, 22, 35, 3, color, TFT_BLACK);
+            hgSprite.drawWideLine(22, 35, 0, 44, 3, color, TFT_BLACK);
+            hgSprite.drawWideLine(22, 0, 11, 41, 3, color, TFT_BLACK);
+            hgSprite.drawWideLine(22, 0, 33, 41, 3, color, TFT_BLACK);
+            if (isBuddy) {
+              hgSprite.fillCircle(sprite_center_x, sprite_center_y, 9, color);
+              }
+            sprite.setPivot(radar_center_x + x, radar_center_y - y);
+            hgSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
 
-
-          //   break;
+            break;
           case 7: // Paraglider
             if (!pgSprite.created()) {
               pgSprite.createSprite(36, 36);
@@ -545,19 +563,19 @@ static void TFT_Draw_Radar()
             pgSprite.drawWideLine(30, 32, 18, 22, 3, color, TFT_BLACK);
             pgSprite.drawWideLine(18, 22, 6, 32, 3, color, TFT_BLACK);
             if (isBuddy) {
-              pgSprite.fillCircle(sprite_center_x, sprite_center_y, 8, color);
+              pgSprite.fillCircle(sprite_center_x, sprite_center_y, 7, color);
               }
             sprite.setPivot(radar_center_x + x, radar_center_y - y);
             pgSprite.pushRotated(&sprite, Container[i].Track, TFT_BLACK);
               if (isLabels) {
                 if (!labelSprite.created()) {
-                  labelSprite.createSprite(30, 26); // Adjust size as needed
+                  labelSprite.createSprite(42, 26); // Adjust size as needed
                   labelSprite.fillSprite(TFT_BLACK);
                   labelSprite.setTextColor(TFT_WHITE, TFT_BLACK);
-                  labelSprite.setPivot(15, 13); // Center pivot for rotation
+                  labelSprite.setPivot(21, 13); // Center pivot of Initail text
                 }
-                labelSprite.drawString(initials, 0, 0, 4);
-                sprite.setPivot(radar_center_x + x + 35, radar_center_y - y - 13);
+                labelSprite.drawString(initials, 0, 0, 3);
+                sprite.setPivot(radar_center_x + x + 35, radar_center_y - y - 13); //set text slighly away from center
                 labelSprite.pushRotated(&sprite, ThisAircraft.Track, TFT_BLACK);
               }
             break;

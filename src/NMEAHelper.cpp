@@ -55,7 +55,7 @@ TinyGPSCustom S_ID              (nmea, "PFLAU", 10);
 status_t NMEA_Status;
 
 static unsigned long NMEA_TimeMarker = 0;
-static unsigned long lastGGA = 0;
+// static unsigned long lastGGA = 0;
 boolean TFTrefresh = false;
 
 static void NMEA_Parse_Character(char c)
@@ -73,9 +73,9 @@ static void NMEA_Parse_Character(char c)
       }
       if (nmea.altitude.isUpdated()) {
         ThisAircraft.altitude = nmea.altitude.meters();
-        Serial.print(F(" Altitude age=")); Serial.print(millis() - lastGGA); Serial.println(F(" ms"));
+        // Serial.print(F(" Altitude age=")); Serial.print(millis() - lastGGA); Serial.println(F(" ms"));
         TFTrefresh = true;
-        lastGGA = millis();
+        // lastGGA = millis();
       }
       if (nmea.course.isUpdated()) {
         ThisAircraft.Track = nmea.course.deg();
