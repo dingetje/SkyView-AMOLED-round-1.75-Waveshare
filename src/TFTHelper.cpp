@@ -74,23 +74,23 @@ std::shared_ptr<Arduino_IIC_DriveBus> IIC_Bus =
 #endif
 // TFT_eSPI tft = TFT_eSPI();
 // Adafruit_ST7789 tft = Adafruit_ST7789(SOC_GPIO_PIN_SS_TFT, SOC_GPIO_PIN_DC_TFT, SOC_GPIO_PIN_MOSI_TFT, SOC_GPIO_PIN_SCK_TFT, -1);
-buddy_info_t buddies[] = {
-  { 0x201076, "XCT Vlad" },
-  { 0x86D7FD, "T-Echo" },
-  { 0xE18990, "ESP-Stick" },
-  { 0x46CBDC, "Sense CapT1000" },
-  { 0x6254B0, "Sense Cap2"},
-  { 0x2006CD, "Tim Pentreath" },
-  { 0x1313F4, "Tim Pentreath" },
-  { 0x201172, "Steve Wagner"},
-  { 0x201066, "Katrina Wagner"},
-  { 0x20069D, "Steve Wagner"},
-  { 0x2006A8, "Katrina Wagner"},
-  { 0x111F40, "Chris H" },
-  { 0x1139D4, "Tom K" },
-  { 0x200AB6, "Jeremy P" },
-  { 0xFFFFFFFF, NULL } // Sentinel value
-};
+// buddy_info_t buddies[] = {
+//   { 0x201076, "XCT Vlad" },
+//   { 0x86D7FD, "T-Echo" },
+//   { 0xE18990, "ESP-Stick" },
+//   { 0x46CBDC, "Sense CapT1000" },
+//   { 0x6254B0, "Sense Cap2"},
+//   { 0x2006CD, "Tim Pentreath" },
+//   { 0x1313F4, "Tim Pentreath" },
+//   { 0x201172, "Steve Wagner"},
+//   { 0x201066, "Katrina Wagner"},
+//   { 0x20069D, "Steve Wagner"},
+//   { 0x2006A8, "Katrina Wagner"},
+//   { 0x111F40, "Chris H" },
+//   { 0x1139D4, "Tom K" },
+//   { 0x200AB6, "Jeremy P" },
+//   { 0xFFFFFFFF, NULL } // Sentinel value
+// };
 
 unsigned long drawTime = 0;
 

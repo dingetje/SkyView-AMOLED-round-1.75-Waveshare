@@ -15,6 +15,7 @@
 unsigned long Battery_TimeMarker = 0;
 
 #include "SkyView.h"
+#include "BuddyHelper.h"
 #include "Speed.h"
 #include "altitude2.h"
 #include "aircrafts.h"
@@ -35,7 +36,7 @@ uint16_t lock_y = 380;
 bool isLocked = false;
 uint16_t lock_color = TFT_LIGHTGREY;
 
-extern buddy_info_t buddies[];
+// extern buddy_info_t buddies[];
 const char* buddy_name = " ";
 static int32_t focusOn = 0;
 
@@ -95,17 +96,13 @@ void TFT_draw_text() {
     if (bearing < 0)    bearing += 360;
     if (bearing > 360)  bearing -= 360;
 
-    for (size_t i = 0; buddies[i].id != 0xFFFFFFFF; i++) {
-      if (buddies[i].id == traffic[TFT_current - 1].fop->ID) {
-          buddy_name = buddies[i].name;
-          bud_color = TFT_GREEN;
-          // Serial.printf("ID: 0x%06X, Name: %s\n", buddies[i].id, buddies[i].name);
-          break;
-      }
-      else {
-          buddy_name = "Unknown";
-      }
+    buddy_name = BuddyManager::findBuddyName(traffic[TFT_current - 1].fop->ID);
+    if (buddy_name) {
+      bud_color = TFT_GREEN;
+    } else {
+      buddy_name = "Unknown";
     }
+    
     float alt_mult = 1.0;
     switch (settings->units) {
       case UNITS_METRIC:
@@ -146,7 +143,7 @@ void TFT_draw_text() {
   sprite.fillSprite(TFT_BLACK);
   sprite.setTextColor(bud_color, TFT_BLACK);
 
-  sprite.drawString(traffic[TFT_current - 1].acftType == 7 ? "PG" : traffic[TFT_current - 1].acftType == 1 ? "G" : traffic[TFT_current - 1].acftType == 3 ? "H" : traffic[TFT_current - 1].acftType == 9 ? "A" : String(traffic[TFT_current - 1].acftType), 87, 93, 4);
+  sprite.drawString(traffic[TFT_current - 1].acftType == 7 ? "PG" : traffic[TFT_current - 1].acftType == 6 ? "HG" : traffic[TFT_current - 1].acftType == 1 ? "G" : traffic[TFT_current - 1].acftType == 3 ? "H" : traffic[TFT_current - 1].acftType == 9 ? "A" : String(traffic[TFT_current - 1].acftType), 87, 93, 4);
   sprite.drawSmoothRoundRect(84, 82, 6, 5, 40, 40, TFT_WHITE);
   sprite.setTextColor(TFT_WHITE, TFT_BLACK);
   sprite.drawString(id2_text, 140, 58, 4);

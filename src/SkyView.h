@@ -25,7 +25,7 @@
 #include <Arduino.h>
 #endif /* ARDUINO */
 
-#define SKYVIEW_FIRMWARE_VERSION  "MB06bVB02"
+#define SKYVIEW_FIRMWARE_VERSION  "MB06bVB003"
 #define SKYVIEW_IDENT     "SkyView-"
 
 #define DEFAULT_AP_SSID   "SoftRF-abc123"
@@ -54,10 +54,13 @@ typedef struct hardware_info {
 
 } hardware_info_t;
 
-typedef struct buddy_info {
-	uint32_t id;
-	const char*  name;
-} buddy_info_t;
+// typedef struct {
+// 	uint32_t id;
+// 	const char* name;
+//   } buddy_info_t;
+  
+// extern buddy_info_t buddies[21]; // 20 entries + 1 sentinel
+
 enum
 {
 	SOFTRF_MODEL_STANDALONE,

@@ -48,5 +48,7 @@ extern WiFiClient client;
 #endif /* ARDUINO */
 
 extern TinyGPSPlus nmea;
+extern void readBuddyList();
+extern void printBuddyList();
 
 #endif /* WEBHELPER_H */
