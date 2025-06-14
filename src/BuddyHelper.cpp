@@ -29,7 +29,7 @@ void BuddyManager::readBuddyList(const char* path) {
 
       uint32_t buddyId = strtol(idStr.c_str(), NULL, 16);
       buddies[index].id = buddyId;
-      buddies[index].name = strdup(name.c_str()); // 💥 Allocate
+      buddies[index].name = strdup(name.c_str()); //  Allocate
       index++;
     }
   }
@@ -71,7 +71,7 @@ String BuddyManager::getBuddyInitials(uint32_t id) {
 void BuddyManager::clearBuddyList() {
   for (int i = 0; i < MAX_BUDDIES; i++) {
     if (buddies[i].name && buddies[i].name[0] != '\0') {
-      free((void*)buddies[i].name);  // 💥 Free memory from strdup
+      free((void*)buddies[i].name);  //  Free memory from strdup
       buddies[i].name = nullptr;
     }
     buddies[i].id = 0;
