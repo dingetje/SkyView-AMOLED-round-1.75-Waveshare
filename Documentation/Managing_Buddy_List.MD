@@ -8,18 +8,18 @@
     - Open your web browser.
     - Navigate to [http://192.168.1.1](http://192.168.1.1).
 
- ![alt text](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/tree/main/Documentation/SkyViewFrontPage.png "SkyView Front Page")    
+ ![alt text](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/tree/main/Documentation/SkyViewFrontPage.png)    
 
 3. **Open the Buddy List Page**
     - Click on the **Buddy List** link.
- ![alt text](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/tree/main/Documentation/images/upload_page.png "Upload Page")
+ ![alt text](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/tree/main/Documentation/images/upload_page.png)
 
 4. **Download the Existing Buddy List (Optional)**
     - If you have previously uploaded a buddy list, you can download it.
     - Click **Download**.
     - Either right-click and select **Save As...** or copy the text into a Notepad file.
 
-    ![alt text](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/tree/main/Documentation/images/buddy_list_saveas.png "Buddy List Save As")
+    ![alt text](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/tree/main/Documentation/images/buddy_list_saveas.png)
 
 5. **Edit the Buddy List**
     - Open the file in a text editor (e.g., Notepad).
