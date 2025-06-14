@@ -3,24 +3,28 @@
 1. **Connect to SkyView WiFi**
     - Power on your SkyView device.
     - Connect your computer or phone to the SkyView WiFi access point (available for 10 minutes after powering on).
+    - Deafult wifi password : 12345678
+
+![SkyView Wifi](images/WiFi.png)   
+
 
 2. **Access the Web Interface**
     - Open your web browser.
     - Navigate to [http://192.168.1.1](http://192.168.1.1).
 
- ![SkyView Front Page](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/tree/main/Documentation/images/SkyViewFrontPage.png)    
+ ![SkyView Front Page](images/SkyViewFrontPage.png)    
 
 3. **Open the Buddy List Page**
     - Click on the **Buddy List** link.
 
- ![Upload Page](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/tree/main/Documentation/images/upload_page.png)
+ ![Upload Page](images/upload_page.png)
 
 4. **Download the Existing Buddy List (Optional)**
     - If you have previously uploaded a buddy list, you can download it.
     - Click **Download**.
     - Either right-click and select **Save As...** or copy the text into a Notepad file.
 
-    ![SaveAs](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/tree/main/Documentation/images/buddy_list_saveas.png)
+    ![SaveAs](images/buddy_list_saveas.png)
 
 5. **Edit the Buddy List**
     - Open the file in a text editor (e.g., Notepad).
