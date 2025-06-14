@@ -5,7 +5,7 @@
     - Connect your computer or phone to the SkyView WiFi access point (available for 10 minutes after powering on).
     - Deafult wifi password : 12345678
 
-![SkyView Wifi](images/WiFi.png)   
+![SkyView Wifi](images/Wifi.png)   
 
 
 2. **Access the Web Interface**
