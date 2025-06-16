@@ -1080,23 +1080,7 @@ void handleEvent(AceButton* button, uint8_t eventType,
       break;
     case AceButton::kEventReleased:
       if (button == &button_mode) {
-#if defined(USE_EPAPER)
-        EPD_Mode();
-#elif defined(USE_TFT)
         TFT_Mode(true);
-#endif /* USE_EPAPER */
-//       } else if (button == &button_up) {
-// #if defined(USE_EPAPER)
-//         EPD_Up();
-// #elif defined(USE_TFT)
-//         TFT_Up();
-// #endif /* USE_EPAPER */
-//       } else if (button == &button_down) {
-// #if defined(USE_EPAPER)
-//         EPD_Down();
-// #elif defined(USE_TFT)
-//         TFT_Down();
-// #endif /* USE_EPAPER */
       }
       break;
     case AceButton::kEventLongPressed:
@@ -1110,26 +1094,23 @@ void handleEvent(AceButton* button, uint8_t eventType,
     }
 
 /* Callbacks for push button interrupt */
-void onModeButtonEvent() {
-  button_mode.check();
-}
+// void onModeButtonEvent() {
+//   button_mode.check();
+// }
 
-void onUpButtonEvent() {
-  // button_up.check();
-}
+// void onUpButtonEvent() {
+//   // button_up.check();
+// }
 
-void onDownButtonEvent() {
-  // button_down.check();
-}
+// void onDownButtonEvent() {
+//   // button_down.check();
+// }
 
 static void ESP32_Button_setup()
 {
-  // int mode_button_pin = settings->adapter == ADAPTER_TTGO_T5S ?
-  //                       SOC_BUTTON_MODE_T5S : SOC_BUTTON_MODE_DEF;
-
   int mode_button_pin = BUTTON_MODE_PIN;
   // Button(s) uses internal pull up resistor.
-  pinMode(mode_button_pin, INPUT_PULLUP);
+  pinMode(mode_button_pin, INPUT);
 
   button_mode.init(mode_button_pin);
 
@@ -1144,43 +1125,13 @@ static void ESP32_Button_setup()
   ModeButtonConfig->setDoubleClickDelay(1000);
   ModeButtonConfig->setLongPressDelay(2000);
 
-  attachInterrupt(digitalPinToInterrupt(mode_button_pin), onModeButtonEvent, CHANGE );
+  // attachInterrupt(digitalPinToInterrupt(mode_button_pin), onModeButtonEvent, CHANGE );
 
-  if (settings->adapter == ADAPTER_TTGO_T5S) {
-
-    // Button(s) uses internal pull up resistor.
-    // pinMode(SOC_BUTTON_UP_T5S,   INPUT_PULLUP);
-    // pinMode(SOC_BUTTON_DOWN_T5S, INPUT_PULLUP);
-
-    // ButtonConfig* UpButtonConfig = button_up.getButtonConfig();
-    // UpButtonConfig->setEventHandler(handleEvent);
-    // UpButtonConfig->setFeature(ButtonConfig::kFeatureClick);
-    // UpButtonConfig->setDebounceDelay(15);
-    // UpButtonConfig->setClickDelay(100);
-    // UpButtonConfig->setDoubleClickDelay(1000);
-    // UpButtonConfig->setLongPressDelay(2000);
-
-    // ButtonConfig* DownButtonConfig = button_down.getButtonConfig();
-    // DownButtonConfig->setEventHandler(handleEvent);
-    // DownButtonConfig->setFeature(ButtonConfig::kFeatureClick);
-    // DownButtonConfig->setDebounceDelay(15);
-    // DownButtonConfig->setClickDelay(100);
-    // DownButtonConfig->setDoubleClickDelay(1000);
-    // DownButtonConfig->setLongPressDelay(2000);
-
-    // attachInterrupt(digitalPinToInterrupt(SOC_BUTTON_UP_T5S),   onUpButtonEvent,   CHANGE );
-    // attachInterrupt(digitalPinToInterrupt(SOC_BUTTON_DOWN_T5S), onDownButtonEvent, CHANGE );
-  }
 }
 
 static void ESP32_Button_loop()
 {
   button_mode.check();
-
-  if (settings->adapter == ADAPTER_TTGO_T5S) {
-    // button_up.check();
-    // button_down.check();
-  }
 }
 
 static void ESP32_Button_fini()
