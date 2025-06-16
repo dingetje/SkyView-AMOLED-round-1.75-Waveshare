@@ -3,9 +3,11 @@
 1. **Connect to SkyView WiFi**
     - Power on your SkyView device.
     - Connect your computer or phone to the SkyView WiFi access point (available for 10 minutes after powering on).
+
     - Deafult wifi password : 12345678
 
 ![SkyView Wifi](images/Wifi.png)   
+
 
 
 2. **Access the Web Interface**
@@ -17,7 +19,9 @@
 3. **Open the Buddy List Page**
     - Click on the **Buddy List** link.
 
+
  ![Upload Page](images/upload_page.png)
+
 
 4. **Download the Existing Buddy List (Optional)**
     - If you have previously uploaded a buddy list, you can download it.
@@ -48,4 +52,6 @@
 
 **Tips:**
 - Double-check the format before uploading.
+
 - If you encounter issues, refresh the page and try again.
+

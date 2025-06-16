@@ -226,7 +226,7 @@ void loop()
 
   // Handle Web
   Web_loop();
-#if defined(AUDIO)
+#if defined(BUTTONS)
   SoC->Button_loop();
 #endif /* AUDIO */
   Battery_loop();

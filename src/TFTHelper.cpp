@@ -249,9 +249,11 @@ void TFT_Mode(boolean next)
       if (next) {
         if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
           TFT_view_mode = VIEW_MODE_TEXT;
-          bearingSprite.createSprite(78, 54);
-          bearingSprite.setColorDepth(16);
-          bearingSprite.setSwapBytes(true);
+          if (!bearingSprite.created()) {
+            bearingSprite.createSprite(78, 54);
+            bearingSprite.setColorDepth(16);
+            bearingSprite.setSwapBytes(true);
+          }
           TFTTimeMarker = millis() + 1001;
           xSemaphoreGive(spiMutex);
           delay(10);
@@ -261,15 +263,26 @@ void TFT_Mode(boolean next)
       }
       else {
         if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
+          if (show_compass) {
           TFT_view_mode = VIEW_MODE_COMPASS;
-          // sprite.deleteSprite();
-          // bearingSprite.deleteSprite();
-          compasSprite.createSprite(466, 466);
-          compasSprite.setColorDepth(16);
-          compasSprite.setSwapBytes(true);
+          if (!compasSprite.created()) {
+            compasSprite.createSprite(466, 466);
+            compasSprite.setColorDepth(16);
+            compasSprite.setSwapBytes(true);
+          }
+          if (!compas2Sprite.created()) {
           compas2Sprite.createSprite(466, 466);
           compas2Sprite.setColorDepth(16);
           compas2Sprite.setSwapBytes(true);
+          }
+          } else {
+            TFT_view_mode = VIEW_MODE_TEXT;
+            if (!bearingSprite.created()) {
+              bearingSprite.createSprite(78, 54);
+              bearingSprite.setColorDepth(16);
+              bearingSprite.setSwapBytes(true);
+            } 
+          }
           lcd_brightness(255);
           TFTrefresh = true;
           TFTTimeMarker = millis() + 1001;
@@ -281,17 +294,24 @@ void TFT_Mode(boolean next)
       }
 
 }   else if (TFT_view_mode == VIEW_MODE_TEXT) {
-        if (next) {
+        if (next && show_compass) {
           if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
             TFT_view_mode = VIEW_MODE_COMPASS;
-            // sprite.deleteSprite();
-            // bearingSprite.deleteSprite();
-            compasSprite.createSprite(466, 466);
-            compasSprite.setColorDepth(16);
-            compasSprite.setSwapBytes(true);
-            compas2Sprite.createSprite(466, 466);
-            compas2Sprite.setColorDepth(16);
-            compas2Sprite.setSwapBytes(true);
+            if (!compasSprite.created()) {
+              compasSprite.createSprite(466, 466);
+              compasSprite.setColorDepth(16);
+              compasSprite.setSwapBytes(true);
+            }
+            if (!compas2Sprite.created()) {
+              compas2Sprite.createSprite(466, 466);
+              compas2Sprite.setColorDepth(16);
+              compas2Sprite.setSwapBytes(true);
+            }
+            if (!compas2Sprite.created()) {
+              compas2Sprite.createSprite(466, 466);
+              compas2Sprite.setColorDepth(16);
+              compas2Sprite.setSwapBytes(true);
+            }
             lcd_brightness(255);
             TFTTimeMarker = millis() + 1001;
             TFTrefresh = true;

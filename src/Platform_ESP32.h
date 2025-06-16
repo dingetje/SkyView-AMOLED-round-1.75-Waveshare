@@ -120,7 +120,8 @@
 // #define SOC_GPIO_PIN_LED_T5S  2
 #endif
 
-#define BUTTON_MODE_PIN      5
+const uint8_t BUTTON_MODE_PIN = 0;
+// #define BUTTON_MODE_PIN      0
 /* Boya Microelectronics Inc. */
 #define BOYA_ID               0x68
 #define BOYA_BY25Q32AL        0x4016
