@@ -197,6 +197,37 @@ void ESP32_fini()
 
 static void ESP32_setup()
 {
+  pinMode(GPIO_NUM_0, INPUT);
+  //Check if the WAKE reason was button press
+  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
+    if (digitalRead(GPIO_NUM_0) == LOW) {
+      // Only proceed if button is still pressed (i.e., held)
+      unsigned long start = millis();
+      while (digitalRead(GPIO_NUM_0) == LOW) {
+        if (millis() - start >= 2000) {
+          break;
+        }
+      }
+      // If released before timeout, go back to sleep
+      if (millis() - start < 2000) {
+      // Wait for button to be released
+        while (digitalRead(GPIO_NUM_0) == LOW) {
+          delay(10);  // avoid tight loop
+        }
+        
+        gpio_hold_en(GPIO_NUM_0);
+        esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, LOW);
+        esp_deep_sleep_start();
+      }
+
+    } else {
+      // Pin is HIGH, accidental wakeup
+      delay(1000);  // give some time before going back to sleep
+      gpio_hold_en(GPIO_NUM_0);
+      esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, LOW);
+      esp_deep_sleep_start();
+    }
+  }
   esp_err_t ret = ESP_OK;
   uint8_t null_mac[6] = {0};
 
