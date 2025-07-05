@@ -19,6 +19,11 @@
 #ifndef BLUETOOTHHELPER_H
 #define BLUETOOTHHELPER_H
 
+#pragma once
+
+#include <Arduino.h>
+#include <vector>
+
 #include <stddef.h>
 
 typedef struct Bluetooth_ops_struct {
@@ -43,6 +48,7 @@ typedef struct Bluetooth_ops_struct {
 #define BLE_FIFO_RX_SIZE          1024
 
 #define BLE_MAX_WRITE_CHUNK_SIZE  20
+#define BLE_SCAN_TIME              3
 
 typedef struct Bluetooth_ctl_struct {
   portMUX_TYPE mutex;
@@ -66,6 +72,19 @@ enum
 
 extern Bluetooth_ops_t ESP32_Bluetooth_ops;
 extern Bluetooth_ctl_t ESP32_BT_ctl;
+
+// Function to reload list of allowed BLE names from SPIFFS
+void loadAllowedBLENames();
+
+// Access the current list of known device names
+const std::vector<String>& getAllowedBLENames();
+
+// Optional: Add/remove helpers (only if you want WebHelper to call these directly)
+bool addBLEDeviceName(const String& name);
+bool deleteBLEDeviceName(const String& name);
+
+std::vector<String> scanForBLEDevices(uint32_t scanTimeSeconds = 3);
+
 
 #endif /* ESP32 */
 

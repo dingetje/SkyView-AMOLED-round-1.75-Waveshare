@@ -39,6 +39,92 @@
 #include <BLEUtils.h>
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
+#include <FS.h>
+#include <SPIFFS.h>
+#include <set>
+
+std::vector<String> scanResults;
+
+#include <set>
+
+static bool bleInitializedForScan = false;
+
+std::vector<String> scanForBLEDevices(uint32_t scanTimeSeconds) {
+  scanResults.clear();
+
+  // Prevent scanning while a connection is active
+  if (ESP32_BT_ctl.status == BT_STATUS_CON) {
+    Serial.println("[BLE] Scan aborted: BLE already connected.");
+    return scanResults;
+  }
+
+  // Initialize BLE only once for scanning context
+  if (!bleInitializedForScan) {
+    BLEDevice::init("");  // Empty name
+    bleInitializedForScan = true;
+  }
+
+  BLEScan* scanner = BLEDevice::getScan();
+  scanner->setActiveScan(true);
+  scanner->setInterval(1349);
+  scanner->setWindow(449);
+  scanner->clearResults();  // Free memory from last scan
+
+  Serial.println("[BLE] Starting scan...");
+  BLEScanResults results = scanner->start(scanTimeSeconds, false);
+  Serial.printf("[BLE] Scan completed: %d device(s) found.\n", results.getCount());
+
+  std::set<String> uniqueNames;
+
+  for (int i = 0; i < results.getCount(); i++) {
+    BLEAdvertisedDevice device = results.getDevice(i);
+    if (device.haveName()) {
+      String name = device.getName().c_str();
+      name.trim();
+      if (name.length() > 0) {
+        uniqueNames.insert(name);
+      }
+    }
+  }
+
+  for (const auto& name : uniqueNames) {
+    scanResults.push_back(name);
+    Serial.println("[BLE] Found: " + name);
+  }
+
+  scanner->clearResults();  // Free memory again
+
+  return scanResults;
+}
+
+
+
+std::vector<String> allowedBLENames;
+
+void loadAllowedBLENames() {
+  allowedBLENames.clear();
+  if (!SPIFFS.begin(true)) {
+    Serial.println("Failed to mount SPIFFS");
+    return;
+  }
+
+  File file = SPIFFS.open("/BLEConnections.txt");
+  if (!file) {
+    Serial.println("BLEConnections.txt not found");
+    return;
+  }
+
+  while (file.available()) {
+    String name = file.readStringUntil('\n');
+    name.trim();
+    if (name.length() > 0) {
+      allowedBLENames.push_back(name);
+    }
+  }
+
+  file.close();
+}
+
 
 // BluetoothSerial SerialBT;
 String BT_name = HOSTNAME;
@@ -86,9 +172,18 @@ class AppClientCallback : public BLEClientCallbacks {
 
 class AppAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
-  void onResult(BLEAdvertisedDevice advertisedDevice) {
+  void onResult(BLEAdvertisedDevice advertisedDevice) override {
+    if (!advertisedDevice.haveName()) return;
 
-    if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(serviceUUID)) {
+    String devName = advertisedDevice.getName().c_str();
+
+    bool known = std::any_of(
+      allowedBLENames.begin(), allowedBLENames.end(),
+      [&](const String& name) { return name == devName; }
+    );
+
+    if (known && advertisedDevice.haveServiceUUID() &&
+        advertisedDevice.isAdvertisingService(serviceUUID)) {
 
       BLEDevice::getScan()->stop();
 
@@ -100,102 +195,9 @@ class AppAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
       ESP32_BT_ctl.command = BT_CMD_CONNECT;
     }
   }
+
 };
 
-// static void ESP32_BT_SPP_Connection_Manager(void *parameter)
-// {
-//   int command;
-//   int status;
-
-//   while (true) {
-
-//     portENTER_CRITICAL(&ESP32_BT_ctl.mutex);
-//     command = ESP32_BT_ctl.command;
-//     portEXIT_CRITICAL(&ESP32_BT_ctl.mutex);
-
-//     switch (command)
-//     {
-//     case BT_CMD_CONNECT:
-//         portENTER_CRITICAL(&ESP32_BT_ctl.mutex);
-//         status = ESP32_BT_ctl.status;
-//         portEXIT_CRITICAL(&ESP32_BT_ctl.mutex);
-
-//         if (status == BT_STATUS_CON) {
-//           portENTER_CRITICAL(&ESP32_BT_ctl.mutex);
-//           ESP32_BT_ctl.command = BT_CMD_NONE;
-//           portEXIT_CRITICAL(&ESP32_BT_ctl.mutex);
-//           break;
-//         }
-
-//         // connect(address) is fast (upto 10 secs max), connect(name) is slow (upto 30 secs max) as it needs
-//         // to resolve name to address first, but it allows to connect to different devices with the same name.
-//         // Set CoreDebugLevel to Info to view devices bluetooth address and device names
-
-
-//         if (AppDevice != nullptr) {
-//           pClient = BLEDevice::createClient();
-//           pClient->setClientCallbacks(new AppClientCallback());
-//           if (pClient->connect(AppDevice)) {
-//             pRemoteCharacteristic = pClient->getService(serviceUUID)->getCharacteristic(charUUID);
-//             if (pRemoteCharacteristic->canNotify()) {
-//               pRemoteCharacteristic->registerForNotify(AppNotifyCallback);
-//             }
-//             portENTER_CRITICAL(&ESP32_BT_ctl.mutex);
-//             ESP32_BT_ctl.status = BT_STATUS_CON;
-//             ESP32_BT_ctl.command = BT_CMD_NONE;
-//             portEXIT_CRITICAL(&ESP32_BT_ctl.mutex);
-
-//             Serial.println(F("BLE: Connected to device."));
-//           } else {
-//           portENTER_CRITICAL(&ESP32_BT_ctl.mutex);
-//           ESP32_BT_ctl.status = BT_STATUS_NC;
-//           portEXIT_CRITICAL(&ESP32_BT_ctl.mutex);
-
-//           Serial.print(F("BT SPP: Unable to connect to "));
-//         }
-//         Serial.println(settings->server);
-//         break;
-
-//     case BT_CMD_DISCONNECT:
-//         portENTER_CRITICAL(&ESP32_BT_ctl.mutex);
-//         status = ESP32_BT_ctl.status;
-//         portEXIT_CRITICAL(&ESP32_BT_ctl.mutex);
-
-//         if (status != BT_STATUS_CON) {
-//           portENTER_CRITICAL(&ESP32_BT_ctl.mutex);
-//           ESP32_BT_ctl.command = BT_CMD_NONE;
-//           portEXIT_CRITICAL(&ESP32_BT_ctl.mutex);
-//           break;
-//         }
-
-//         // disconnect() may take upto 10 secs max
-//         if (pClient && pClient->isConnected()) {
-//           pClient->disconnect();
-//           Serial.println(F("BLE: Disconnected from device."));
-
-//           portENTER_CRITICAL(&ESP32_BT_ctl.mutex);
-//           ESP32_BT_ctl.status = BT_STATUS_NC;
-//           ESP32_BT_ctl.command = BT_CMD_NONE;
-//           portEXIT_CRITICAL(&ESP32_BT_ctl.mutex);
-//         } else {
-//           Serial.println(F("BLE: No device to disconnect."));
-//         }
-//         break;
-
-//     case BT_CMD_SHUTDOWN:
-//     if (pClient && pClient->isConnected()) {
-//       pClient->disconnect();
-//     }
-//         vTaskDelete(NULL);
-//         break;
-//     default:
-//         break;
-//     }
-
-//     delay(1000);
-//   }
-// }
-// }
 
 static bool ESP32_BLEConnectToServer() {
   if (!pClient->connect(AppDevice)) {
@@ -231,6 +233,8 @@ static void ESP32_Bluetooth_setup(){
 
   case CON_BLUETOOTH_LE:
     {
+      loadAllowedBLENames();
+
       BLE_FIFO_RX = new cbuf(BLE_FIFO_RX_SIZE);
       BLE_FIFO_TX = new cbuf(BLE_FIFO_TX_SIZE);
 

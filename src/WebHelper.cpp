@@ -26,6 +26,8 @@
 #include "BatteryHelper.h"
 #include "GDL90Helper.h"
 #include "BuddyHelper.h"
+#include "BluetoothHelper.h"
+#include <ArduinoJson.h>  
 
 #define NOLOGO
 
@@ -99,6 +101,188 @@ she.braner\
 Copyright (C) 2019-2022 &nbsp;&nbsp;&nbsp; Linar Yusupov\
 </body>\
 </html>";
+
+#include <vector>
+#include <FS.h>
+#include <SPIFFS.h>
+
+std::vector<String> getAllowedBLENameList() {
+  std::vector<String> allowedNames;
+
+  if (!SPIFFS.begin(true)) {
+    Serial.println("[BLE] Failed to mount SPIFFS");
+    return allowedNames;
+  }
+
+  File file = SPIFFS.open("/BLEConnections.txt", "r");
+  if (!file || file.isDirectory()) {
+    Serial.println("[BLE] No allowed BLE file found.");
+    return allowedNames;
+  }
+
+  while (file.available()) {
+    String line = file.readStringUntil('\n');
+    line.trim();  // Remove whitespace, including \r
+    if (line.length() > 0) {
+      allowedNames.push_back(line);
+    }
+  }
+
+  file.close();
+  return allowedNames;
+}
+
+void handleBLEScan() {
+  std::vector<String> foundDevices = scanForBLEDevices(3);
+
+  DynamicJsonDocument doc(1024);
+  JsonArray array = doc.to<JsonArray>();
+
+  for (const auto& name : foundDevices) {
+    array.add(name);
+  }
+
+  String json;
+  serializeJson(doc, json);
+
+  server.send(200, "application/json", json);
+}
+
+
+void handleAddBLEDevice() {
+  if (!server.hasArg("name")) {
+    server.send(400, "text/plain", "Missing name");
+    return;
+  }
+
+  String newName = server.arg("name");
+  File file = SPIFFS.open("/BLEConnections.txt", FILE_APPEND);
+  file.println(newName);
+  file.close();
+
+  loadAllowedBLENames(); // refresh in memory
+  server.send(200, "text/plain", "Added");
+}
+
+void handleDeleteBLEDevice() {
+  if (!server.hasArg("name")) {
+    server.send(400, "text/plain", "Missing name");
+    return;
+  }
+
+  String toDelete = server.arg("name");
+  std::vector<String> updatedList;
+  auto allowedBLENames = getAllowedBLENameList();
+  for (const auto& name : allowedBLENames) {
+    if (name != toDelete) updatedList.push_back(name);
+  }
+
+  File file = SPIFFS.open("/BLEConnections.txt", FILE_WRITE);
+  for (const auto& name : updatedList) {
+    file.println(name);
+  }
+  file.close();
+
+  loadAllowedBLENames();
+  server.send(200, "text/plain", "Deleted");
+}
+
+const char* bleManagerHTML = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+  <title>BLE Device Manager</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body { font-family: sans-serif; padding: 1em; }
+    h2 { margin-top: 1.5em; }
+    button { margin: 0.25em; padding: 0.5em 1em; }
+    .device { display: flex; align-items: center; margin: 0.25em 0; }
+    .device span { flex-grow: 1; }
+  </style>
+</head>
+<body>
+  <h1>BLE Device Manager</h1>
+
+  <button onclick="scanDevices()">🔍 Scan BLE Devices</button>
+
+  <h2>Scanned Devices</h2>
+  <div id="scan-results">Click "Scan" to discover nearby devices...</div>
+
+  <h2>Allowed Devices</h2>
+  <div id="allowed-list">Loading...</div>
+
+  <script>
+    async function scanDevices() {
+      const scanDiv = document.getElementById("scan-results");
+      scanDiv.innerHTML = "Scanning...";
+
+      try {
+        const res = await fetch("/ble/scan");
+        const names = await res.json();
+
+        if (!names.length) {
+          scanDiv.innerHTML = "No devices found.";
+          return;
+        }
+
+        scanDiv.innerHTML = "";
+        names.forEach(name => {
+          const el = document.createElement("div");
+          el.className = "device";
+          el.innerHTML = `<span>${name}</span> 
+                          <button onclick="addDevice('${name}')">➕ Add</button>`;
+          scanDiv.appendChild(el);
+        });
+      } catch (e) {
+        scanDiv.innerHTML = "Error scanning: " + e;
+      }
+    }
+
+    async function loadAllowedDevices() {
+      const listDiv = document.getElementById("allowed-list");
+      listDiv.innerHTML = "Loading...";
+
+      try {
+        const res = await fetch("/ble/allowed");
+        const names = await res.json();
+
+        if (!names.length) {
+          listDiv.innerHTML = "No devices in allowed list.";
+          return;
+        }
+
+        listDiv.innerHTML = "";
+        names.forEach(name => {
+          const el = document.createElement("div");
+          el.className = "device";
+          el.innerHTML = `<span>${name}</span> 
+                          <button onclick="removeDevice('${name}')">🗑️ Remove</button>`;
+          listDiv.appendChild(el);
+        });
+      } catch (e) {
+        listDiv.innerHTML = "Error loading list: " + e;
+      }
+    }
+
+    async function addDevice(name) {
+      await fetch("/ble/add?name=" + encodeURIComponent(name), { method: "POST" });
+      await loadAllowedDevices();
+    }
+
+    async function removeDevice(name) {
+      await fetch("/ble/delete?name=" + encodeURIComponent(name), { method: "POST" });
+      await loadAllowedDevices();
+    }
+
+    // Load allowed list on page load
+    loadAllowedDevices();
+  </script>
+</body>
+</html>
+)rawliteral";
 
 void handleSettings() {
 
@@ -561,20 +745,21 @@ void handleRoot() {
   }
 
   snprintf_P ( offset, size,
-    PSTR("\
+ PSTR("\
     <tr><th align=left>Bridge output</th><td align=right>%s</td></tr>\
-   </table>\
-   <hr>\
-   <table width=100%%>\
-    <tr>\
-      <td align=left><input type=button onClick=\"location.href='/settings'\" value='Settings'></td>\
-      <td align=center><input type=button onClick=\"location.href='/buddylist'\" value='Buddy List'></td>\
-      <td align=center><input type=button onClick=\"location.href='/about'\" value='About'></td>\
-      <td align=right><input type=button onClick=\"location.href='/firmware'\" value='Firmware update'></td>\
-    </tr>\
-   </table>\
-  </body>\
-  </html>"),
+    </table>\
+    <hr>\
+    <table width=100%%>\
+      <tr>\
+        <td align=left><input type=button onClick=\"location.href='/settings'\" value='Settings'></td>\
+        <td align=center><input type=button onClick=\"location.href='/buddylist'\" value='Buddy List'></td>\
+        <td align=center><input type=button onClick=\"location.href='/ble/manage'\" value='BLE Manage'></td>\
+        <td align=center><input type=button onClick=\"location.href='/about'\" value='About'></td>\
+        <td align=right><input type=button onClick=\"location.href='/firmware'\" value='Firmware update'></td>\
+      </tr>\
+    </table>\
+    </body>\
+    </html>"),
       settings->bridge == BRIDGE_BT_LE  ? "Bluetooth LE" :
       settings->bridge == BRIDGE_UDP    ? "WiFi UDP" :
       settings->bridge == BRIDGE_SERIAL ? "Serial" : "NONE"
@@ -589,49 +774,6 @@ void handleRoot() {
   free(Root_temp);
 }
 
-// void readBuddyList() {
-//   File file = SPIFFS.open("/buddylist.txt", "r");
-//   if (!file) {
-//     Serial.println("Failed to open buddylist.txt for reading");
-//     return;
-//   }
-
-//   int buddyIndex = 0;
-
-//   while (file.available() && buddyIndex < 20) { // Leave space for sentinel
-//     String line = file.readStringUntil('\n');
-//     line.trim();
-
-//     int commaIndex = line.indexOf(',');
-//     if (commaIndex != -1) {
-//       String idStr = line.substring(0, commaIndex);
-//       String name = line.substring(commaIndex + 1);
-
-//       idStr.trim();
-//       name.trim();
-
-//       if (idStr.length() == 0 || name.length() == 0) {
-//         continue; // Skip malformed line
-//       }
-
-//       uint32_t buddyId = strtol(idStr.c_str(), NULL, 16);
-//       buddies[buddyIndex].id = buddyId;
-//       buddies[buddyIndex].name = strdup(name.c_str());
-//       buddyIndex++;
-//     }
-//   }
-
-//   // Sentinel entry
-//   buddies[buddyIndex].id = 0xFFFFFFFF;
-//   buddies[buddyIndex].name = ""; // Optional
-//   file.close();
-// }
-
-// void printBuddyList() {
-//   for (int i = 0; buddies[i].id != 0xFFFFFFFF; i++) {
-//     Serial.printf("ID: 0x%06X, Name: %s\n", buddies[i].id, buddies[i].name);
-//   }
-// }
 
 
 void handleBuddyList() {
@@ -834,7 +976,27 @@ void Web_setup()
     server.streamFile(file, "text/plain");
     file.close();
   });
-  
+  server.on("/ble/manage", HTTP_GET, []() {
+  server.send(200, "text/html; charset=UTF-8", bleManagerHTML);
+  });
+  server.on("/ble/scan", HTTP_GET, handleBLEScan);
+  server.on("/ble/add", HTTP_POST, handleAddBLEDevice);
+  server.on("/ble/delete", HTTP_POST, handleDeleteBLEDevice);
+  server.on("/ble/allowed", HTTP_GET, []() {
+  auto allowed = getAllowedBLENameList();
+  DynamicJsonDocument doc(1024);
+  JsonArray arr = doc.to<JsonArray>();
+
+  for (const auto& name : allowed) {
+    arr.add(name);
+  }
+
+  String json;
+  serializeJson(doc, json);
+  server.send(200, "application/json", json);
+  });
+
+
   server.on ( "/about", []() {
     SoC->swSer_enableRx(false);
     server.sendHeader(String(F("Cache-Control")), String(F("no-cache, no-store, must-revalidate")));
