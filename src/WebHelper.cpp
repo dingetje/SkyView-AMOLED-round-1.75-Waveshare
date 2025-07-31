@@ -28,6 +28,10 @@
 #include "BuddyHelper.h"
 #include "BluetoothHelper.h"
 #include <ArduinoJson.h>  
+#include "esp_private/esp_clk.h"
+#include "esp_private/pm_impl.h"
+
+
 
 #define NOLOGO
 
@@ -41,6 +45,13 @@ static const char Logo[] PROGMEM = {
 #endif
 
 #include "jquery_min_js.h"
+
+int get_cpu_frequency_mhz() {
+  rtc_cpu_freq_config_t conf;
+  rtc_clk_cpu_freq_get_config(&conf);
+  return conf.freq_mhz;
+}
+
 
 byte getVal(char c)
 {
@@ -105,6 +116,63 @@ Copyright (C) 2019-2022 &nbsp;&nbsp;&nbsp; Linar Yusupov\
 #include <vector>
 #include <FS.h>
 #include <SPIFFS.h>
+
+void writeBatteryLog(float startVoltage, float endVoltage, unsigned long durationSeconds, float estimated_mAh) {
+  File file = SPIFFS.open("/battery_log.txt", FILE_APPEND);
+  if (!file) {
+    Serial.println("Failed to open battery_log.txt for appending");
+    return;
+  }
+
+  file.printf("%.2f,%.2f,%lu,%.1f\n",
+              startVoltage, endVoltage, durationSeconds, estimated_mAh);
+  file.close();
+}
+
+String getLastBatteryLogEntry() {
+  File file = SPIFFS.open("/battery_log.txt", FILE_READ);
+  if (!file) return "No battery log found.";
+
+  String lastLine = "";
+  while (file.available()) {
+    String line = file.readStringUntil('\n');
+    if (line.length() > 5) lastLine = line;
+  }
+
+  file.close();
+  return lastLine;
+}
+String formatBatteryLog(String logLine) {
+  int idx = 0;
+  String parts[4];
+  while (logLine.length() && idx < 4) {
+    int comma = logLine.indexOf(',');
+    if (comma == -1) {
+      parts[idx++] = logLine;
+      break;
+    }
+    parts[idx++] = logLine.substring(0, comma);
+    logLine = logLine.substring(comma + 1);
+  }
+
+  if (idx < 4) return F("Incomplete log entry");
+
+  String result;
+  result.reserve(100);  // Optional: reserve memory to reduce heap fragmentation
+
+  result += F("Start: ");
+  result += parts[0];
+  result += F("V, End: ");
+  result += parts[1];
+  result += F("V, Duration: ");
+  result += parts[2];
+  result += F(" sec, Used: ");
+  result += parts[3];
+  result += F(" mAh");
+
+  return result;
+}
+
 
 std::vector<String> getAllowedBLENameList() {
   std::vector<String> allowedNames;
@@ -186,6 +254,16 @@ void handleDeleteBLEDevice() {
   loadAllowedBLENames();
   server.send(200, "text/plain", "Deleted");
 }
+
+  const char* charging_status_string(int status_code) {
+    switch (status_code) {
+      case 0: return "Not Charging";
+      case 1: return "Pre-Charge";
+      case 2: return "Fast Charging";
+      case 3: return "Charge Done";
+      default: return "Unknown";
+    }
+  }
 
 const char* bleManagerHTML = R"rawliteral(
 <!DOCTYPE html>
@@ -597,7 +675,7 @@ void handleSettings() {
 <td align=right>\
 <select name='power_save'>\
 <option %s value='%d'>Disabled</option>\
-<option %s value='%d'>WiFi OFF (10 min.)</option>\
+<option %s value='%d'>WiFi OFF (5 min.)</option>\
 </select>\
 </td>\
 </tr>\
@@ -654,9 +732,16 @@ void handleRoot() {
 
   dtostrf(vdd, 4, 2, str_Vcc);
 
+  const char* charge_status_str = charging_status_string(charging_status());
+  String chargingCurrent = String(read_SY6970_charge_current());
+
+  int cpu_freq = get_cpu_frequency_mhz();
+  String lastBatteryLog = formatBatteryLog(getLastBatteryLogEntry());
+
   snprintf_P ( offset, size,
     PSTR("<html>\
   <head>\
+    <meta charset=\"UTF-8\">\
     <meta name='viewport' content='width=device-width, initial-scale=1'>\
     <title>SkyView status</title>\
   </head>\
@@ -670,15 +755,20 @@ void handleRoot() {
   <tr><th align=left>Device Id</th><td align=right>%06X</td></tr>\
   <tr><th align=left>Software Version</th><td align=right>%s&nbsp;&nbsp;%s</td></tr>\
   <tr><th align=left>Uptime</th><td align=right>%02d:%02d:%02d</td></tr>\
+  <tr><th align=left>CPU Freq</th><td align=right>%s MHz</font></td></tr>\
   <tr><th align=left>Free memory</th><td align=right>%u</td></tr>\
-  <tr><th align=left>Battery voltage</th><td align=right><font color=%s>%s</font></td></tr>\
+  <tr><th align=left>Battery voltage</th><td align=right><font color=%s>%sV</font></td></tr>\
+  <tr><th align=left>Charging Status</th><td align=right>%s</font></td></tr>\
+  <tr><th align=left>Charge Current</th><td align=right>%s mA</font></td></tr>\
+  <tr><th align=left>Last Battery Log</th><td align=right>%s</td></tr>\
   <tr><th align=left>&nbsp;</th><td align=right>&nbsp;</td></tr>\
   <tr><th align=left>Display</th><td align=right>%s</td></tr>\
   <tr><th align=left>Connection type</th><td align=right>%s</td></tr>"),
     SoC->getChipId() & 0xFFFFFF, SKYVIEW_FIRMWARE_VERSION,
     (SoC == NULL ? "NONE" : SoC->name),
-    hr, min % 60, sec % 60, ESP.getFreeHeap(),
-    low_voltage ? "red" : "green", str_Vcc,"AMOLED 1.75",
+    hr, min % 60, sec % 60, String(cpu_freq), ESP.getFreeHeap(),
+    low_voltage ? "red" : "green", str_Vcc, charge_status_str,
+    chargingCurrent, lastBatteryLog.c_str(), "AMOLED 1.75",
     settings->connection == CON_SERIAL        ? "Serial" :
     settings->connection == CON_BLUETOOTH_SPP ? "Bluetooth SPP" :
     settings->connection == CON_BLUETOOTH_LE  ? "Bluetooth LE" :
@@ -744,26 +834,36 @@ void handleRoot() {
     break;
   }
 
-  snprintf_P ( offset, size,
- PSTR("\
+  snprintf_P(offset, size,
+  PSTR("\
     <tr><th align=left>Bridge output</th><td align=right>%s</td></tr>\
-    </table>\
-    <hr>\
-    <table width=100%%>\
-      <tr>\
-        <td align=left><input type=button onClick=\"location.href='/settings'\" value='Settings'></td>\
-        <td align=center><input type=button onClick=\"location.href='/buddylist'\" value='Buddy List'></td>\
-        <td align=center><input type=button onClick=\"location.href='/ble/manage'\" value='BLE Manage'></td>\
-        <td align=center><input type=button onClick=\"location.href='/about'\" value='About'></td>\
-        <td align=right><input type=button onClick=\"location.href='/firmware'\" value='Firmware update'></td>\
-      </tr>\
-    </table>\
-    </body>\
-    </html>"),
-      settings->bridge == BRIDGE_BT_LE  ? "Bluetooth LE" :
-      settings->bridge == BRIDGE_UDP    ? "WiFi UDP" :
-      settings->bridge == BRIDGE_SERIAL ? "Serial" : "NONE"
+    <tr><th align=left>Battery Log Actions</th>\
+        <td align=right>\
+          <form action=\"/download_log\" method=\"get\" style=\"display:inline\">\
+            <button type=\"submit\">Download</button>\
+          </form>\
+          <form action=\"/clear_log\" method=\"post\" style=\"display:inline\" onsubmit=\"return confirm('Clear battery log?');\">\
+            <button type=\"submit\">Clear</button>\
+          </form>\
+        </td></tr>\
+  </table>\
+  <hr>\
+  <table width=100%%>\
+    <tr>\
+      <td align=left><input type=button onClick=\"location.href='/settings'\" value='Settings'></td>\
+      <td align=center><input type=button onClick=\"location.href='/buddylist'\" value='Buddy List'></td>\
+      <td align=center><input type=button onClick=\"location.href='/ble/manage'\" value='BLE Manage'></td>\
+      <td align=center><input type=button onClick=\"location.href='/about'\" value='About'></td>\
+      <td align=right><input type=button onClick=\"location.href='/firmware'\" value='Firmware update'></td>\
+    </tr>\
+  </table>\
+  </body>\
+  </html>"),
+    settings->bridge == BRIDGE_BT_LE  ? "Bluetooth LE" :
+    settings->bridge == BRIDGE_UDP    ? "WiFi UDP" :
+    settings->bridge == BRIDGE_SERIAL ? "Serial"     : "NONE"
   );
+
 
   SoC->swSer_enableRx(false);
   server.sendHeader(String(F("Cache-Control")), String(F("no-cache, no-store, must-revalidate")));
@@ -996,6 +1096,25 @@ void Web_setup()
   server.send(200, "application/json", json);
   });
 
+  server.on("/download_log", HTTP_GET, []() {
+  File logFile = SPIFFS.open("/battery_log.txt", "r");
+  if (!logFile) {
+    server.send(404, "text/plain", "Log file not found");
+    return;
+  }
+
+  server.sendHeader("Content-Type", "text/plain");
+  server.sendHeader("Content-Disposition", "attachment; filename=\"battery_log.txt\"");
+  server.streamFile(logFile, "text/plain");
+  logFile.close();
+  });
+
+  server.on("/clear_log", HTTP_POST, []() {
+    if (SPIFFS.exists("/battery_log.txt")) {
+      SPIFFS.remove("/battery_log.txt");
+    }
+    server.send(200, "text/html", "<html><body><h2>Battery log cleared.</h2><a href='/'>Back</a></body></html>");
+  });
 
   server.on ( "/about", []() {
     SoC->swSer_enableRx(false);

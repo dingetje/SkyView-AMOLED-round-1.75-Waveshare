@@ -38,8 +38,15 @@ typedef struct Bluetooth_ops_struct {
 
 #if defined(ESP32)
 
+#define SERVICE_UUID16            ((uint16_t) 0xFFE0)
+#define CHARACTERISTIC_UUID16     ((uint16_t) 0xFFE1)
+#define SERVICE_UUID128           "0000ffe0-0000-1000-8000-00805f9b34fb"
+#define CHARACTERISTIC_UUID128    "0000ffe1-0000-1000-8000-00805f9b34fb"
 #define SERVICE_UUID              "0000ffe0-0000-1000-8000-00805f9b34fb"
 #define CHARACTERISTIC_UUID       "0000ffe1-0000-1000-8000-00805f9b34fb"
+
+#define BATTERY_SERVICE_UUID       "180F"
+#define BATTERY_LEVEL_CHAR_UUID    "2A19"
 
 #define BT_NODATA_TIMEOUT         30000
 
@@ -82,6 +89,7 @@ const std::vector<String>& getAllowedBLENames();
 // Optional: Add/remove helpers (only if you want WebHelper to call these directly)
 bool addBLEDeviceName(const String& name);
 bool deleteBLEDeviceName(const String& name);
+extern uint8_t getBLEbattery(void);
 
 std::vector<String> scanForBLEDevices(uint32_t scanTimeSeconds = 3);
 

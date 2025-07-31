@@ -38,6 +38,7 @@
 #include "SkyView.h"
 
 #include <battery.h>
+#include "BatteryHelper.h"
 // #include <SD.h>
 
 // #include "uCDB.hpp"
@@ -46,11 +47,15 @@
 
 #include <esp_wifi.h>
 #include <esp_bt.h>
+#include "Arduino_DriveBus_Library.h"
 
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
 #define TIME_TO_SLEEP  28        /* Time ESP32 will go to sleep (in seconds) */
 
 WebServer server ( 80 );
+
+std::shared_ptr<Arduino_IIC_DriveBus> IIC_Bus = std::make_shared<Arduino_HWIIC>(IIC_SDA, IIC_SCL, &Wire);
+
 extern TFT_eSPI tft;
 extern TFT_eSprite sprite;
 
@@ -182,6 +187,7 @@ void ESP32_TFT_fini(const char *msg)
 void ESP32_fini()
 {
   WiFi_fini();
+  battery_fini();
   // SPI.end();
   Serial.println("Putting device to deep sleep...");
   delay(1000);
@@ -384,35 +390,26 @@ static void ESP32_WiFiUDP_stopAll()
 static void ESP32_Battery_setup()
 {
 #if defined(ESP32S3)
-  calibrate_voltage(ADC1_GPIO4_CHANNEL);
+  // calibrate_voltage(ADC1_GPIO4_CHANNEL);
+  SY6970_setup();
 #else
   
-  calibrate_voltage(settings->adapter == ADAPTER_TTGO_T5S ?
-                    ADC1_GPIO35_CHANNEL : ADC1_GPIO36_CHANNEL);
+  // calibrate_voltage(settings->adapter == ADAPTER_TTGO_T5S ?
+  //                   ADC1_GPIO35_CHANNEL : ADC1_GPIO36_CHANNEL);
 #endif
 }
 
 static float ESP32_Battery_voltage()
 {
-  float voltage = ((float) read_voltage()) * 0.001 ;
+  // Serial.println("Reading battery voltage from SY6970...");
+  delay(100); // Give some time for the SY6970 to stabilize
+  float voltage = read_SY6970_voltage() * 0.001;
+  Serial.printf("Battery voltage: %.2fV\n", voltage);
+  return voltage;
 
-  /* T5 has voltage divider 100k/100k on board */
-  return (settings->adapter == ADAPTER_TTGO_T5_4_7 ?
-          2 * voltage : voltage);
 }
 
-// #include <SoftSPI.h>
-// SoftSPI swSPI(SOC_GPIO_PIN_MOSI_T5S,
-//               SOC_GPIO_PIN_MOSI_T5S, /* half duplex */
-//               SOC_GPIO_PIN_SCK_T5S);
-   // SPI.begin(SOC_GPIO_PIN_SCK_TFT,
-   //           SOC_GPIO_PIN_MISO_TFT,
-   //           SOC_GPIO_PIN_MOSI_TFT,
-   //           SOC_GPIO_PIN_SS_TFT);
-   // SPI.setFrequency(40000000);
-   // SPI.setBitOrder(MSBFIRST);
-   // SPI.setDataMode(SPI_MODE0);
-   // SPI.beginTransaction(SPISettings(40000000, MSBFIRST, SPI_MODE0));
+
 #if defined(USE_EPAPER)
 static portMUX_TYPE EPD_ident_mutex;
 

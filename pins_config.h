@@ -2,7 +2,7 @@
 
 /***********************config*************************/
 
-#define SPI_FREQUENCY         40000000 //
+#define SPI_FREQUENCY         26670000 //
 #define TFT_SPI_MODE          SPI_MODE0
 #define TFT_SPI_HOST          SPI2_HOST
 

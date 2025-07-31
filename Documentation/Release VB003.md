@@ -25,7 +25,7 @@ I am excited to announce the release of **SkyView VB003**, packed with powerful 
 1F00C1,Paul Guschlbauer
 ```
 
-[More information can be found here](Managing_Buddy_list.MD)
+
  A sample file is included in this release.
 
 ---
@@ -37,4 +37,5 @@ I am excited to announce the release of **SkyView VB003**, packed with powerful 
 Link to the new Firmware:
 https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/blob/main/binaries/firmware.bin
 ---
+
 

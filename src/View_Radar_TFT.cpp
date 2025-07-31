@@ -260,7 +260,10 @@ void TFT_radar_Draw_Message(const char *msg1, const char *msg2)
       sprite.drawString(msg2, LCD_WIDTH / 2, LCD_HEIGHT / 2 + 26, 4);
     }
     //Battery indicator
+    // Serial.println("Drawing battery...");
+    // delay(100);
     draw_battery();  
+    draw_extBattery();
     //draw settings icon
     sprite.setSwapBytes(true);
     sprite.pushImage(320, 360, 36, 36, settings_icon_small);

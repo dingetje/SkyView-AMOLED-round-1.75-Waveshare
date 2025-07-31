@@ -56,6 +56,11 @@
 #include "SPIFFS.h"
 #include "SkyView.h"
 // #include "TFTHelper.h"
+#if defined(CPU_float)
+extern "C" {
+  #include "esp_pm.h"
+}
+#endif
 
 hardware_info_t hw_info = {
   .model    = SOFTRF_MODEL_SKYVIEW,
@@ -138,9 +143,6 @@ void setup()
   settings->power_save      = POWER_SAVE_WIFI;
   settings->team            = 0x46BCDC;
 */
-  Serial.print("Protocol: "); Serial.println(settings->protocol);
-  Serial.print("Connection: "); Serial.println(settings->connection);
-  Serial.print("Baudrate: "); Serial.println(settings->baudrate);
   Battery_setup();
 #if defined(BUTTONS)
   SoC->Button_setup();
@@ -170,7 +172,7 @@ void setup()
   Serial.flush();
   hw_info.display = EPD_setup(true);
 #elif defined(USE_TFT)
-  TFT_setup();  
+  TFT_setup();
   hw_info.display = DISPLAY_TFT;
 #endif /* USE_EPAPER */
   if (hw_info.display != DISPLAY_NONE) {
@@ -178,6 +180,14 @@ void setup()
   } else {
     Serial.println(F(" failed!"));
   }
+#if defined(CPU_float)
+  esp_pm_config_esp32s3_t pm_config = {
+    .max_freq_mhz = 240,
+    .min_freq_mhz = 80,
+    .light_sleep_enable = false
+  };
+  esp_pm_configure(&pm_config);
+#endif /* CPU_float */
 
   WiFi_setup();
 #if defined(DB)
@@ -188,10 +198,10 @@ void setup()
   strcpy(buf,"POST");
   SoC->TTS(buf);
 #endif
-
   Web_setup();
   Traffic_setup();
 #if defined(AMOLED)
+
   Touch_setup();
 #endif
 
@@ -236,7 +246,6 @@ void loop()
 void shutdown(const char *msg)
 {
   SoC->WDT_fini();
-
   /* If a Dongle is connected - try to shut it down */
   if (settings->connection == CON_SERIAL &&
       settings->protocol   == PROTOCOL_NMEA) {

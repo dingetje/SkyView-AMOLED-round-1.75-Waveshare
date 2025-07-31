@@ -26,19 +26,12 @@
 #include "GDL90Helper.h"
 
 #include "SkyView.h"
-
-#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
-#error Bluetooth is not enabled!
-#endif
-
-// #include <BluetoothSerial.h>
-
-#include <BLEDevice.h>
+#include <NimBLEDevice.h>
 
 #include "WiFiHelper.h"   // HOSTNAME
-#include <BLEUtils.h>
-#include <BLEScan.h>
-#include <BLEAdvertisedDevice.h>
+#include <NimBLEUtils.h>
+#include <NimBLEScan.h>
+#include <NimBLEAdvertisedDevice.h>
 #include <FS.h>
 #include <SPIFFS.h>
 #include <set>
@@ -48,8 +41,14 @@ std::vector<String> scanResults;
 #include <set>
 
 static bool bleInitializedForScan = false;
+const NimBLEUUID targetService("0000ffe0-0000-1000-8000-00805f9b34fb");
+uint8_t BLEbatteryCache = 0;  // External device battery level in %
+unsigned long lastBatteryCheck = 0;
+const unsigned long batteryPollInterval = 60000;  // Check every 60 seconds
+
 
 std::vector<String> scanForBLEDevices(uint32_t scanTimeSeconds) {
+  // disableLoopWDT();
   scanResults.clear();
 
   // Prevent scanning while a connection is active
@@ -60,24 +59,29 @@ std::vector<String> scanForBLEDevices(uint32_t scanTimeSeconds) {
 
   // Initialize BLE only once for scanning context
   if (!bleInitializedForScan) {
-    BLEDevice::init("");  // Empty name
+    NimBLEDevice::init("");  // Empty name
     bleInitializedForScan = true;
   }
 
-  BLEScan* scanner = BLEDevice::getScan();
+  NimBLEScan* scanner = NimBLEDevice::getScan();
+  
   scanner->setActiveScan(true);
   scanner->setInterval(1349);
   scanner->setWindow(449);
   scanner->clearResults();  // Free memory from last scan
 
   Serial.println("[BLE] Starting scan...");
-  BLEScanResults results = scanner->start(scanTimeSeconds, false);
+  NimBLEScanResults results = scanner->start(3, true);  // Convert seconds to milliseconds
   Serial.printf("[BLE] Scan completed: %d device(s) found.\n", results.getCount());
 
   std::set<String> uniqueNames;
 
   for (int i = 0; i < results.getCount(); i++) {
-    BLEAdvertisedDevice device = results.getDevice(i);
+    NimBLEAdvertisedDevice device = results.getDevice(i);
+    // Skip devices that don’t advertise the name or service
+    if (!device.haveServiceUUID() || !device.isAdvertisingService(targetService)) {
+      continue;  // Filter out non-SoftRF devices
+    }
     if (device.haveName()) {
       String name = device.getName().c_str();
       name.trim();
@@ -93,6 +97,7 @@ std::vector<String> scanForBLEDevices(uint32_t scanTimeSeconds) {
   }
 
   scanner->clearResults();  // Free memory again
+  // enableLoopWDT();
 
   return scanResults;
 }
@@ -136,20 +141,21 @@ Bluetooth_ctl_t ESP32_BT_ctl = {
 };
 
 /* LE */
-static BLERemoteCharacteristic* pRemoteCharacteristic;
-static BLEAdvertisedDevice* AppDevice;
-static BLEClient* pClient;
+static NimBLERemoteCharacteristic* pRemoteCharacteristic;
+static NimBLEAdvertisedDevice* AppDevice;
+static NimBLEClient* pClient;
 
-static BLEUUID  serviceUUID(SERVICE_UUID);
-static BLEUUID  charUUID(CHARACTERISTIC_UUID);
+static NimBLEUUID serviceUUID(SERVICE_UUID16);
+static NimBLEUUID charUUID(CHARACTERISTIC_UUID16);
 
 cbuf *BLE_FIFO_RX, *BLE_FIFO_TX;
 
 static unsigned long BT_TimeMarker = 0;
 static unsigned long BLE_Notify_TimeMarker = 0;
 
+#if defined(USE_NIMBLE)
 static void AppNotifyCallback(
-  BLERemoteCharacteristic* pBLERemoteCharacteristic,
+  NimBLERemoteCharacteristic* pBLERemoteCharacteristic,
   uint8_t* pData,
   size_t length,
   bool isNotify) {
@@ -159,44 +165,42 @@ static void AppNotifyCallback(
     }
 }
 
-class AppClientCallback : public BLEClientCallbacks {
-  void onConnect(BLEClient* pclient) {
+class AppClientCallback : public NimBLEClientCallbacks {
+  void onConnect(NimBLEClient* pclient) {
   }
 
-  void onDisconnect(BLEClient* pclient) {
+  void onDisconnect(NimBLEClient* pclient) {
     ESP32_BT_ctl.status = BT_STATUS_NC;
 
     Serial.println(F("BLE: disconnected from Server."));
   }
 };
 
-class AppAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
+class AppAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
+public:
 
-  void onResult(BLEAdvertisedDevice advertisedDevice) override {
-    if (!advertisedDevice.haveName()) return;
+  void onResult(NimBLEAdvertisedDevice* advertisedDevice) override {
+    if (!advertisedDevice->haveName()) return;
 
-    String devName = advertisedDevice.getName().c_str();
-
+    String devName = advertisedDevice->getName().c_str();
     bool known = std::any_of(
       allowedBLENames.begin(), allowedBLENames.end(),
       [&](const String& name) { return name == devName; }
     );
 
-    if (known && advertisedDevice.haveServiceUUID() &&
-        advertisedDevice.isAdvertisingService(serviceUUID)) {
+    if (known && advertisedDevice->haveServiceUUID() &&
+        advertisedDevice->isAdvertisingService(serviceUUID)) {
+      Serial.println(F("  --> Known device and matching service UUID. Connecting..."));
+      NimBLEDevice::getScan()->stop();
 
-      BLEDevice::getScan()->stop();
-
-      if (AppDevice) {
-        AppDevice->~BLEAdvertisedDevice();
-      }
-
-      AppDevice = new BLEAdvertisedDevice(advertisedDevice);
+      delete AppDevice;
+      AppDevice = new NimBLEAdvertisedDevice(*advertisedDevice);
       ESP32_BT_ctl.command = BT_CMD_CONNECT;
     }
   }
 
 };
+#endif /* USE_NIMBLE */
 
 
 static bool ESP32_BLEConnectToServer() {
@@ -205,7 +209,7 @@ static bool ESP32_BLEConnectToServer() {
     return false;
   }
 
-  BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
+  NimBLERemoteService* pRemoteService = pClient->getService(serviceUUID);
   if (pRemoteService == nullptr) {
     Serial.print(F("BLE: Failed to find our service UUID: "));
     Serial.println(serviceUUID.toString().c_str());
@@ -222,7 +226,7 @@ static bool ESP32_BLEConnectToServer() {
   }
 
     if(pRemoteCharacteristic->canNotify())
-      pRemoteCharacteristic->registerForNotify(AppNotifyCallback);
+      pRemoteCharacteristic->subscribe(true, AppNotifyCallback);
 
     ESP32_BT_ctl.status = BT_STATUS_CON;
     return true;
@@ -240,13 +244,23 @@ static void ESP32_Bluetooth_setup(){
 
       esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
 
-      BLEDevice::init("");
+#if defined(USE_NIMBLE)
+      Serial.println("[BLE] Initializing NimBLE...");
+      NimBLEDevice::init("");
+      pClient = NimBLEDevice::createClient();
+      pClient->setClientCallbacks(new AppClientCallback());
 
+      NimBLEScan* pBLEScan = NimBLEDevice::getScan();
+#else
+      BLEDevice::init("");
       pClient = BLEDevice::createClient();
       pClient->setClientCallbacks(new AppClientCallback());
 
       BLEScan* pBLEScan = BLEDevice::getScan();
-      pBLEScan->setAdvertisedDeviceCallbacks(new AppAdvertisedDeviceCallbacks());
+#endif /* USE_NIMBLE */
+
+      pBLEScan->setAdvertisedDeviceCallbacks(new AppAdvertisedDeviceCallbacks(), false);
+
       pBLEScan->setInterval(1349);
       pBLEScan->setWindow(449);
       pBLEScan->setActiveScan(true);
@@ -259,6 +273,37 @@ static void ESP32_Bluetooth_setup(){
     break;
   }
 }
+uint8_t getBLEbattery() {
+  return BLEbatteryCache;
+}
+
+void pollBLEbattery() {
+  if (!pClient || !pClient->isConnected()) {
+    Serial.println("[BLE] Battery poll skipped: not connected");
+    return;
+  }
+
+  NimBLERemoteService* batteryService = pClient->getService("180F");
+  if (!batteryService) {
+    Serial.println("[BLE] Battery service not found");
+    return;
+  }
+
+  NimBLERemoteCharacteristic* batteryChar = batteryService->getCharacteristic("2A19");
+  if (!batteryChar || !batteryChar->canRead()) {
+    Serial.println("[BLE] Battery characteristic not found or unreadable");
+    return;
+  }
+
+  std::string value = batteryChar->readValue();
+  if (!value.empty()) {
+    BLEbatteryCache = static_cast<uint8_t>(value[0]);
+    Serial.printf("[BLE] Polled battery level: %d%%\n", BLEbatteryCache);
+  } else {
+    Serial.println("[BLE] Battery level read failed");
+  }
+}
+
 
 static void ESP32_Bluetooth_loop()
 {
@@ -299,7 +344,14 @@ static void ESP32_Bluetooth_loop()
           }
         }
 
+#if defined(USE_NIMBLE)
+        NimBLEScan* scan = NimBLEDevice::getScan();
+        scan->setAdvertisedDeviceCallbacks(new AppAdvertisedDeviceCallbacks(), false);
+        scan->setActiveScan(true);
+        scan->start(5, false);
+#else
         BLEDevice::getScan()->start(3, false);
+#endif /* USE_NIMBLE */
 
 #if 0
         /* approx. 170 bytes memory leak still remains */
@@ -322,11 +374,15 @@ static void ESP32_Bluetooth_loop()
           if (size > 0) {
             BLE_FIFO_TX->read((char *) chunk, size);
 
-            pRemoteCharacteristic->writeValue(chunk, size);
+            pRemoteCharacteristic->writeValue((uint8_t*)chunk, size, false);
 
             BLE_Notify_TimeMarker = millis();
           }
       }
+      if (ESP32_BT_ctl.status == BT_STATUS_CON && millis() - lastBatteryCheck > batteryPollInterval) {
+        lastBatteryCheck = millis();
+        pollBLEbattery();
+        }
     }
     break;
   default:

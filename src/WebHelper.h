@@ -50,5 +50,6 @@ extern WiFiClient client;
 extern TinyGPSPlus nmea;
 extern void readBuddyList();
 extern void printBuddyList();
+extern void writeBatteryLog(float startVoltage, float endVoltage, unsigned long durationSeconds, float estimated_mAh);
 
 #endif /* WEBHELPER_H */

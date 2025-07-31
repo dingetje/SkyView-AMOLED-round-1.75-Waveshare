@@ -31,16 +31,16 @@ unsigned long debounceDelay = 100; // in milliseconds
 bool isLabels = true;
 bool show_compass = true;;
 extern bool isLocked;
+void touchWakeUp() {
+    digitalWrite(SENSOR_RST, HIGH);
+    delay(100);
+    touchSensor.wakeup();
+}
 
 void Touch_setup() {
-    // Initialize serial communication for debugging
-    Serial.begin(115200);
-
   
     attachInterrupt(TP_INT, []()
     { IIC_Interrupt_Flag = true; }, FALLING);
-  
-
   
         touchSensor.setPins(SENSOR_RST, SENSOR_IRQ);
   if (touchSensor.begin(Wire, touchAddress, IIC_SDA, IIC_SCL) == false)
@@ -135,7 +135,7 @@ void tapHandler(int x, int y) {
       settings_page();
     }
   } 
-  else if (LCD_WIDTH - x > 0 && LCD_WIDTH - x < 160 && LCD_HEIGHT - y > 360 && LCD_HEIGHT - y < 420 && TFT_view_mode == VIEW_MODE_TEXT) {
+  else if (LCD_WIDTH - x > 190 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 330 && LCD_HEIGHT - y < 390 && TFT_view_mode == VIEW_MODE_TEXT) {
     //Lock focus on current target
     Serial.println("Locking focus on current target ");
     if (!isLocked) {
@@ -146,7 +146,8 @@ void tapHandler(int x, int y) {
       isLocked = false;
       setFocusOn(true);
     }
-    
+    TFTTimeMarker = 0; // Force update of the display
+
   } else {
     Serial.println("No Tap match found...");
   }
