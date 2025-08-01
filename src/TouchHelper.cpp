@@ -4,11 +4,14 @@
 #include "pin_config.h"
 #include "TouchHelper.h"
 #include "TFTHelper.h"
+#include "NMEAHelper.h"
 #include "View_Radar_TFT.h"
 #include "View_Text_TFT.h"
 #include "Platform_ESP32.h"
 #include "SkyView.h"
 #include "EEPROMHelper.h"
+#include <TimeLib.h>
+#include "TrafficHelper.h"
 // Create an instance of the CST9217 class
 
 TouchDrvCST92xx touchSensor;
@@ -31,6 +34,85 @@ unsigned long debounceDelay = 100; // in milliseconds
 bool isLabels = true;
 bool show_compass = true;;
 extern bool isLocked;
+
+void Touch_2D_Unrotate(float &tX, float &tY) {
+    float angleRad = D2R * ThisAircraft.Track;
+    float trSin = sin(angleRad);
+    float trCos = cos(angleRad);
+
+    float tTemp = tX * trCos + tY * trSin;
+    tY = -tX * trSin + tY * trCos;
+    tX = tTemp;
+}
+
+
+void findTouchedTarget(int rawTouchX, int rawTouchY) {
+  if (TFT_view_mode != VIEW_MODE_RADAR) return;
+  int zoom = getCurrentZoom();
+  int range = 3000;  // default
+  // Convert touch to center-relative coordinates (pixels)
+  float touchX = rawTouchX - (LCD_WIDTH / 2);
+  float touchY = -(rawTouchY - (LCD_HEIGHT / 2));
+  Serial.printf("Touch coordinates: (%f, %f)\n", touchX, touchY);
+
+  // Rotate to NORTH_UP if needed
+  if (settings->orientation == DIRECTION_TRACK_UP) {
+    Touch_2D_Unrotate(touchX, touchY);
+    Serial.printf("Unrotated touch coordinates: (%f, %f)\n", touchX, touchY);
+  }
+
+  // Get current range in meters
+  if (settings->units == UNITS_METRIC || settings->units == UNITS_MIXED) {
+    switch (zoom) {
+      case ZOOM_LOWEST:  range = 9000; break;
+      case ZOOM_LOW:     range = 6000; break;
+      case ZOOM_HIGH:    range = 900;  break;
+      case ZOOM_MEDIUM:
+      default:           range = 3000; break;
+    }
+  } else {
+    switch (zoom) {
+      case ZOOM_LOWEST:  range = 9260; break;
+      case ZOOM_LOW:     range = 4630; break;
+      case ZOOM_HIGH:    range = 926;  break;
+      case ZOOM_MEDIUM:
+      default:           range = 1852; break;
+    }
+  }
+
+  // Convert pixel distances to meters
+  float radius = LCD_WIDTH / 2.0f - 2.0f;
+  float scale = (float)range / radius;  // meters per pixel
+  float touchXMeters = touchX * scale;
+  float touchYMeters = touchY * scale;
+  int touchHitRadius = range / 10; // 10% of the range as hit radius
+
+  Serial.printf("Touch in meters: (%f, %f)\n", touchXMeters, touchYMeters);
+
+  for (int i = 0; i < MAX_TRACKING_OBJECTS; i++) {
+    if (Container[i].ID == 0) continue;
+    if ((now() - Container[i].timestamp) > TFT_EXPIRATION_TIME) continue;
+
+    Serial.printf("Checking target ID: %06X\n", Container[i].ID);
+    Serial.printf("Target coordinates: (%f, %f)\n", Container[i].RelativeEast, Container[i].RelativeNorth);
+
+    float dx = Container[i].RelativeEast - touchXMeters;
+    float dy = Container[i].RelativeNorth - touchYMeters;
+
+    if ((dx * dx + dy * dy) < (touchHitRadius * touchHitRadius)) {
+      Serial.printf("Touched target ID: %06X at (%f, %f)\n", Container[i].ID, Container[i].RelativeEast, Container[i].RelativeNorth);
+      // TODO: handle selection
+      isLocked = true;
+      setFocusOn(true, Container[i].ID);
+      delay(100); // Debounce delay
+      TFT_Mode(true); // Switch to text view
+      break;
+    }
+  }
+}
+
+
+
 void touchWakeUp() {
     digitalWrite(SENSOR_RST, HIGH);
     delay(100);
@@ -61,8 +143,9 @@ void tapHandler(int x, int y) {
   //x = LCDWIDTH - x;  
   //y = LCDHIEGHT - y;
   Serial.println("Tap detected at coordinates: " + String(x) + ", " + String(y));
+  bool hasFix = settings->protocol == PROTOCOL_NMEA  ? isValidGNSSFix() : false;
   if (LCD_WIDTH - x > 290 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 360 && LCD_HEIGHT - y <  466
-    && (TFT_view_mode == VIEW_MODE_TEXT || TFT_view_mode == VIEW_MODE_RADAR)) {
+    && (TFT_view_mode == VIEW_MODE_TEXT || (TFT_view_mode == VIEW_MODE_RADAR && !hasFix))) {
     Serial.println("Going to SettingsPage ");
     settings_page();
   } 
@@ -135,18 +218,21 @@ void tapHandler(int x, int y) {
       settings_page();
     }
   } 
-  else if (LCD_WIDTH - x > 190 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 330 && LCD_HEIGHT - y < 390 && TFT_view_mode == VIEW_MODE_TEXT) {
+  else if (LCD_WIDTH - x > 0 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 70 && LCD_HEIGHT - y < 150 && TFT_view_mode == VIEW_MODE_TEXT) {
     //Lock focus on current target
-    Serial.println("Locking focus on current target ");
     if (!isLocked) {
       isLocked = true;
-     setFocusOn(false);
+     setFocusOn(true);
+     Serial.println("Locking focus on current target ");
     }
     else {
       isLocked = false;
-      setFocusOn(true);
+      setFocusOn(false);
+      Serial.println("Unlocking focus from current target ");
     }
     TFTTimeMarker = 0; // Force update of the display
+  } else if (TFT_view_mode == VIEW_MODE_RADAR) {
+    findTouchedTarget(LCD_WIDTH - x, LCD_HEIGHT - y);
 
   } else {
     Serial.println("No Tap match found...");
@@ -211,7 +297,7 @@ void touchTask(void *parameter) {
                 unsigned long currentTime = millis();
                 if (currentTime - lastTapTime >= debounceDelay) {
                   lastTapTime = currentTime;
-                  Serial.println("Tap");
+                  // Serial.println("Tap");
                   delay(100); // Debounce delay
                   tapHandler(endX, endY); // Call tap handler with coordinates
               }

@@ -27,8 +27,6 @@
 // #include <Fonts/FreeMonoBold24pt7b.h>
 #include "View_Radar_TFT.h" // Include the text view header
 #include <TimeLib.h>
-#define D2R (3.141593f/180.0f)
-#define R2D (180.0f/3.141593f)
 #include "TrafficHelper.h"
 #include "BatteryHelper.h"
 #include "EEPROMHelper.h"
@@ -113,6 +111,10 @@ const float pg_PointsDown[ICON_TARGETS_POINTS][2] = {{-10,8},{10,8},{0,25}};
 uint8_t sprite_center_x = 18;
 uint8_t sprite_center_y = 18;
 extern bool isLabels;
+
+int getCurrentZoom() {
+  return EPD_zoom;
+}
 
 // 2D rotation
 void TFT_2D_Rotate(float &tX, float &tY, float tCos, float tSin)

@@ -19,6 +19,9 @@
 #ifndef TRAFFICHELPER_H
 #define TRAFFICHELPER_H
 
+#define D2R (3.141593f/180.0f)
+#define R2D (180.0f/3.141593f)
+
 #include "SoCHelper.h"
 
 extern "C" {

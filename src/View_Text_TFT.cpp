@@ -40,10 +40,14 @@ uint16_t lock_color = TFT_LIGHTGREY;
 const char* buddy_name = " ";
 static int32_t focusOn = 0;
 
-void setFocusOn(bool on) {
+void setFocusOn(bool on, uint32_t id = 0) {
   if (on) {
-  focusOn = traffic[TFT_current - 1].fop->ID;
-  Serial.printf("Focus on ID: %02X%02X%02X\n", (traffic[TFT_current - 1].fop->ID >> 16) & 0xFF, (traffic[TFT_current - 1].fop->ID >> 8) & 0xFF, (traffic[TFT_current - 1].fop->ID) & 0xFF);      // Extract low byte
+    if (id !=0) {
+      focusOn = id;
+    } else {
+      focusOn = traffic[TFT_current - 1].fop->ID;
+    }
+  Serial.printf("Focus on ID: %02X%02X%02X\n", (focusOn >> 16) & 0xFF, (focusOn >> 8) & 0xFF, (focusOn) & 0xFF);      // Extract low byte
   } else {
     focusOn = 0;
   }
