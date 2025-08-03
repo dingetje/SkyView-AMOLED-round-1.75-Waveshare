@@ -37,6 +37,7 @@
 /*HARDWARE SPECIFIC*/
 #if defined(AMOLED)
 #include <pin_config.h>
+#include "Arduino_DriveBus_Library.h"
 
 #endif /* AMOLED */
 // //AMOLED
@@ -136,7 +137,7 @@ const uint8_t BUTTON_MODE_PIN = 0;
 #define MAX_FILENAME_LEN      64
 #define WAV_FILE_PREFIX       "/Audio/"
 
-#define POWER_SAVING_WIFI_TIMEOUT 600000UL /* 10 minutes */
+#define POWER_SAVING_WIFI_TIMEOUT 300000UL /* 5 minutes */
 
 /* these are data structures to process wav file */
 typedef enum headerState_e {
@@ -166,6 +167,8 @@ extern WebServer server;
 void ESP32_fini();
 void ESP32_TFT_fini(const char *msg);
 //#define BUILD_SKYVIEW_HD
+
+extern std::shared_ptr<Arduino_IIC_DriveBus> IIC_Bus;
 
 #endif /* PLATFORM_ESP32_H */
 

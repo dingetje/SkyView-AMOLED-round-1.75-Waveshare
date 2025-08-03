@@ -38,6 +38,7 @@
 #define NAVBOX3_TITLE           "SCALE"
 #define NAVBOX4_TITLE           "BAT"
 
+extern unsigned long TFTTimeMarker;
 #define isTimeToDisplay()       (millis() - TFTTimeMarker > 1100)
 #define maxof2(a,b)             (a > b ? a : b)
 
@@ -93,6 +94,7 @@ void TFT_text_Draw_Message(const char *, const char *);
 void TFT_compass_loop();
 void settings_page();
 void draw_battery();
+void draw_extBattery();
 
 extern unsigned long TFTTimeMarker;
 extern bool EPD_display_frontpage;

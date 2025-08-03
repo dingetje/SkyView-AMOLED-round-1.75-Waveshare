@@ -31,8 +31,8 @@ TFT_eSprite TextPopSprite = TFT_eSprite(&tft);
 
 uint8_t TFT_current = 1;
 uint8_t pages =0;
-uint16_t lock_x = 110;
-uint16_t lock_y = 380;
+uint16_t lock_x = 100;
+uint16_t lock_y = 80;
 bool isLocked = false;
 uint16_t lock_color = TFT_LIGHTGREY;
 
@@ -40,10 +40,14 @@ uint16_t lock_color = TFT_LIGHTGREY;
 const char* buddy_name = " ";
 static int32_t focusOn = 0;
 
-void setFocusOn(bool on) {
+void setFocusOn(bool on, uint32_t id = 0) {
   if (on) {
-  focusOn = traffic[TFT_current - 1].fop->ID;
-  Serial.printf("Focus on ID: %02X%02X%02X\n", (traffic[TFT_current - 1].fop->ID >> 16) & 0xFF, (traffic[TFT_current - 1].fop->ID >> 8) & 0xFF, (traffic[TFT_current - 1].fop->ID) & 0xFF);      // Extract low byte
+    if (id !=0) {
+      focusOn = id;
+    } else {
+      focusOn = traffic[TFT_current - 1].fop->ID;
+    }
+  Serial.printf("Focus on ID: %02X%02X%02X\n", (focusOn >> 16) & 0xFF, (focusOn >> 8) & 0xFF, (focusOn) & 0xFF);      // Extract low byte
   } else {
     focusOn = 0;
   }
@@ -143,8 +147,8 @@ void TFT_draw_text() {
   sprite.fillSprite(TFT_BLACK);
   sprite.setTextColor(bud_color, TFT_BLACK);
 
-  sprite.drawString(traffic[TFT_current - 1].acftType == 7 ? "PG" : traffic[TFT_current - 1].acftType == 6 ? "HG" : traffic[TFT_current - 1].acftType == 1 ? "G" : traffic[TFT_current - 1].acftType == 2 ? "TAG" : traffic[TFT_current - 1].acftType == 3 ? "H" : traffic[TFT_current - 1].acftType == 9 ? "A" : String(traffic[TFT_current - 1].acftType), 87, 93, 4);
-  sprite.drawSmoothRoundRect(84, 82, 6, 5, 40, 40, TFT_WHITE);
+  sprite.drawString(traffic[TFT_current - 1].acftType == 7 ? "PG" : traffic[TFT_current - 1].acftType == 6 ? "HG" : traffic[TFT_current - 1].acftType == 1 ? "G" : traffic[TFT_current - 1].acftType == 2 ? "TAG" : traffic[TFT_current - 1].acftType == 3 ? "H" : traffic[TFT_current - 1].acftType == 9 ? "A" : String(traffic[TFT_current - 1].acftType), 87, 120, 4);
+  sprite.drawSmoothRoundRect(84, 110, 6, 5, 40, 40, TFT_WHITE);
   sprite.setTextColor(TFT_WHITE, TFT_BLACK);
   sprite.drawString(id2_text, 140, 58, 4);
   sprite. setFreeFont(&Orbitron_Light_24);
@@ -205,8 +209,12 @@ void TFT_draw_text() {
     sprite.drawSmoothArc(233, 233, 230, 225, constrain(270 - abs(traffic_vario) * 12, 190, 270), 270, traffic_vario > 3.5 ? TFT_RED : traffic_vario > 2 ? TFT_ORANGE : TFT_YELLOW, TFT_BLACK, true);
   }
   // Lock page
-  sprite.drawSmoothRoundRect(lock_x, lock_y, 5, 3, 25, 25, lock_color, TFT_BLACK);
-  sprite.drawArc(lock_x + (focusOn ? 12 : 30), lock_y, 9, 7, 90, 270, lock_color, TFT_BLACK);
+  if (focusOn) {
+    sprite.fillSmoothRoundRect(lock_x, lock_y, 20, 20, 4, lock_color, TFT_BLACK);
+    sprite.drawArc(lock_x + 9, lock_y, 9, 6, 90, 270, lock_color, TFT_BLACK, false);
+  }
+  // sprite.drawSmoothRoundRect(lock_x, lock_y, 5, 3, 25, 25, lock_color, TFT_BLACK);
+  // sprite.drawArc(lock_x + (focusOn ? 12 : 30), lock_y, 9, 7, 90, 270, lock_color, TFT_BLACK);
   //Airctafts
   sprite.setSwapBytes(true);
   sprite.pushImage(190, 370, 32, 32, aircrafts);
@@ -221,6 +229,7 @@ void TFT_draw_text() {
   bearingSprite.setPivot(39, 27);
   bearingSprite.pushRotated(&sprite, bearing - 90);
   draw_battery();
+  draw_extBattery();
   if (pages > 1) {
     for (int i = 1; i <= pages; i++)
     { uint16_t wd = (pages -1) * 18; // width of frame 8px per circle + 8px between circles
@@ -267,6 +276,7 @@ void TFT_text_Draw_Message(const char *msg1, const char *msg2)
     }
     //Battery indicator
     draw_battery();
+    draw_extBattery();
     //draw settings icon
     sprite.setSwapBytes(true);
     sprite.pushImage(320, 360, 36, 36, settings_icon_small);

@@ -2,13 +2,11 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": "../SkyView-AMOLED-T4S3"
 		}
 	],
 	"settings": {
 		"files.associations": {
+			"*.embeddedhtml": "html",
 			"array": "cpp",
 			"deque": "cpp",
 			"string": "cpp",
@@ -17,7 +15,49 @@
 			"vector": "cpp",
 			"string_view": "cpp",
 			"initializer_list": "cpp",
-			"*.tcc": "cpp"
+			"*.tcc": "cpp",
+			"typeinfo": "cpp",
+			"atomic": "cpp",
+			"cctype": "cpp",
+			"clocale": "cpp",
+			"cmath": "cpp",
+			"cstdarg": "cpp",
+			"cstddef": "cpp",
+			"cstdint": "cpp",
+			"cstdio": "cpp",
+			"cstdlib": "cpp",
+			"cstring": "cpp",
+			"ctime": "cpp",
+			"cwchar": "cpp",
+			"cwctype": "cpp",
+			"exception": "cpp",
+			"algorithm": "cpp",
+			"functional": "cpp",
+			"iterator": "cpp",
+			"map": "cpp",
+			"memory": "cpp",
+			"memory_resource": "cpp",
+			"numeric": "cpp",
+			"optional": "cpp",
+			"random": "cpp",
+			"set": "cpp",
+			"system_error": "cpp",
+			"tuple": "cpp",
+			"type_traits": "cpp",
+			"utility": "cpp",
+			"fstream": "cpp",
+			"iomanip": "cpp",
+			"iosfwd": "cpp",
+			"iostream": "cpp",
+			"istream": "cpp",
+			"limits": "cpp",
+			"new": "cpp",
+			"ostream": "cpp",
+			"sstream": "cpp",
+			"stdexcept": "cpp",
+			"streambuf": "cpp",
+			"cinttypes": "cpp",
+			"list": "cpp"
 		}
 	}
 }

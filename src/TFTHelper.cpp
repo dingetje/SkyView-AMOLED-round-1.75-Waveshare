@@ -5,10 +5,12 @@
 #include "EEPROMHelper.h"
 #include "TrafficHelper.h"
 #include "TFTHelper.h"
+#include "TouchHelper.h"
 #include "WiFiHelper.h"
 #include "BatteryHelper.h"
 // #include <Adafruit_GFX.h>    // Core graphics library
 // #include "Arduino_GFX_Library.h"
+#include "Platform_ESP32.h"
 #include "Arduino_DriveBus_Library.h"
 #include "TouchDrvCST92xx.h"
 #include <../pins_config.h>
@@ -50,8 +52,6 @@ TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite sprite = TFT_eSprite(&tft);
 TFT_eSprite sprite2 = TFT_eSprite(&tft);
 
-std::shared_ptr<Arduino_IIC_DriveBus> IIC_Bus =
-  std::make_shared<Arduino_HWIIC>(IIC_SDA, IIC_SCL, &Wire);
 #elif defined H0175Y003AM
 xSemaphoreHandle spiMutex;
 TFT_eSPI tft = TFT_eSPI();
@@ -62,9 +62,6 @@ TFT_eSprite batterySprite = TFT_eSprite(&tft);
 TFT_eSprite compasSprite = TFT_eSprite(&tft);
 TFT_eSprite compas2Sprite = TFT_eSprite(&tft);
 
-std::shared_ptr<Arduino_IIC_DriveBus> IIC_Bus =
-  std::make_shared<Arduino_HWIIC>(IIC_SDA, IIC_SCL, &Wire);
-
 
 #else
 #error "Unknown macro definition. Please select the correct macro definition."
@@ -72,25 +69,6 @@ std::shared_ptr<Arduino_IIC_DriveBus> IIC_Bus =
 
   
 #endif
-// TFT_eSPI tft = TFT_eSPI();
-// Adafruit_ST7789 tft = Adafruit_ST7789(SOC_GPIO_PIN_SS_TFT, SOC_GPIO_PIN_DC_TFT, SOC_GPIO_PIN_MOSI_TFT, SOC_GPIO_PIN_SCK_TFT, -1);
-// buddy_info_t buddies[] = {
-//   { 0x201076, "XCT Vlad" },
-//   { 0x86D7FD, "T-Echo" },
-//   { 0xE18990, "ESP-Stick" },
-//   { 0x46CBDC, "Sense CapT1000" },
-//   { 0x6254B0, "Sense Cap2"},
-//   { 0x2006CD, "Tim Pentreath" },
-//   { 0x1313F4, "Tim Pentreath" },
-//   { 0x201172, "Steve Wagner"},
-//   { 0x201066, "Katrina Wagner"},
-//   { 0x20069D, "Steve Wagner"},
-//   { 0x2006A8, "Katrina Wagner"},
-//   { 0x111F40, "Chris H" },
-//   { 0x1139D4, "Tom K" },
-//   { 0x200AB6, "Jeremy P" },
-//   { 0xFFFFFFFF, NULL } // Sentinel value
-// };
 
 unsigned long drawTime = 0;
 
@@ -99,7 +77,7 @@ float batteryToPercentage(float voltage) {
   if (voltage <= 3.0) return 0.0;
 
   // Extended voltage-percentage mapping
-  float voltageLevels[] = {4.14, 4.00, 3.9, 3.8, 3.7, 3.6, 3.5, 3.4, 3.3, 3.2, 3.0};
+  float voltageLevels[] = {4.2, 4.00, 3.9, 3.8, 3.7, 3.6, 3.5, 3.4, 3.3, 3.2, 3.0};
   float percentages[] = {100, 95, 90, 75, 55, 40, 25, 10, 5, 2, 0};
 
   for (int i = 0; i < 11; i++) { // Loop through voltage levels
@@ -122,7 +100,7 @@ void draw_battery() {
    
     
     battery = Battery_voltage();
-    Serial.print(F(" Battery= "));  Serial.println(battery);
+    // Serial.print(F(" Battery= "));  Serial.println(battery);
     batteryPercentage = (int)batteryToPercentage(battery);
     // Serial.print(F(" Batterypercentage= "));  Serial.println(batteryPercentage);
 
@@ -132,6 +110,14 @@ void draw_battery() {
       batt_color = TFT_RED;
     } else  {
       batt_color = TFT_CYAN;
+    }
+    if (charging_status() == 3) { //chargin Done.
+      batt_color = TFT_GREEN;
+    }
+    if (charging_status() == 1 || charging_status() == 2) {
+      //draw charging icon
+    sprite.fillTriangle(battery_x - 20, battery_y + 10, battery_x - 8, battery_y - 3, battery_x - 12, battery_y + 10, batt_color);
+    sprite.fillTriangle(battery_x -4, battery_y + 10, battery_x - 16, battery_y + 23, battery_x - 12, battery_y + 10, batt_color);
     }
     sprite.drawRoundRect(battery_x, battery_y, 32, 20, 3, batt_color);
     sprite.fillRect(battery_x + 32, battery_y + 7, 2, 7, batt_color);
@@ -144,6 +130,45 @@ void draw_battery() {
     sprite.setTextColor(TFT_WHITE, TFT_BLACK);
     sprite.printf("%d%%", batteryPercentage); // Use %% to print the % character
 }
+
+void draw_extBattery() {
+  uint8_t extBatteryPerc = getBLEbattery();
+  if (extBatteryPerc == 0) {
+    return; // No external battery data available
+  }
+    //Battery indicator
+    uint16_t battery_x = 80;
+    uint16_t battery_y = 325;
+    // uint8_t extBatteryPerc = 75;
+    uint16_t batt_color = TFT_CYAN;
+
+    if (extBatteryPerc < 50 &&  extBatteryPerc >= 25) {
+      batt_color = TFT_YELLOW;
+    } else if (extBatteryPerc < 25) {
+      batt_color = TFT_RED;
+    } else  {
+      batt_color = TFT_CYAN;
+    }
+
+      //draw bluetooth icon
+    sprite.drawWideLine(battery_x - 15, battery_y - 3, battery_x - 15, battery_y + 28, 2, TFT_BLUEBUTTON);
+    sprite.drawWideLine(battery_x - 15, battery_y - 3, battery_x - 7, battery_y + 5, 2, TFT_BLUEBUTTON);
+    sprite.drawWideLine(battery_x - 25, battery_y + 18, battery_x - 7, battery_y + 5, 2, TFT_BLUEBUTTON);
+    sprite.drawWideLine(battery_x - 25, battery_y + 5, battery_x - 7, battery_y + 18, 2, TFT_BLUEBUTTON);
+    sprite.drawWideLine(battery_x - 15, battery_y + 28, battery_x - 7, battery_y + 18, 2, TFT_BLUEBUTTON);
+
+    
+    sprite.drawRoundRect(battery_x + 2, battery_y, 14, 28, 2, batt_color);
+    sprite.fillRect(battery_x + 5, battery_y - 4, 7, 3, batt_color);
+    float fillHeight = 24 * extBatteryPerc / 100; // Calculate fill height based on percentage
+
+    sprite.fillRect(battery_x + 4, battery_y + (24 - fillHeight), 10, fillHeight, batt_color);
+
+    sprite.setCursor(battery_x + 24, battery_y + 7, 4);
+    sprite.setTextColor(TFT_WHITE, TFT_BLACK);
+    sprite.printf("%d%%", extBatteryPerc); // Use %% to print the % character
+}
+
 
 void draw_first()
 {
@@ -418,18 +443,13 @@ void TFT_Down()
   }
 }
 
-void settings_button(uint16_t x, uint16_t y, bool on){
-  switch (on) {
-    case true:
-      sprite.fillSmoothRoundRect(x, y - 25, 50, 31, 13, TFT_BLUEBUTTON, TFT_BLACK);
-      sprite.fillSmoothCircle(x + 33, y - 10, 13, TFT_WHITE, TFT_BLUEBUTTON);
-      break;
-    case false:
-      sprite.fillSmoothRoundRect(x, y - 25, 50, 31, 13, TFT_DARKGREY, TFT_BLACK);
-      sprite.fillSmoothCircle(x + 17, y - 10, 13, TFT_LIGHTGREY, TFT_BLUEBUTTON);
-      break;
-    default:
-      break;
+void settings_button(uint16_t x, uint16_t y, bool on) {
+  if (on) {
+    sprite.fillSmoothRoundRect(x, y - 25, 50, 31, 13, TFT_BLUEBUTTON, TFT_BLACK);
+    sprite.fillSmoothCircle(x + 33, y - 10, 13, TFT_WHITE, TFT_BLUEBUTTON);
+  } else {
+    sprite.fillSmoothRoundRect(x, y - 25, 50, 31, 13, TFT_DARKGREY, TFT_BLACK);
+    sprite.fillSmoothCircle(x + 17, y - 10, 13, TFT_LIGHTGREY, TFT_BLUEBUTTON);
   }
 }
 

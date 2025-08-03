@@ -15,11 +15,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include "Arduino_DriveBus_Library.h"
+#include <../pins_config.h>
 
 #ifndef BATTERYHELPER_H
 #define BATTERYHELPER_H
 
-#define isTimeToBattery()         (millis() - Battery_TimeMarker > 5000)
+#define isTimeToBattery()         (millis() - Battery_TimeMarker > 30000)
 
 #define BATTERY_THRESHOLD_NIMHX2  2.3
 #define BATTERY_THRESHOLD_LIPO    3.5
@@ -35,5 +37,11 @@ void  Battery_loop(void);
 float Battery_voltage(void);
 float Battery_threshold(void);
 float Battery_cutoff(void);
+extern int read_SY6970_voltage(void);
+extern int read_SY6970_charge_current(void);
+extern int read_SY6970_charging_status(void);
+extern void SY6970_setup(void);
+extern int charging_status();
+extern void battery_fini(void);
 
 #endif /* BATTERYHELPER_H */
