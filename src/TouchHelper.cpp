@@ -121,6 +121,7 @@ void touchWakeUp() {
 
 void Touch_setup() {
   
+    Serial.println("Initializing touch sensor...");
     attachInterrupt(TP_INT, []()
     { IIC_Interrupt_Flag = true; }, FALLING);
   
@@ -133,7 +134,7 @@ void Touch_setup() {
   {
       Serial.print("Model :");
       Serial.println(touchSensor.getModelName());
-      touchSensor.setMaxCoordinates(466, 466); // Set touch max xy
+      touchSensor.setMaxCoordinates(LCD_WIDTH, LCD_HEIGHT); // Set touch max xy
   }
   xTaskCreatePinnedToCore(touchTask, "Touch Task", 4096, NULL, 1, &touchTaskHandle, 1);
   }
@@ -244,6 +245,7 @@ void tapHandler(int x, int y) {
 
 void touchTask(void *parameter) {
     
+    Serial.println("Touch task started...");
 
     while(true) {
     

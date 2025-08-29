@@ -118,6 +118,7 @@ Copyright (C) 2019-2022 &nbsp;&nbsp;&nbsp; Linar Yusupov\
 #include <SPIFFS.h>
 
 void writeBatteryLog(float startVoltage, float endVoltage, unsigned long durationSeconds, float estimated_mAh) {
+  Serial.println("writeBatteryLog: logging battery usage...");
   File file = SPIFFS.open("/battery_log.txt", FILE_APPEND);
   if (!file) {
     Serial.println("Failed to open battery_log.txt for appending");
@@ -733,8 +734,13 @@ void handleRoot() {
   dtostrf(vdd, 4, 2, str_Vcc);
 
   const char* charge_status_str = charging_status_string(charging_status());
+#if defined(SYK6970)
   String chargingCurrent = String(read_SY6970_charge_current());
-
+#elif defined(XPOWERS_CHIP_AXP2101)
+  String chargingCurrent = String(read_AXP2101_charge_current());
+#else
+  String chargingCurrent = String("N/A");
+#endif
   int cpu_freq = get_cpu_frequency_mhz();
   String lastBatteryLog = formatBatteryLog(getLastBatteryLogEntry());
 

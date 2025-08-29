@@ -257,7 +257,7 @@ static void ESP32_setup()
   }
 
   uint32_t flash_id = ESP32_getFlashId();
-
+  Serial.printf("Flash ID: %08X\n", flash_id);
   /*
    *    Board         |   Module   |  Flash memory IC
    *  ----------------+------------+--------------------
@@ -391,7 +391,11 @@ static void ESP32_Battery_setup()
 {
 #if defined(ESP32S3)
   // calibrate_voltage(ADC1_GPIO4_CHANNEL);
+  #if defined(SY6970)
   SY6970_setup();
+  #elif defined(XPOWERS_CHIP_AXP2101)
+  AXP2101_setup();
+  #endif
 #else
   
   // calibrate_voltage(settings->adapter == ADAPTER_TTGO_T5S ?
@@ -403,7 +407,14 @@ static float ESP32_Battery_voltage()
 {
   // Serial.println("Reading battery voltage from SY6970...");
   delay(100); // Give some time for the SY6970 to stabilize
+  #if defined(SY6970)
   float voltage = read_SY6970_voltage() * 0.001;
+  #elif defined(XPOWERS_CHIP_AXP2101)
+  float voltage = read_AXP2101_voltage() * 0.001;
+  #elif
+  float voltage = 4.2;
+  #endif
+
   Serial.printf("Battery voltage: %.2fV\n", voltage);
   return voltage;
 

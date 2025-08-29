@@ -39,42 +39,10 @@
 #include <pin_config.h>
 #include "Arduino_DriveBus_Library.h"
 
-#endif /* AMOLED */
-// //AMOLED
-// #define LCD_SDIO0 11
-// #define LCD_SDIO1 13
-// #define LCD_SDIO2 14
-// #define LCD_SDIO3 15
-// #define LCD_SCLK 12
-// #define LCD_CS 10
-// #define LCD_RST 17
-// #define LCD_WIDTH 466
-// #define LCD_HEIGHT 466
-// #define LCD_EN 16
-
-// // IIC
-// #define IIC_SDA 7
-// #define IIC_SCL 6
-
-// // TOUCH
-// #define TP_INT 9
-
-// // Battery Voltage ADC
-// #define BATTERY_VOLTAGE_ADC_DATA 4
-
-// // SD
-// #define SD_CS 38
-// #define SD_MOSI 39
-// #define SD_MISO 40
-// #define SD_SCLK 41
-
-// // PCF8563
-// #define PCF8563_INT 9
-// #define SLEEP_WAKE_UP_INT GPIO_NUM_0
-// #endif /* H0175Y003AM */
+#endif
 /* Peripherals */
-#define SOC_GPIO_PIN_GNSS_RX  36
-#define SOC_GPIO_PIN_GNSS_TX  6
+#define SOC_GPIO_PIN_GNSS_RX  17
+#define SOC_GPIO_PIN_GNSS_TX  18
 
 #if defined(TFT_ST7789)
 /* ESP32 and ST7789 SPI pins mapping */

@@ -52,7 +52,7 @@ TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite sprite = TFT_eSprite(&tft);
 TFT_eSprite sprite2 = TFT_eSprite(&tft);
 
-#elif defined H0175Y003AM
+#elif defined H0175Y003AM || defined WAVESHARE_AMOLED_1_75
 xSemaphoreHandle spiMutex;
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite sprite = TFT_eSprite(&tft);
@@ -172,6 +172,7 @@ void draw_extBattery() {
 
 void draw_first()
 {
+  Serial.println("Drawing SkyView Splash screen...");
   sprite.fillSprite(TFT_BLACK);
   sprite.setTextDatum(MC_DATUM);
   sprite.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -202,7 +203,7 @@ void draw_first()
     delay(3);
   }
   delay(2000);
-
+  Serial.println("Exit splash screen...");
 }
 
 void TFT_setup(void) {

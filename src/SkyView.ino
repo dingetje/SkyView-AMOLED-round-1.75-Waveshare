@@ -86,11 +86,15 @@ void Input_loop() {
 
 void setup()
 {
-  Serial.begin(SERIAL_OUT_BR); Serial.println();
-  hw_info.soc = SoC_setup(); // Has to be very first procedure in the execution order
-  delay(300);
- 
 
+  Serial.begin(SERIAL_OUT_BR); 
+  // wait for Serial to be ready
+  while (! Serial); 
+
+  Serial.println();
+  hw_info.soc = SoC_setup(); // Has to be very first procedure in the execution order
+  delay(1000);
+  
   Serial.println();
   Serial.print(F(SKYVIEW_IDENT));
   Serial.print(SoC->name);

@@ -37,10 +37,21 @@ void  Battery_loop(void);
 float Battery_voltage(void);
 float Battery_threshold(void);
 float Battery_cutoff(void);
+
+#if defined(SY6970)
 extern int read_SY6970_voltage(void);
 extern int read_SY6970_charge_current(void);
 extern int read_SY6970_charging_status(void);
 extern void SY6970_setup(void);
+#endif
+
+#if defined(XPOWERS_CHIP_AXP2101)
+extern void AXP2101_setup(void);
+extern float read_AXP2101_voltage(void);
+extern int read_AXP2101_charge_current();
+extern uint8_t read_AXP2101_charging_status(void);
+#endif
+
 extern int charging_status();
 extern void battery_fini(void);
 

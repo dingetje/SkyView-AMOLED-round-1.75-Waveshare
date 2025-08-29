@@ -14,34 +14,36 @@
 #define LCD_HEIGHT            466 //physical display vertical resolution
 #define SEND_BUF_SIZE         (0x4000)//(LCD_WIDTH * LCD_HEIGHT + 8) / 10
 
-// H0175Y003AM - 1.75 inches
+// WaveShare AMOLED - 1.75 inches
 
-#define TFT_QSPI_CS           10
-#define TFT_QSPI_SCK          12
-#define TFT_QSPI_D0           11
-#define TFT_QSPI_D1           13
-#define TFT_QSPI_D2           14
-#define TFT_QSPI_D3           15
-#define TFT_QSPI_RST          17
-#define LCD_VCI_EN            16
+#define TFT_QSPI_CS           12
+#define TFT_QSPI_SCK          38
+#define TFT_QSPI_D0           4
+#define TFT_QSPI_D1           5
+#define TFT_QSPI_D2           6
+#define TFT_QSPI_D3           7
+#define TFT_QSPI_RST          39
+#define LCD_VCI_EN            13
 #define TFT_TE                -1
 
 // IIC
-#define IIC_SDA 7
-#define IIC_SCL 6
+#define IIC_SDA 15
+#define IIC_SCL 14
+#define SENSOR_SDA IIC_SDA
+#define SENSOR_SCL IIC_SCL
 
 // TOUCH
-#define TOUCH_INT 9
-#define TOUCH_RST 8
+#define TOUCH_INT 11
+#define TOUCH_RST 40
 
 // Battery Voltage ADC
 #define BATTERY_VOLTAGE_ADC_DATA 4
 
 // SD
-#define SD_CS 38
-#define SD_MOSI 39
-#define SD_MISO 40
-#define SD_SCLK 41
+#define SD_CS 41
+#define SD_MOSI 1
+#define SD_MISO 3
+#define SD_SCLK 2
 
 // PCF8563
 #define PCF8563_INT 9
