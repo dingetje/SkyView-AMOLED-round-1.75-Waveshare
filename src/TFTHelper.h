@@ -24,8 +24,8 @@
 #if defined(USE_TFT)
 #define SENSOR_SDA  IIC_SDA
 #define SENSOR_SCL  IIC_SCL
-#define SENSOR_IRQ  11
-#define SENSOR_RST  40
+#define SENSOR_IRQ  TOUCH_INT
+#define SENSOR_RST  TOUCH_RST
 
 #define EPD_EXPIRATION_TIME     5 /* seconds */
 #define TFT_EXPIRATION_TIME     15 /* seconds for Text display*/ 

@@ -41,6 +41,12 @@ ESP_IOExpander *expander = NULL;
 
 bool pmu_flag = false;
 bool adc_switch = false;
+
+void setFlag(void)
+{
+    pmu_flag = true;
+}
+
 #endif
 
 static unsigned long Battery_TimeMarker = 0;
@@ -127,6 +133,7 @@ static void adcOff() {
   power.disableSystemVoltageMeasure();
 }
 
+#if defined(I2C_SCAN)
 static void I2C_Scan()
 {
   byte error, address;
@@ -169,12 +176,15 @@ static void I2C_Scan()
 
   Serial.println("==============================================================");  
 }
+#endif
 
 void AXP2101_setup()
 {
   Wire.begin(IIC_SDA, IIC_SCL);
 
+#if defined(I2C_SCAN)
   I2C_Scan();
+#endif
 
   Serial.println("Create ESP_IOExpander object...");
   expander = new EXAMPLE_CHIP_CLASS(TCA95xx_8bit,
@@ -208,12 +218,33 @@ void AXP2101_setup()
 
   power.disableIRQ(XPOWERS_AXP2101_ALL_IRQ);
   power.setChargeTargetVoltage(3);
-  // Clear all interrupt flags
-  power.clearIrqStatus();
+
   // Enable the required interrupt function
   power.enableIRQ(
-    XPOWERS_AXP2101_PKEY_SHORT_IRQ  //POWER KEY
+      XPOWERS_AXP2101_BAT_INSERT_IRQ    | XPOWERS_AXP2101_BAT_REMOVE_IRQ      |   //BATTERY
+      XPOWERS_AXP2101_VBUS_INSERT_IRQ   | XPOWERS_AXP2101_VBUS_REMOVE_IRQ     |   //VBUS
+      XPOWERS_AXP2101_PKEY_SHORT_IRQ    | XPOWERS_AXP2101_PKEY_LONG_IRQ       |   //POWER KEY
+      XPOWERS_AXP2101_BAT_CHG_DONE_IRQ  | XPOWERS_AXP2101_BAT_CHG_START_IRQ       //CHARGE
   );
+  // Clear all interrupt flags
+  power.clearIrqStatus();
+
+  // Set the minimum common working voltage of the PMU VBUS input,
+  // below this value will turn off the power
+  power.setVbusVoltageLimit(XPOWERS_AXP2101_VBUS_VOL_LIM_4V36);
+  // Set the maximum current of the PMU VBUS input,
+  // higher than this value will turn off the PMU
+  power.setVbusCurrentLimit(XPOWERS_AXP2101_VBUS_CUR_LIM_1500MA);
+  // Set VSY off voltage as 2600mV , Adjustment range 2600mV ~ 3300mV
+  power.setSysPowerDownVoltage(2600);
+  // Set the precharge charging current
+  power.setPrechargeCurr(XPOWERS_AXP2101_PRECHARGE_50MA);
+  // Set constant current charge current limit
+  power.setChargerConstantCurr(XPOWERS_AXP2101_CHG_CUR_200MA);
+  // Set stop charging termination current
+  power.setChargerTerminationCurr(XPOWERS_AXP2101_CHG_ITERM_25MA);
+  // Set charge cut-off voltage
+  power.setChargeTargetVoltage(XPOWERS_AXP2101_CHG_VOL_4V1);
 
   adcOn();
 }
@@ -289,6 +320,35 @@ void battery_fini() {
 
 void Battery_loop()
 {
+#if defined(XPOWERS_CHIP_AXP2101)
+  static int pwr_button_last = 0;
+  // PWR button is tied to IO Expander pin 4
+  int pwr_button = expander->digitalRead(4);
+  if (pwr_button != pwr_button_last) {
+      Serial.println("Power Button state changed: " + String(pwr_button));
+      pwr_button_last = pwr_button;
+  }
+  // Waveshare has tied the PMU IRQ to an IO Expander pin...
+  int pmu_irq = expander->digitalRead(5);
+  pmu_flag = (pmu_irq != 0);
+  if (pmu_flag) {
+      pmu_flag = false;
+      // Get PMU Interrupt Status Register
+      power.getIrqStatus();
+      // Check if the power button was pressed
+      if (power.isPekeyShortPressIrq()) {
+        Serial.println("Power Button Short Press detected");
+      }
+      else if (power.isPekeyLongPressIrq()) {
+        Serial.println("Power Button Long Press detected");
+        ESP32_TFT_fini("Power Button Long Press");
+        shutdown("Power Button Long Press");
+      }
+      // Clear PMU Interrupt Status Register
+      power.clearIrqStatus();
+  }
+#endif
+  // Read battery voltage and charging status every x seconds
   if (isTimeToBattery()) {
 
   #if defined(SY6970)

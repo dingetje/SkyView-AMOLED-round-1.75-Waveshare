@@ -71,19 +71,19 @@ std::vector<String> scanForBLEDevices(uint32_t scanTimeSeconds) {
   scanner->clearResults();  // Free memory from last scan
 
   Serial.println("[BLE] Starting scan...");
-  NimBLEScanResults results = scanner->start(3, true);  // Convert seconds to milliseconds
+  NimBLEScanResults results = scanner->getResults(3, true);  // Convert seconds to milliseconds
   Serial.printf("[BLE] Scan completed: %d device(s) found.\n", results.getCount());
 
   std::set<String> uniqueNames;
 
   for (int i = 0; i < results.getCount(); i++) {
-    NimBLEAdvertisedDevice device = results.getDevice(i);
+    const NimBLEAdvertisedDevice* device = results.getDevice(i);
     // Skip devices that don’t advertise the name or service
-    if (!device.haveServiceUUID() || !device.isAdvertisingService(targetService)) {
+    if (!device->haveServiceUUID() || !device->isAdvertisingService(targetService)) {
       continue;  // Filter out non-SoftRF devices
     }
-    if (device.haveName()) {
-      String name = device.getName().c_str();
+    if (device->haveName()) {
+      String name = device->getName().c_str();
       name.trim();
       if (name.length() > 0) {
         uniqueNames.insert(name);
@@ -176,10 +176,10 @@ class AppClientCallback : public NimBLEClientCallbacks {
   }
 };
 
-class AppAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
+class AppAdvertisedDeviceCallbacks : public NimBLEScanCallbacks {
 public:
 
-  void onResult(NimBLEAdvertisedDevice* advertisedDevice) override {
+  void onResult(const NimBLEAdvertisedDevice* advertisedDevice) override {
     if (!advertisedDevice->haveName()) return;
 
     String devName = advertisedDevice->getName().c_str();
@@ -259,7 +259,7 @@ static void ESP32_Bluetooth_setup(){
       BLEScan* pBLEScan = BLEDevice::getScan();
 #endif /* USE_NIMBLE */
 
-      pBLEScan->setAdvertisedDeviceCallbacks(new AppAdvertisedDeviceCallbacks(), false);
+      pBLEScan->setScanCallbacks(new AppAdvertisedDeviceCallbacks(), false);
 
       pBLEScan->setInterval(1349);
       pBLEScan->setWindow(449);
@@ -346,7 +346,7 @@ static void ESP32_Bluetooth_loop()
 
 #if defined(USE_NIMBLE)
         NimBLEScan* scan = NimBLEDevice::getScan();
-        scan->setAdvertisedDeviceCallbacks(new AppAdvertisedDeviceCallbacks(), false);
+        scan->setScanCallbacks(new AppAdvertisedDeviceCallbacks(), false);
         scan->setActiveScan(true);
         scan->start(5, false);
 #else

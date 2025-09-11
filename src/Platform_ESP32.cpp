@@ -20,6 +20,7 @@
 
 #include <SPI.h>
 #include <esp_err.h>
+#include <esp_netif.h>
 #include <esp_wifi.h>
 #include <soc/rtc_cntl_reg.h>
 #include <rom/spi_flash.h>
@@ -43,11 +44,20 @@
 
 // #include "uCDB.hpp"
 
-#include "driver/i2s.h"
-
 #include <esp_wifi.h>
 #include <esp_bt.h>
 #include "Arduino_DriveBus_Library.h"
+
+#if defined(ES8311_AUDIO)
+#include "SoundHelper.h"
+static const int8_t i2s_num = 0;
+#endif
+#include <esp_mac.h>
+
+//#if defined(SOUND)
+//#include <uCDB.hpp>
+//#include <SD.h>
+//#endif
 
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
 #define TIME_TO_SLEEP  28        /* Time ESP32 will go to sleep (in seconds) */
@@ -127,36 +137,6 @@ static union {
   uint8_t efuse_mac[6];
   uint64_t chipmacid;
 };
-#if defined(SOUND)
-static uint8_t sdcard_files_to_open = 0;
-
-SPIClass uSD_SPI(HSPI);
-
-uCDB<SDFileSystemClass, SDFile> ucdb(SD);
-
-/* variables hold file, state of process wav file and wav file properties */
-wavProperties_t wavProps;
-
-//i2s configuration
-int i2s_num = 0; // i2s port number
-i2s_config_t i2s_config = {
-     .mode                 = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
-     .sample_rate          = 22050,
-     .bits_per_sample      = I2S_BITS_PER_SAMPLE_16BIT,
-     .channel_format       = I2S_CHANNEL_FMT_ONLY_LEFT,
-     .communication_format = (i2s_comm_format_t)(I2S_COMM_FORMAT_STAND_MSB),
-     .intr_alloc_flags     = ESP_INTR_FLAG_LEVEL1, // high interrupt priority
-     .dma_buf_count        = 8,
-     .dma_buf_len          = 128   //Interrupt level 1
-    };
-
-i2s_pin_config_t pin_config = {
-    .bck_io_num   = SOC_GPIO_PIN_BCLK,
-    .ws_io_num    = SOC_GPIO_PIN_LRCLK,
-    .data_out_num = SOC_GPIO_PIN_DOUT,
-    .data_in_num  = -1  // Not used
-};
-#endif /* SOUND*/
 
 // RTC_DATA_ATTR int bootCount = 0;
 
@@ -195,15 +175,40 @@ void ESP32_fini()
   BuddyManager::clearBuddyList();
   EEPROM_store();
   delay(1000);
+  Serial.println("Enable wake up on GPIO0 (button press)...");
   gpio_hold_en(GPIO_NUM_0);
   esp_sleep_enable_ext0_wakeup(SLEEP_WAKE_UP_INT, LOW);
+  esp_sleep_enable_touchpad_wakeup();
   SPI.end();
   esp_deep_sleep_start();
 }
 
+/*
+  Method to print the reason by which ESP32
+  has been awaken from sleep
+*/
+void print_wakeup_reason() {
+  esp_sleep_wakeup_cause_t wakeup_reason;
+
+  wakeup_reason = esp_sleep_get_wakeup_cause();
+
+  switch (wakeup_reason) {
+    case ESP_SLEEP_WAKEUP_EXT0:     Serial.println("Wakeup caused by external signal using RTC_IO"); break;
+    case ESP_SLEEP_WAKEUP_EXT1:     Serial.println("Wakeup caused by external signal using RTC_CNTL"); break;
+    case ESP_SLEEP_WAKEUP_TIMER:    Serial.println("Wakeup caused by timer"); break;
+    case ESP_SLEEP_WAKEUP_TOUCHPAD: Serial.println("Wakeup caused by touchpad"); break;
+    case ESP_SLEEP_WAKEUP_ULP:      Serial.println("Wakeup caused by ULP program"); break;
+    default:                        Serial.printf("Wakeup was not caused by deep sleep: %d\n", wakeup_reason); break;
+  }
+}
+
 static void ESP32_setup()
 {
+  Serial.println("ESP32_setup");
   pinMode(GPIO_NUM_0, INPUT);
+
+  print_wakeup_reason();
+  
   //Check if the WAKE reason was button press
   if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
     if (digitalRead(GPIO_NUM_0) == LOW) {
@@ -563,50 +568,50 @@ static size_t ESP32_WiFi_Receive_UDP(uint8_t *buf, size_t max_size)
 
 static IPAddress ESP32_WiFi_get_broadcast()
 {
-  tcpip_adapter_ip_info_t info;
+  esp_netif_ip_info_t info;
   IPAddress broadcastIp;
 
+  esp_netif_t* netif = nullptr;
   if (WiFi.getMode() == WIFI_STA) {
-    tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &info);
+    netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
   } else {
-    tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &info);
+    netif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
   }
-  broadcastIp = ~info.netmask.addr | info.ip.addr;
-
+  if (netif) {
+    esp_netif_get_ip_info(netif, &info);
+    broadcastIp = ~info.netmask.addr | info.ip.addr;
+  }
   return broadcastIp;
 }
-
 static void ESP32_WiFi_Transmit_UDP(int port, byte *buf, size_t size)
 {
   IPAddress ClientIP;
   WiFiMode_t mode = WiFi.getMode();
-  int i = 0;
 
   switch (mode)
   {
   case WIFI_STA:
     ClientIP = ESP32_WiFi_get_broadcast();
-
     Uni_Udp.beginPacket(ClientIP, port);
     Uni_Udp.write(buf, size);
     Uni_Udp.endPacket();
-
     break;
-  case WIFI_AP:
+  case WIFI_AP: {
     wifi_sta_list_t stations;
     ESP_ERROR_CHECK(esp_wifi_ap_get_sta_list(&stations));
 
-    tcpip_adapter_sta_list_t infoList;
-    ESP_ERROR_CHECK(tcpip_adapter_get_sta_list(&stations, &infoList));
+    esp_netif_sta_list_t infoList;
+//    esp_netif_t* netif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
+    ESP_ERROR_CHECK(esp_netif_get_sta_list((const wifi_sta_list_t*) &stations, &infoList));
 
-    while(i < infoList.num) {
-      ClientIP = infoList.sta[i++].ip.addr;
-
+    for (int i = 0; i < infoList.num; ++i) {
+      ClientIP = IPAddress(infoList.sta[i].ip.addr);
       Uni_Udp.beginPacket(ClientIP, port);
       Uni_Udp.write(buf, size);
       Uni_Udp.endPacket();
     }
     break;
+  }
   case WIFI_OFF:
   default:
     break;
@@ -619,19 +624,22 @@ static int ESP32_WiFi_clients_count()
 
   switch (mode)
   {
-  case WIFI_AP:
+  case WIFI_AP: {
     wifi_sta_list_t stations;
     ESP_ERROR_CHECK(esp_wifi_ap_get_sta_list(&stations));
 
-    tcpip_adapter_sta_list_t infoList;
-    ESP_ERROR_CHECK(tcpip_adapter_get_sta_list(&stations, &infoList));
+    esp_netif_sta_list_t infoList;
+//    esp_netif_t* netif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
+    ESP_ERROR_CHECK(esp_netif_get_sta_list(&stations, &infoList));
 
     return infoList.num;
+  }
   case WIFI_STA:
   default:
     return -1; /* error */
   }
 }
+
 #if !defined(BUILD_SKYVIEW_HD) && !defined(ESP32S3)
 static bool SD_is_ok = false;
 static bool ADB_is_open = false;
@@ -834,169 +842,11 @@ static void ESP32_DB_fini()
 }
 #endif /* BUILD_SKYVIEW_HD */
 #endif
+
 #if defined(AUDIO)
-/* write sample data to I2S */
-int i2s_write_sample_nb(uint32_t sample)
+void ESP32_TTS(char *message)
 {
-#if 1   // ESP_IDF_VERSION_MAJOR>=4
-    size_t i2s_bytes_written;
-    i2s_write((i2s_port_t)i2s_num, (const char*)&sample, sizeof(uint32_t), &i2s_bytes_written, 100);
-    return i2s_bytes_written;
-#else
-  return i2s_write_bytes((i2s_port_t)i2s_num, (const char *)&sample,
-                          sizeof(uint32_t), 100);
-#endif
-}
-
-/* read 4 bytes of data from wav file */
-int read4bytes(File file, uint32_t *chunkId)
-{
-  int n = file.read((uint8_t *)chunkId, sizeof(uint32_t));
-  return n;
-}
-
-/* these are functions to process wav file */
-int readRiff(File file, wavRiff_t *wavRiff)
-{
-  int n = file.read((uint8_t *)wavRiff, sizeof(wavRiff_t));
-  return n;
-}
-int readProps(File file, wavProperties_t *wavProps)
-{
-  int n = file.read((uint8_t *)wavProps, sizeof(wavProperties_t));
-  return n;
-}
-
-static bool play_file(char *filename, int volume)
-{
-    headerState_t state = HEADER_RIFF;
-
-    File wavfile = SD.open(filename);
-    if (! wavfile) {
-      Serial.print(F("error opening WAV file: "));
-      Serial.println(filename);
-      return false;
-    } else {
-      Serial.print(F("Playing WAV file: "));
-      Serial.println(filename);
-    }
-
-    int c = 0;
-    int n;
-    while (wavfile.available()) {
-      switch(state){
-        case HEADER_RIFF:
-        wavRiff_t wavRiff;
-        n = readRiff(wavfile, &wavRiff);
-        if(n == sizeof(wavRiff_t)){
-          if(wavRiff.chunkID == CCCC('R', 'I', 'F', 'F') && wavRiff.format == CCCC('W', 'A', 'V', 'E')){
-            state = HEADER_FMT;
-//            Serial.println("HEADER_RIFF");
-          }
-        }
-        break;
-        case HEADER_FMT:
-        n = readProps(wavfile, &wavProps);
-        if(n == sizeof(wavProperties_t)){
-          state = HEADER_DATA;
-#if 0
-            Serial.print("chunkID = "); Serial.println(wavProps.chunkID);
-            Serial.print("chunkSize = "); Serial.println(wavProps.chunkSize);
-            Serial.print("audioFormat = "); Serial.println(wavProps.audioFormat);
-            Serial.print("numChannels = "); Serial.println(wavProps.numChannels);
-            Serial.print("sampleRate = "); Serial.println(wavProps.sampleRate);
-            Serial.print("byteRate = "); Serial.println(wavProps.byteRate);
-            Serial.print("blockAlign = "); Serial.println(wavProps.blockAlign);
-            Serial.print("bitsPerSample = "); Serial.println(wavProps.bitsPerSample);
-#endif
-        }
-        break;
-        case HEADER_DATA:
-        uint32_t chunkId, chunkSize;
-        n = read4bytes(wavfile, &chunkId);
-        if(n == 4){
-          if(chunkId == CCCC('d', 'a', 't', 'a')){
-//            Serial.println("HEADER_DATA");
-          }
-        }
-        n = read4bytes(wavfile, &chunkSize);
-        if(n == 4){
-//          Serial.println("prepare data");
-          state = DATA;
-        }
-        //initialize i2s with configurations above
-        i2s_driver_install((i2s_port_t)i2s_num, &i2s_config, 0, NULL);
-        i2s_set_pin((i2s_port_t)i2s_num, &pin_config);
-        //set sample rates of i2s to sample rate of wav file
-        i2s_set_sample_rates((i2s_port_t)i2s_num, wavProps.sampleRate);
-        break;
-        /* after processing wav file, it is time to process music data */
-        case DATA:
-        uint32_t data;
-        n = read4bytes(wavfile, &data);
-        if (n == 4) {
-            if (volume > 0) {            // double the values, 6 dB louder
-              if (wavProps.bitsPerSample == I2S_BITS_PER_SAMPLE_16BIT) {
-                int16_t *p16 = (int16_t *) &data;
-                int16_t i16 = *p16;
-                if (i16 & 0xC000 == 0x4000)        // large positive
-                    i16 = 0x7FFF;    // damn the clipping, full speed ahead
-                else if (i16 & 0xC000 == 0x8000)   // large negative
-                    i16 = 0x8000;
-                else  // 0xC000 -- 0x3FFF
-                    i16 <<= 1;
-                *p16 = i16;
-                ++p16;
-                i16 = *p16;
-                if (i16 & 0xC000 == 0x4000)
-                    i16 = 0x7FFF;
-                else if (i16 & 0xC000 == 0x8000)
-                    i16 = 0x8000;
-                else
-                    i16 <<= 1;
-                *p16 = i16;
-                ++p16;
-              } else if (wavProps.bitsPerSample == I2S_BITS_PER_SAMPLE_8BIT) {
-                uint8_t *p8 = (uint8_t *) &data;
-                for (int i=0; i<4; i++) {
-                    if (p8[i] > 128 + 63)
-                        p8[i] = 255;
-                    else if (p8[i] < 128 - 64)
-                        p8[i] = 0;
-                    else
-                        p8[i] = (p8[i] << 1) - 64;
-                }
-              }
-            } else if (volume < 0) {     // halve the values, 6 dB quieter
-              if (wavProps.bitsPerSample == I2S_BITS_PER_SAMPLE_16BIT) {
-                int16_t *p16 = (int16_t *) &data;
-                *p16 >>= 1;
-                ++p16;
-                *p16 >>= 1;
-              } else if (wavProps.bitsPerSample == I2S_BITS_PER_SAMPLE_8BIT) {
-                uint8_t *p8 = (uint8_t *) &data;
-                *p8++ = (*p8 >> 1) + 64;
-                *p8++ = (*p8 >> 1) + 64;
-                *p8++ = (*p8 >> 1) + 64;
-                *p8++ = (*p8 >> 1) + 64;
-              }
-            }
-            i2s_write_sample_nb(data);
-        }
-        break;
-      }
-    }
-
-    wavfile.close();
-    if (state == DATA) {
-      i2s_driver_uninstall((i2s_port_t)i2s_num); //stop & destroy i2s driver
-    }
-
-    return true;
-}
-
-static void ESP32_TTS(char *message)
-{
+    Serial.println("TTS: '" + String(message) + "'");
     char filename[MAX_FILENAME_LEN];
 
     if (settings->voice == VOICE_OFF || settings->adapter != ADAPTER_TTGO_T5S)
@@ -1004,10 +854,6 @@ static void ESP32_TTS(char *message)
 
     if (strcmp(message, "POST")) {   // *not* the post-booting demo
 
-      if (SD.cardType() == CARD_NONE) {
-        //Serial.print(F("no SD card"));
-        return;
-      }
 #if defined(USE_EPAPER)
       while (!SoC->EPD_is_ready()) {yield();}
       EPD_Message("VOICE", "ALERT");
@@ -1016,40 +862,44 @@ static void ESP32_TTS(char *message)
 #endif /* USE_EPAPER */
       bool wdt_status = loopTaskWDTEnabled;
 
-      if (wdt_status) {
-        disableLoopWDT();
+
+      if (SD_MMC.cardType() == CARD_NONE) {
+        Serial.print(F("TTS: no SD card"));
+        return;
       }
 
-      char *word = strtok (message, " ");
+// not needed here, file playing not done in this loop
+// only added in queue
+//
+//      if (wdt_status) {
+//        disableLoopWDT(); // disable watchdog
+//      }
 
+      // tokenize the message and add each word in the play queue
+      // note that the actual playing of the files is handled
+      // in the SoundHelper loop.
+      char *word = strtok (message, " ");
       while (word != NULL)
       {
-          strcpy(filename, WAV_FILE_PREFIX);
+          strcpy(filename, AUDIO_FILE_PREFIX);
           strcat(filename, settings->voice == VOICE_1 ? VOICE1_SUBDIR :
                           (settings->voice == VOICE_2 ? VOICE2_SUBDIR :
                           (settings->voice == VOICE_3 ? VOICE3_SUBDIR :
                            "" )));
           strcat(filename, word);
           strcat(filename, WAV_FILE_SUFFIX);
-          // voice_3 in the existing collection of .wav files is quieter than voice_1,
-          // so make it a bit louder since we use it for more-urgent advisories
-          int volume = (settings->voice == VOICE_3)? 1 : 0;
-          play_file(filename, volume);
-          word = strtok (NULL, " ");
-
-          yield();
-
-          /* Poll input source(s) */
-          Input_loop();
+          add_file(filename);
+          // next word
+          word = strtok(NULL," ");
       }
 
-      if (wdt_status) {
-        enableLoopWDT();
-      }
+//      if (wdt_status) {
+//        enableLoopWDT(); // enable watchdog again
+//      }
 
    } else {   /* post-booting */
 
-      if (SD.cardType() == CARD_NONE) {
+      if (SD_MMC.cardType() == CARD_NONE) {
         /* no SD card, can't play WAV files */
         Serial.print(F("POST: no SD card"));
         //if (hw_info.display == DISPLAY_EPD_2_7)
@@ -1061,30 +911,36 @@ static void ESP32_TTS(char *message)
       }
 
       //settings->voice = VOICE_2;
-      strcpy(filename, WAV_FILE_PREFIX);
-      strcat(filename, "POST");
-      strcat(filename, WAV_FILE_SUFFIX);
-      play_file(filename, 0);
+//      strcpy(filename, AUDIO_FILE_PREFIX);
+//      strcat(filename, "startup");
+//      strcat(filename, MP3_FILE_SUFFIX);
+//      Serial.println("Play startup sound: " + String(filename));
+//      play_file(filename, 1.0);
 
       /* demonstrate the voice output */
+/*
       delay(1500);
       settings->voice = VOICE_1;
-      strcpy(filename, WAV_FILE_PREFIX);
+      strcpy(filename, AUDIO_FILE_PREFIX);
       strcat(filename, VOICE1_SUBDIR);
       strcat(filename, "notice");
-      strcat(filename, WAV_FILE_SUFFIX);
+      strcat(filename, MP3_FILE_SUFFIX);
       play_file(filename, 0);
       delay(1500);
       settings->voice = VOICE_3;
-      strcpy(filename, WAV_FILE_PREFIX);
+      strcpy(filename, AUDIO_FILE_PREFIX);
       strcat(filename, VOICE3_SUBDIR);
       strcat(filename, "notice");
-      strcat(filename, WAV_FILE_SUFFIX);
+      strcat(filename, MP3_FILE_SUFFIX);
       play_file(filename, 1);   // make voice3 6dB louder
       delay(1000);
+*/
+// Not working?
+//      add_file("/Audio/startup.wav");
     }
 }
 #endif /* AUDIO */
+
 #if defined(BUTTONS)
 
 #include <AceButton.h>

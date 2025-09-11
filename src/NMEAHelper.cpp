@@ -18,6 +18,7 @@
 
 #include <TinyGPS++.h>
 #include <TimeLib.h>
+#include <SD_MMC.h>
 
 #include "SoCHelper.h"
 #include "NMEAHelper.h"
@@ -65,7 +66,10 @@ static void NMEA_Parse_Character(char c)
 
     bool isValidSentence = nmea.encode(c);
     if (! isValidSentence)
-        return;
+    {
+      return;
+    }
+//      Serial.println("Valid NMEA sentence");
 
       if (nmea.location.isUpdated()) {
         ThisAircraft.latitude  = nmea.location.lat();
@@ -103,7 +107,7 @@ static void NMEA_Parse_Character(char c)
         {
 //          Serial.print(F(" AlarmLevel=")); Serial.print(T_AlarmLevel.value());
           fo.alarm_level = atoi(T_AlarmLevel.value());
-//          Serial.print(F(" AlarmLevel=")); Serial.println(fo.alarm_level);
+          Serial.print(F(" AlarmLevel=")); Serial.println(fo.alarm_level);
         }
         if (T_RelativeNorth.isUpdated())
         {
@@ -475,6 +479,57 @@ void NMEA_loop()
         NMEA_TimeMarker = millis();
       }
     }
+    break;
+  case CON_FILE:
+      {
+        static bool bOneTime = true;
+        static bool bFileOpen = false;
+        static fs::File fs;
+        uint8_t cardType = SD_MMC.cardType();
+        if (cardType == CARD_NONE && bOneTime) {
+          bOneTime = false;
+          Serial.println("NMEA is file based, but no SD_MMC card attached!");
+          return;
+        }
+        if (!SD_MMC.exists("/NMEA/debug.txt"))
+        {
+          bOneTime = false;
+          Serial.println("NMEA is file based, but file /NMEA/debug.txt not found!");
+          return;
+        }
+        if (!bFileOpen)
+        {
+          fs = SD_MMC.open("/NMEA/debug.txt");
+          if (fs.available())
+          {
+            bFileOpen = true;
+          }
+          else
+          {
+            bOneTime = false;
+            Serial.println("NMEA is file based, but failed to open /NMEA/debug.txt for reading!");
+            return;
+          }
+        }
+        else
+        {
+          char c;
+          if (fs.readBytes(&c,1))
+          {
+            NMEA_bridge_buffer(c);
+            NMEA_Parse_Character(c);
+            NMEA_TimeMarker = millis();
+#if !defined(DISABLE_NMEAOUT)
+            Serial.print(c);
+#endif
+          }
+          else
+          {
+            Serial.println("reached end of NMEA file, resetting...");
+            fs.seek(0);
+          }
+        }
+      }
     break;
   case CON_NONE:
   default:

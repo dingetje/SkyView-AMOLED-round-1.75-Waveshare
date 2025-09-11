@@ -1,0 +1,12 @@
+==============================================================
+Scanning I2C bus...
+I2C device found at address 0x18  ! ES8311 low-power mono audio codec
+I2C device found at address 0x20  ! TCA9554 ESP_IO_EXPANDER
+I2C device found at address 0x34  ! AXP2101_SLAVE_ADDRESS
+I2C device found at address 0x40  ! ES7210 Audio ADC for microphones
+I2C device found at address 0x51  ! PCF85063 RTC
+I2C device found at address 0x5A  ! Touch CST9217
+I2C device found at address 0x6B  ! QMI8658 6-axis IMU (3-axis accelerometer and 3-axis gyroscope)
+I2C device found at address 0x7E  ! Reserved
+done!
+==============================================================

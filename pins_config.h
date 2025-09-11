@@ -45,8 +45,25 @@
 #define SD_MISO 3
 #define SD_SCLK 2
 
+const int SDMMC_CLK = 2;
+const int SDMMC_CMD = 1;
+const int SDMMC_DATA = 3;
+const int SDMMC_CS = 41;
+
 // PCF8563
 #define PCF8563_INT 9
 
+// ES8311
+#define I2S_MCK_IO 16
+#define I2S_BCK_IO 9
+#define I2S_DI_IO 10
+#define I2S_WS_IO 45
+#define I2S_DO_IO 8
 
-
+//   i2s.setPins(BCLKPIN, WSPIN, DIPIN, DOPIN, MCLKPIN);
+#define MCLKPIN             42
+#define BCLKPIN              9
+#define WSPIN               45
+#define DOPIN                8
+#define DIPIN               10
+#define PAPIN               46

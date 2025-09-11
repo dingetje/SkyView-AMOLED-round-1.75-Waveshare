@@ -103,31 +103,9 @@ const uint8_t BUTTON_MODE_PIN = 0;
 #define CCCC(c1, c2, c3, c4)  ((c4 << 24) | (c3 << 16) | (c2 << 8) | c1)
 
 #define MAX_FILENAME_LEN      64
-#define WAV_FILE_PREFIX       "/Audio/"
+#define AUDIO_FILE_PREFIX     "/Audio/"
 
 #define POWER_SAVING_WIFI_TIMEOUT 300000UL /* 5 minutes */
-
-/* these are data structures to process wav file */
-typedef enum headerState_e {
-    HEADER_RIFF, HEADER_FMT, HEADER_DATA, DATA
-} headerState_t;
-
-typedef struct wavRiff_s {
-    uint32_t chunkID;
-    uint32_t chunkSize;
-    uint32_t format;
-} wavRiff_t;
-
-typedef struct wavProperties_s {
-    uint32_t chunkID;
-    uint32_t chunkSize;
-    uint16_t audioFormat;
-    uint16_t numChannels;
-    uint32_t sampleRate;
-    uint32_t byteRate;
-    uint16_t blockAlign;
-    uint16_t bitsPerSample;
-} wavProperties_t;
 
 extern bool loopTaskWDTEnabled;
 
@@ -138,6 +116,7 @@ void ESP32_TFT_fini(const char *msg);
 
 extern std::shared_ptr<Arduino_IIC_DriveBus> IIC_Bus;
 
+extern bool SetupSound();
 #endif /* PLATFORM_ESP32_H */
 
 #endif /* ESP32 */

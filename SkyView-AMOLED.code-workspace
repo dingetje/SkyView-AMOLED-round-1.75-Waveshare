@@ -57,7 +57,8 @@
 			"stdexcept": "cpp",
 			"streambuf": "cpp",
 			"cinttypes": "cpp",
-			"list": "cpp"
+			"list": "cpp",
+			"*.tpp": "cpp"
 		}
 	}
 }

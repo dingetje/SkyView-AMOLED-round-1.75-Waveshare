@@ -444,6 +444,7 @@ void handleSettings() {
 <option %s value='%d'>WiFi UDP</option>\
 <option %s value='%d'>Bluetooth SPP</option>\
 <option %s value='%d'>Bluetooth LE</option>\
+<option %s value='%d'>NMEA File</option>\
 </select>\
 </td>\
 </tr>\
@@ -469,6 +470,7 @@ void handleSettings() {
   (settings->connection == CON_WIFI_UDP      ? "selected" : ""), CON_WIFI_UDP,
   (settings->connection == CON_BLUETOOTH_SPP ? "selected" : ""), CON_BLUETOOTH_SPP,
   (settings->connection == CON_BLUETOOTH_LE  ? "selected" : ""), CON_BLUETOOTH_LE,
+  (settings->connection == CON_FILE          ? "selected" : ""), CON_FILE,
   (settings->protocol   == PROTOCOL_NMEA     ? "selected" : ""), PROTOCOL_NMEA,
   (settings->protocol   == PROTOCOL_GDL90    ? "selected" : ""), PROTOCOL_GDL90,
   (settings->baudrate   == B4800             ? "selected" : ""), B4800,

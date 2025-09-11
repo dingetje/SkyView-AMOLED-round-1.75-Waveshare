@@ -41,6 +41,7 @@
 #define DATA_TIMEOUT      2000 /* 2.0 seconds */
 
 #define MAX_FILENAME_LEN  64
+#define MP3_FILE_SUFFIX   ".mp3"
 #define WAV_FILE_SUFFIX   ".wav"
 #define VOICE1_SUBDIR     "voice1/"
 #define VOICE2_SUBDIR     "voice2/"
@@ -117,7 +118,8 @@ enum
 	CON_WIFI_UDP,
 	CON_WIFI_TCP,
 	CON_BLUETOOTH_SPP,
-	CON_BLUETOOTH_LE
+	CON_BLUETOOTH_LE,
+	CON_FILE // NMEA file based for debugging
 };
 
 enum

@@ -77,8 +77,8 @@ float batteryToPercentage(float voltage) {
   if (voltage <= 3.0) return 0.0;
 
   // Extended voltage-percentage mapping
-  float voltageLevels[] = {4.2, 4.00, 3.9, 3.8, 3.7, 3.6, 3.5, 3.4, 3.3, 3.2, 3.0};
-  float percentages[] = {100, 95, 90, 75, 55, 40, 25, 10, 5, 2, 0};
+  static const float voltageLevels[] = {4.2, 4.00, 3.9, 3.8, 3.7, 3.6, 3.5, 3.4, 3.3, 3.2, 3.0};
+  static const float percentages[] = {100, 95, 90, 75, 55, 40, 25, 10, 5, 2, 0};
 
   for (int i = 0; i < 11; i++) { // Loop through voltage levels
       if (voltage > voltageLevels[i + 1]) {
@@ -196,7 +196,7 @@ void draw_first()
 
   sprite.drawString("powered by SoftRF",233,293,4);
   sprite.drawString(SKYVIEW_FIRMWARE_VERSION,180,400,2);
-  lcd_PushColors(6, 0, 466, 466, (uint16_t*)sprite.getPointer());
+  lcd_PushColors(6, 0, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer());
   for (int i = 0; i <= 255; i++)
   {
     lcd_brightness(i);
@@ -231,9 +231,9 @@ void TFT_setup(void) {
 
   Serial.printf("Free heap: %d bytes\n", esp_get_free_heap_size());
   Serial.printf("Largest block: %d bytes\n", heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
-  sprite.createSprite(466, 466);    // full screen landscape sprite in psram
+  sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);    // full screen landscape sprite in psram
   batterySprite.createSprite(100, 32);
-  if (sprite.createSprite(466, 466) == NULL) {
+  if (sprite.createSprite(LCD_WIDTH, LCD_HEIGHT) == NULL) {
     Serial.println("Failed to create sprite. Not enough memory.");
     delay(5000);
   }
@@ -292,12 +292,12 @@ void TFT_Mode(boolean next)
           if (show_compass) {
           TFT_view_mode = VIEW_MODE_COMPASS;
           if (!compasSprite.created()) {
-            compasSprite.createSprite(466, 466);
+            compasSprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
             compasSprite.setColorDepth(16);
             compasSprite.setSwapBytes(true);
           }
           if (!compas2Sprite.created()) {
-          compas2Sprite.createSprite(466, 466);
+          compas2Sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
           compas2Sprite.setColorDepth(16);
           compas2Sprite.setSwapBytes(true);
           }
@@ -324,17 +324,17 @@ void TFT_Mode(boolean next)
           if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
             TFT_view_mode = VIEW_MODE_COMPASS;
             if (!compasSprite.created()) {
-              compasSprite.createSprite(466, 466);
+              compasSprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
               compasSprite.setColorDepth(16);
               compasSprite.setSwapBytes(true);
             }
             if (!compas2Sprite.created()) {
-              compas2Sprite.createSprite(466, 466);
+              compas2Sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
               compas2Sprite.setColorDepth(16);
               compas2Sprite.setSwapBytes(true);
             }
             if (!compas2Sprite.created()) {
-              compas2Sprite.createSprite(466, 466);
+              compas2Sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
               compas2Sprite.setColorDepth(16);
               compas2Sprite.setSwapBytes(true);
             }
@@ -367,7 +367,7 @@ void TFT_Mode(boolean next)
           TFT_view_mode = VIEW_MODE_RADAR;
           compasSprite.deleteSprite();
           compas2Sprite.deleteSprite();
-          // sprite.createSprite(466, 466);
+          // sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
           // sprite.setColorDepth(16);
           // sprite.setSwapBytes(true);
           lcd_brightness(255);
@@ -384,7 +384,7 @@ void TFT_Mode(boolean next)
           TFT_view_mode = VIEW_MODE_TEXT; 
           compasSprite.deleteSprite();
           compas2Sprite.deleteSprite();
-          // sprite.createSprite(466, 466);
+          // sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
           // sprite.setColorDepth(16);
           // sprite.setSwapBytes(true);
           // bearingSprite.createSprite(78, 54);
@@ -522,7 +522,7 @@ void settings_page() {
     sprite.setSwapBytes(true);
     sprite.pushImage(button_x, 350, 48, 47, power_button_small);
     
-    lcd_PushColors(display_column_offset, 0, 466, 466, (uint16_t*)sprite.getPointer());
+    lcd_PushColors(display_column_offset, 0, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer());
     lcd_brightness(255);
     xSemaphoreGive(spiMutex);
 } else {

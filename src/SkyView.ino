@@ -53,6 +53,10 @@
 #include "TouchHelper.h"
 #include "BuddyHelper.h"
 
+#if defined(ES8311_AUDIO)
+#include "SoundHelper.h"
+#endif
+
 #include "SPIFFS.h"
 #include "SkyView.h"
 // #include "TFTHelper.h"
@@ -86,14 +90,13 @@ void Input_loop() {
 
 void setup()
 {
-
   Serial.begin(SERIAL_OUT_BR); 
   // wait for Serial to be ready
   while (! Serial); 
+  delay(3000);
 
   Serial.println();
   hw_info.soc = SoC_setup(); // Has to be very first procedure in the execution order
-  delay(1000);
   
   Serial.println();
   Serial.print(F(SKYVIEW_IDENT));
@@ -116,6 +119,17 @@ void setup()
   Serial.println(SPIFFS.totalBytes());
   Serial.print("SPIFFS Used space: ");
   Serial.println(SPIFFS.usedBytes());
+
+  // List all files in SPIFFS
+  Serial.print("Dumping SPIFFS files:\n");
+  fs::File root = SPIFFS.open("/");
+  fs::File file = root.openNextFile(); 
+  while(file){
+ 
+      Serial.print("FILE: ");
+      Serial.println(file.name()); 
+      file = root.openNextFile();
+  }
 
   BuddyManager::readBuddyList("/buddylist.txt");  // Read buddy list from SPIFFS
   // Print buddy list to serial
@@ -151,6 +165,7 @@ void setup()
 #if defined(BUTTONS)
   SoC->Button_setup();
 #endif /* BUTTONS */
+
   switch (settings->protocol)
   {
   case PROTOCOL_GDL90:
@@ -169,6 +184,13 @@ void setup()
     SerialInput.flush();
   }
 
+#if defined(ES8311_AUDIO)
+  Serial.println();
+  Serial.println(F("Intializing I2S and ES8311 audio module... "));
+  Serial.flush();
+  SetupSound();
+  Serial.println(F(" done."));
+#endif /* ES8311_AUDIO */
 
 #if defined(USE_EPAPER)
   Serial.println();
@@ -205,7 +227,6 @@ void setup()
   Web_setup();
   Traffic_setup();
 #if defined(AMOLED)
-
   Touch_setup();
 #endif
 
@@ -239,11 +260,14 @@ void loop()
 
   WiFi_loop();
 
+#if defined(ES8311_AUDIO)
+  SoundLoop();
+#endif
   // Handle Web
   Web_loop();
 #if defined(BUTTONS)
   SoC->Button_loop();
-#endif /* AUDIO */
+#endif
   Battery_loop();
 }
 

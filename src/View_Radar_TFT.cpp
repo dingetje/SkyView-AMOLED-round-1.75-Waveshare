@@ -1031,6 +1031,7 @@ void TFT_radar_loop()
       } else {
         Serial.println("No FIX");
         TFT_radar_Draw_Message(NO_FIX_TEXT, NULL);
+        Serial.println("Loc=" + String(nmea.location.isValid()) + ",Alt=" + String(nmea.altitude.isValid()) + ",Date=" + String(nmea.date.isValid()) + ",Loc.Age=" + String(nmea.location.age() <= NMEA_EXP_TIME) + ", Alt.Age=" + String(nmea.altitude.age() <= NMEA_EXP_TIME) + ",Date.Age=" + String(nmea.date.age()<= NMEA_EXP_TIME));
       }
     } else {
       Serial.println("No DATA");
