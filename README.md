@@ -23,6 +23,9 @@ This is a forked repository of SkyView:
 
 ---
 
+### Demo with Voice Alerts ###
+[![Demo with Voice Alerts](https://img.youtube.com/vi/eLwic-Sz4lM/hqdefault.jpg)](https://www.youtube.com/watch?v=eLwic-Sz4lM)
+
 ### Pages and Visualizations:
 
 #### **Radar Page**  
