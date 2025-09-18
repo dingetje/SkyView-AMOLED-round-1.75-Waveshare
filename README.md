@@ -5,7 +5,7 @@ SkyView is a traffic awareness device designed to display air traffic received t
 ### Key Features:
 - This code is a fork to support round Waveshare 1.75 AMOLED Display
 - Best suited as a companion device for **SoftRF hardware**, providing user-friendly visualization of nearby traffic.
-- Proven compatibility with **SkyEcho**, **Stratux**, and **PilotAware** devices, as reported by builders.
+- Proven compatibility with **SkyEcho**, **Stratux**, **PilotAware** and **PowerMouse** devices, as reported by builders.
 
 ### Supported Data Input Methods:
 - **Classic Serial Interface**
