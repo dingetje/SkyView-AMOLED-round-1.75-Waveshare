@@ -3,7 +3,7 @@
 SkyView is a traffic awareness device designed to display air traffic received through EC radio devices, such as **SoftRF SenseCap Card**, and visualize **FLARM NMEA** or **Garmin GDL90** data on its screen.
 
 ### Key Features:
-- This code is a fork to support round Waveshare 1.75 AMOLED Display
+- This code is a fork to support [round Waveshare 1.75 AMOLED Display](https://www.waveshare.com/wiki/ESP32-S3-Touch-AMOLED-1.75)
 
   <img width="300" height="300" alt="image" src="https://github.com/user-attachments/assets/ab13a9ab-3450-4c14-bfc4-0d2d30d6ca7d" />
 
