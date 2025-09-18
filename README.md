@@ -19,6 +19,7 @@ This is a forked repository of SkyView:
 - **Supported in PlatformIO**: A versatile tool for building and compiling firmware for various devices and screens.
 - **Supports AMOLED Colour Displays**: Optimized for vibrant and high-resolution visualizations.
 - **Swipe Page Navigation**: Switching between pages is done effortlessly by swiping **left-right** or **up-down**.
+- **Voice Output**: traffic advisory, plus danger alert, requires voice data on SD card.
 
 ---
 
