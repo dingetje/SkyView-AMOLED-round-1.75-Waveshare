@@ -71,11 +71,7 @@ Powering Off the device (Sleep mode).
 
 ---
 #### ** 3D Case**
-The case for the 1.75" Display is relativly small even including 600mAh battery, which should last upto 6 hour continious use.
-This version of case is a watch style.
-
-
-<img src="https://github.com/user-attachments/assets/b7e3225d-762a-4fb2-83d3-c82b57f38ba8" alt="3D Case" width="300px">
+The case for the 1.75" Display is not ready yet.
 
 
 ---
