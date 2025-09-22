@@ -914,7 +914,8 @@ void handleRoot() {
 
 
 
-void handleBuddyList() {
+void handleBuddyList() 
+{
   server.send(200, "text/html", R"rawliteral(
 <html>
   <head>
@@ -944,59 +945,98 @@ void handleBuddyList() {
   )rawliteral");
 }
 
-void handleInput() {
+void handleInput() 
+{
 
   char *Input_temp = (char *) malloc(1900);
-  if (Input_temp == NULL) {
+  if (Input_temp == NULL) 
+  {
     return;
   }
 
-  for ( uint8_t i = 0; i < server.args(); i++ ) {
-    if (server.argName(i).equals("adapter")) {
+  for ( uint8_t i = 0; i < server.args(); i++ ) 
+  {
+    if (server.argName(i).equals("adapter")) 
+    {
       settings->adapter = server.arg(i).toInt();
-    } else if (server.argName(i).equals("connection")) {
+    }
+    else if (server.argName(i).equals("connection")) 
+    {
       settings->connection = server.arg(i).toInt();
-    } else if (server.argName(i).equals("bridge")) {
+    }
+    else if (server.argName(i).equals("bridge")) 
+    {
       settings->bridge = server.arg(i).toInt();
-    } else if (server.argName(i).equals("protocol")) {
+    }
+    else if (server.argName(i).equals("protocol")) 
+    {
       settings->protocol = server.arg(i).toInt();
-    } else if (server.argName(i).equals("baudrate")) {
+    }
+    else if (server.argName(i).equals("baudrate"))
+    {
       settings->baudrate = server.arg(i).toInt();
-    } else if (server.argName(i).equals("server")) {
+    }
+    else if (server.argName(i).equals("server")) 
+    {
       server.arg(i).toCharArray(settings->server, sizeof(settings->server));
-    } else if (server.argName(i).equals("key")) {
+    }
+    else if (server.argName(i).equals("key")) 
+    {
       server.arg(i).toCharArray(settings->key, sizeof(settings->key));
-    } else if (server.argName(i).equals("units")) {
+    }
+    else if (server.argName(i).equals("units")) 
+    {
       settings->units = server.arg(i).toInt();
-    } else if (server.argName(i).equals("vmode")) {
+    }
+    else if (server.argName(i).equals("vmode"))
+    {
       settings->vmode = server.arg(i).toInt();
-    } else if (server.argName(i).equals("orientation")) {
+    }
+    else if (server.argName(i).equals("orientation"))
+    {
       settings->orientation = server.arg(i).toInt();
-    } else if (server.argName(i).equals("zoom")) {
+    }
+    else if (server.argName(i).equals("zoom"))
+    {
       settings->zoom = server.arg(i).toInt();
-    } else if (server.argName(i).equals("adb")) {
+    }
+    else if (server.argName(i).equals("adb"))
+    {
       settings->adb = server.arg(i).toInt();
-    } else if (server.argName(i).equals("idpref")) {
+    }
+    else if (server.argName(i).equals("idpref"))
+    {
       settings->idpref = server.arg(i).toInt();
-    } else if (server.argName(i).equals("voice")) {
+    }
+    else if (server.argName(i).equals("voice"))
+    {
       settings->voice = server.arg(i).toInt();
-    } else if (server.argName(i).equals("compass")) {
+    }
+    else if (server.argName(i).equals("compass"))
+    {
       settings->compass = server.arg(i).toInt();
-    } else if (server.argName(i).equals("filter")) {
+    }
+    else if (server.argName(i).equals("filter"))
+    {
       settings->filter = server.arg(i).toInt();
-    } else if (server.argName(i).equals("power_save")) {
+    }
+    else if (server.argName(i).equals("power_save"))
+    {
       settings->power_save = server.arg(i).toInt();
-    } else if (server.argName(i).equals("team")) {
+    }
+    else if (server.argName(i).equals("team"))
+    {
       char buf[7];
       server.arg(i).toCharArray(buf, sizeof(buf));
       settings->team = strtoul(buf, NULL, 16);
     }
   }
 
-
-  if (settings->connection != CON_SERIAL
-         && settings->bridge != BRIDGE_SERIAL)     // disallow wireless->wireless bridge
-     settings->bridge = BRIDGE_NONE;
+  // disallow wireless->wireless bridge
+  if (settings->connection != CON_SERIAL && settings->bridge != BRIDGE_SERIAL)
+  {
+    settings->bridge = BRIDGE_NONE;
+  }
 
   snprintf_P ( Input_temp, 2000,
 PSTR("<html>\
@@ -1048,8 +1088,8 @@ PSTR("<html>\
   ESP.restart();
 }
 
-void handleNotFound() {
-
+void handleNotFound()
+{
   String message = "File Not Found\n\n";
   message += "URI: ";
   message += server.uri();
@@ -1059,17 +1099,18 @@ void handleNotFound() {
   message += server.args();
   message += "\n";
 
-  for ( uint8_t i = 0; i < server.args(); i++ ) {
+  for ( uint8_t i = 0; i < server.args(); i++ )
+  {
     message += " " + server.argName ( i ) + ": " + server.arg ( i ) + "\n";
   }
-
   server.send ( 404, "text/plain", message );
 }
 
 void Web_setup()
 {
-  if (!SPIFFS.begin(true)) {
-    PRINTLN("SPIFFS Mount Failed. Trying to format...");
+  if (!SPIFFS.begin(true))
+  {
+    PRINTLN("SPIFFS Mount Failed!");
     // if (!SPIFFS.format()) {
     //   PRINTLN("SPIFFS Format Failed");
     //   return;
@@ -1085,27 +1126,37 @@ void Web_setup()
   server.on ( "/settings", handleSettings );
   server.on("/buddylist", handleBuddyList);
 
-  server.on("/upload-buddy", HTTP_POST, []() {
+  server.on("/upload-buddy", HTTP_POST, []()
+  {
     server.send(200, "text/plain", "Buddy list uploaded");
-  }, []() {
+  }, []()
+  {
     HTTPUpload& upload = server.upload();
     static File fsUploadFile;
   
-    if (upload.status == UPLOAD_FILE_START) {
+    if (upload.status == UPLOAD_FILE_START)
+    {
       PRINTLN("Starting upload: buddylist.txt");
       fsUploadFile = SPIFFS.open("/buddylist.txt", FILE_WRITE);
-    } else if (upload.status == UPLOAD_FILE_WRITE) {
+    }
+    else if (upload.status == UPLOAD_FILE_WRITE)
+    {
       if (fsUploadFile)
         fsUploadFile.write(upload.buf, upload.currentSize);
-    } else if (upload.status == UPLOAD_FILE_END) {
+    }
+    else if (upload.status == UPLOAD_FILE_END)
+    {
       if (fsUploadFile)
+      {
         fsUploadFile.close();
+      }
       PRINTLN("Upload complete.");
       BuddyManager::readBuddyList(); // Read the buddy list after upload
     }
   });
   
-  server.on("/download-buddy", HTTP_GET, []() {
+  server.on("/download-buddy", HTTP_GET, []()
+  {
     File file = SPIFFS.open("/buddylist.txt", "r");
     if (!file || file.isDirectory()) {
       server.send(404, "text/plain", "File not found");
@@ -1125,7 +1176,8 @@ void Web_setup()
   DynamicJsonDocument doc(1024);
   JsonArray arr = doc.to<JsonArray>();
 
-  for (const auto& name : allowed) {
+  for (const auto& name : allowed)
+  {
     arr.add(name);
   }
 
@@ -1134,40 +1186,47 @@ void Web_setup()
   server.send(200, "application/json", json);
   });
 
-  server.on("/download_log", HTTP_GET, []() {
-  File logFile = SPIFFS.open("/battery_log.txt", "r");
-  if (!logFile) {
-    server.send(404, "text/plain", "Log file not found");
-    return;
-  }
-
-  server.sendHeader("Content-Type", "text/plain");
-  server.sendHeader("Content-Disposition", "attachment; filename=\"battery_log.txt\"");
-  server.streamFile(logFile, "text/plain");
-  logFile.close();
+  server.on("/download_log", HTTP_GET, []()
+  {
+    File logFile = SPIFFS.open("/battery_log.txt", "r");
+    if (!logFile)
+    {
+      server.send(404, "text/plain", "Log file not found");
+      return;
+    }
+    server.sendHeader("Content-Type", "text/plain");
+    server.sendHeader("Content-Disposition", "attachment; filename=\"battery_log.txt\"");
+    server.streamFile(logFile, "text/plain");
+    logFile.close();
   });
 
-  server.on("/clear_log", HTTP_POST, []() {
-    if (SPIFFS.exists("/battery_log.txt")) {
+  server.on("/clear_log", HTTP_POST, []()
+  {
+    if (SPIFFS.exists("/battery_log.txt"))
+    {
       SPIFFS.remove("/battery_log.txt");
     }
     server.send(200, "text/html", "<html><body><h2>Battery log cleared.</h2><a href='/'>Back</a></body></html>");
   });
 
-  server.on ( "/about", []() {
+  server.on ( "/about", []()
+  {
     SoC->swSer_enableRx(false);
     server.sendHeader(String(F("Cache-Control")), String(F("no-cache, no-store, must-revalidate")));
     server.sendHeader(String(F("Pragma")), String(F("no-cache")));
     server.sendHeader(String(F("Expires")), String(F("-1")));
     server.send_P ( 200, PSTR("text/html"), about_html);
     SoC->swSer_enableRx(true);
-  } );
+  });
 
   server.on ( "/input", handleInput );
-  server.on ( "/inline", []() {
+  server.on ( "/inline", []()
+  {
     server.send ( 200, "text/plain", "this works as well" );
-  } );
-  server.on("/firmware", HTTP_GET, [](){
+  });
+
+  server.on("/firmware", HTTP_GET, []()
+  {
     SoC->swSer_enableRx(false);
     server.sendHeader(String(F("Connection")), String(F("close")));
     server.sendHeader(String(F("Access-Control-Allow-Origin")), String(F("*")));
@@ -1227,11 +1286,13 @@ $('form').submit(function(e){\
 </body>\
 </html>")
     );
-  SoC->swSer_enableRx(true);
+    SoC->swSer_enableRx(true);
   });
   server.onNotFound ( handleNotFound );
 
-  server.on("/update", HTTP_POST, [](){
+  // this method handles the firmware update
+  server.on("/update", HTTP_POST, []()
+  {
     SoC->swSer_enableRx(false);
     server.sendHeader(String(F("Connection")), String(F("close")));
     server.sendHeader(String(F("Access-Control-Allow-Origin")), "*");
@@ -1239,25 +1300,38 @@ $('form').submit(function(e){\
 //    SoC->swSer_enableRx(true);
     delay(1000);
     ESP.restart();
-  },[](){
+  },[]()
+  {
     HTTPUpload& upload = server.upload();
-    if(upload.status == UPLOAD_FILE_START){
+    if(upload.status == UPLOAD_FILE_START)
+    {
       Serial.setDebugOutput(true);
       SoC->WiFiUDP_stopAll();
       SoC->WDT_fini();
       Serial.printf("Update: %s\r\n", upload.filename.c_str());
+      //start with max available size
       uint32_t maxSketchSpace = SoC->maxSketchSpace();
-      if(!Update.begin(maxSketchSpace)){//start with max available size
+      if(!Update.begin(maxSketchSpace))
+      {
         Update.printError(Serial);
       }
-    } else if(upload.status == UPLOAD_FILE_WRITE){
-      if(Update.write(upload.buf, upload.currentSize) != upload.currentSize){
+    }
+    else if(upload.status == UPLOAD_FILE_WRITE)
+    {
+      if(Update.write(upload.buf, upload.currentSize) != upload.currentSize)
+      {
         Update.printError(Serial);
       }
-    } else if(upload.status == UPLOAD_FILE_END){
-      if(Update.end(true)){ //true to set the size to the current progress
+    }
+    else if(upload.status == UPLOAD_FILE_END)
+    {
+       //true to set the size to the current progress
+      if(Update.end(true))
+      {
         Serial.printf("Update Success: %u\r\nRebooting...\r\n", upload.totalSize);
-      } else {
+      }
+      else
+      {
         Update.printError(Serial);
       }
       Serial.setDebugOutput(false);
@@ -1271,8 +1345,10 @@ $('form').submit(function(e){\
   } );
 #endif
 
-  server.on ( "/jquery.min.js", []() {
-
+  // host the jquery.min.js javascript
+  // statically defined in lib\jQuery\jquery_min_js.h
+  server.on ( "/jquery.min.js", []()
+  {
     PGM_P content = jquery_min_js_gz;
     size_t bytes_left = jquery_min_js_gz_len;
     size_t chunk_size;
@@ -1280,19 +1356,17 @@ $('form').submit(function(e){\
     server.setContentLength(bytes_left);
     server.sendHeader(String(F("Content-Encoding")),String(F("gzip")));
     server.send(200, String(F("application/javascript")), "");
-
-    do {
+    do
+    {
       chunk_size = bytes_left > JS_MAX_CHUNK_SIZE ? JS_MAX_CHUNK_SIZE : bytes_left;
       server.sendContent_P(content, chunk_size);
       content += chunk_size;
       bytes_left -= chunk_size;
     } while (bytes_left > 0) ;
-
-  } );
+  });
 
   server.begin();
   Serial.println (F("HTTP server has started at port: 80"));
-
   delay(1000);
 }
 
