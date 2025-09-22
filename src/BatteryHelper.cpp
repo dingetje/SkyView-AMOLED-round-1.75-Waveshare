@@ -398,18 +398,14 @@ float Battery_cutoff()
   return BATTERY_CUTOFF_LIPO;
 }
 
-void battery_fini() {
+void battery_fini() 
+{
   voltage_end = SoC->Battery_voltage();
   end_time_ms = millis();
 
   unsigned long durationSeconds = (end_time_ms - start_time_ms) / 1000;
-
-  float voltage_drop = voltage_start - voltage_end;
-  // Simplified estimate: assume linear discharge, estimate mAh used
-  // TBD: determine fudge factor for Waveshare board
-  float estimated_mAh = (voltage_drop / 0.001) * 0.0015f; // tuning factor as needed
+  float estimated_mAh = 180.0f * (durationSeconds / 3600.0f); // based on 180mA average draw
   writeBatteryLog(voltage_start, voltage_end, durationSeconds, estimated_mAh);
-
 }
 
 void Battery_loop()
