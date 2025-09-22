@@ -10,6 +10,11 @@ SkyView is a traffic awareness device designed to display air traffic received t
 - Best suited as a companion device for **SoftRF hardware**, providing user-friendly visualization of nearby traffic.
 - Proven compatibility with **SkyEcho**, **Stratux**, **PilotAware** and **PowerMouse** devices, as reported by builders.
 
+### Waveshare board shenanigans
+- the Waveshare board offers two buttons. One labeled BOOT, the other PWR. The BOOT button can be used to power off the device with a long press > 2 sec, but then use the PWR button very long press (~7 sec.) to power back on. The PWR button very long press can also be used to power off the device.
+- The SLEEP button on the **Settings** page of the touch screen can also be used to power the device off.
+- sometimes the board is not recognized by Windows when the USB-C cable is connected. In that case press both PWR and BOOT simulataneously and then release BOOT button. This should result in a COM port again (check Windows Device Manager).
+
 ### Supported Data Input Methods:
 - **Classic Serial Interface**
 - **Wi-Fi UDP Connection**
