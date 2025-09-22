@@ -46,16 +46,17 @@ void EEPROM_setup()
 
   if (eeprom_block.field.magic != SKYVIEW_EEPROM_MAGIC) {
     Serial.println(F("WARNING! User defined settings are not initialized yet. Loading defaults..."));
-
-    // EEPROM_defaults();
-  } else {
+    EEPROM_defaults();
+  }
+  else
+  {
     Serial.print(F("EEPROM version: "));
     Serial.println(eeprom_block.field.version);
 
-    if (eeprom_block.field.version != SKYVIEW_EEPROM_VERSION) {
+    if (eeprom_block.field.version != SKYVIEW_EEPROM_VERSION) 
+    {
       Serial.println(F("WARNING! Version mismatch of user defined settings. Loading defaults..."));
-
-      // EEPROM_defaults();
+      EEPROM_defaults();
     }
   }
   settings = &eeprom_block.field.settings;
@@ -84,7 +85,7 @@ void EEPROM_defaults()
   strcpy(eeprom_block.field.settings.server,    DEFAULT_AP_SSID);
   strcpy(eeprom_block.field.settings.key,       DEFAULT_AP_PSK);
 
-  eeprom_block.field.settings.units           = UNITS_MIXED;
+  eeprom_block.field.settings.units           = UNITS_METRIC;
   eeprom_block.field.settings.vmode           = VIEW_MODE_RADAR;
   eeprom_block.field.settings.zoom            = ZOOM_MEDIUM;
   eeprom_block.field.settings.adb             = DB_NONE;
@@ -100,6 +101,9 @@ void EEPROM_defaults()
 
 void EEPROM_store()
 {
+  eeprom_block.field.magic                    = SKYVIEW_EEPROM_MAGIC;
+  eeprom_block.field.version                  = SKYVIEW_EEPROM_VERSION;
+
   for (int i=0; i<sizeof(eeprom_t); i++) {
     EEPROM.write(i, eeprom_block.raw[i]);  
   }

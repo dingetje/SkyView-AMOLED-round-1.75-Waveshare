@@ -17,7 +17,7 @@
  */
 // #define ESP32
 #if defined(ESP32)
-
+#include "esp32/clk.h"
 #include <SPI.h>
 #include <esp_err.h>
 #include <esp_netif.h>
@@ -54,13 +54,16 @@ static const int8_t i2s_num = 0;
 #endif
 #include <esp_mac.h>
 
+#include "driver/rtc_io.h"
+#include "DebugLog.h"
+
 //#if defined(SOUND)
 //#include <uCDB.hpp>
 //#include <SD.h>
 //#endif
 
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
-#define TIME_TO_SLEEP  28        /* Time ESP32 will go to sleep (in seconds) */
+#define TIME_TO_SLEEP  10       /* Time ESP32 will go to sleep (in seconds) */
 
 WebServer server ( 80 );
 
@@ -164,6 +167,19 @@ void ESP32_TFT_fini(const char *msg)
   }
 }
 
+void SetUpWakeupSource()
+{
+  ("Enable wake up on GPIO_NUM_0 (button press)...");
+  rtc_gpio_pullup_en(GPIO_NUM_0);
+  rtc_gpio_pulldown_dis(GPIO_NUM_0); 
+  // make sure BOOT button is the only wake up source
+  esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, LOW);
+#if defined (XPOWERS_CHIP_AXP2101)
+  prepare_AXP2101_deep_sleep();
+#endif
+}
+
 void ESP32_fini()
 {
   WiFi_fini();
@@ -175,10 +191,7 @@ void ESP32_fini()
   BuddyManager::clearBuddyList();
   EEPROM_store();
   delay(1000);
-  Serial.println("Enable wake up on GPIO0 (button press)...");
-  gpio_hold_en(GPIO_NUM_0);
-  esp_sleep_enable_ext0_wakeup(SLEEP_WAKE_UP_INT, LOW);
-  esp_sleep_enable_touchpad_wakeup();
+  SetUpWakeupSource();
   SPI.end();
   esp_deep_sleep_start();
 }
@@ -187,66 +200,106 @@ void ESP32_fini()
   Method to print the reason by which ESP32
   has been awaken from sleep
 */
-void print_wakeup_reason() {
+void print_wakeup_reason() 
+{
   esp_sleep_wakeup_cause_t wakeup_reason;
 
   wakeup_reason = esp_sleep_get_wakeup_cause();
 
   switch (wakeup_reason) {
-    case ESP_SLEEP_WAKEUP_EXT0:     Serial.println("Wakeup caused by external signal using RTC_IO"); break;
-    case ESP_SLEEP_WAKEUP_EXT1:     Serial.println("Wakeup caused by external signal using RTC_CNTL"); break;
-    case ESP_SLEEP_WAKEUP_TIMER:    Serial.println("Wakeup caused by timer"); break;
-    case ESP_SLEEP_WAKEUP_TOUCHPAD: Serial.println("Wakeup caused by touchpad"); break;
-    case ESP_SLEEP_WAKEUP_ULP:      Serial.println("Wakeup caused by ULP program"); break;
-    default:                        Serial.printf("Wakeup was not caused by deep sleep: %d\n", wakeup_reason); break;
+    case ESP_SLEEP_WAKEUP_EXT0:     PRINTLN("Wakeup caused by external signal using RTC_IO"); break;
+    case ESP_SLEEP_WAKEUP_EXT1:     PRINTLN("Wakeup caused by external signal using RTC_CNTL"); break;
+    case ESP_SLEEP_WAKEUP_TIMER:    PRINTLN("Wakeup caused by timer"); break;
+    case ESP_SLEEP_WAKEUP_TOUCHPAD: PRINTLN("Wakeup caused by touchpad"); break;
+    case ESP_SLEEP_WAKEUP_ULP:      PRINTLN("Wakeup caused by ULP program"); break;
+    default:                        PRINTLN("Wakeup was not caused by deep sleep: " + String(wakeup_reason)); break;
   }
 }
 
 static void ESP32_setup()
 {
-  Serial.println("ESP32_setup");
+  PRINTLN("ESP32_setup");
   pinMode(GPIO_NUM_0, INPUT);
 
   print_wakeup_reason();
-  
-  //Check if the WAKE reason was button press
-  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
-    if (digitalRead(GPIO_NUM_0) == LOW) {
-      // Only proceed if button is still pressed (i.e., held)
+
+  //Check if the WAKE reason was BOOT button press
+  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) 
+  {
+    if (digitalRead(GPIO_NUM_0) == LOW) 
+    {
+      // Only proceed if BOOT button is still pressed (i.e., held)
       unsigned long start = millis();
-      while (digitalRead(GPIO_NUM_0) == LOW) {
-        if (millis() - start >= 2000) {
+      bool bTwoSeconds = false;
+      while (digitalRead(GPIO_NUM_0) == LOW) 
+      {
+        if (millis() - start >= 2000) 
+        {
+          bTwoSeconds = true;
           break;
         }
       }
       // If released before timeout, go back to sleep
-      if (millis() - start < 2000) {
+      if (!bTwoSeconds) 
+      {
       // Wait for button to be released
         while (digitalRead(GPIO_NUM_0) == LOW) {
           delay(10);  // avoid tight loop
         }
-        
-        gpio_hold_en(GPIO_NUM_0);
-        esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, LOW);
+        PRINTLN("Boot button released too soon, going back to sleep...");
+        SetUpWakeupSource();
         esp_deep_sleep_start();
       }
-
-    } else {
+    }
+    else 
+    {
       // Pin is HIGH, accidental wakeup
       delay(1000);  // give some time before going back to sleep
-      gpio_hold_en(GPIO_NUM_0);
-      esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, LOW);
+      PRINTLN("Boot button glitch? Going back to sleep...");
+      SetUpWakeupSource();
       esp_deep_sleep_start();
     }
   }
+  uint32_t cpu_freq_hz = esp_clk_cpu_freq();
+  float cpu_freq_mhz = cpu_freq_hz / 1000000.0;
+  PRINTLN("CPU Frequency: " + String(cpu_freq_mhz) + " Mhz");
+  PRINTLN("=== ESP32-S3 Memory Info ===");
+
+  // Internal RAM
+  PRINTLN("Free heap (internal RAM): " + String(esp_get_free_heap_size()) + " bytes");
+  PRINTLN("Largest free block: " + String(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)) + " bytes");
+  PRINTLN("Minimum free heap ever: " + String(esp_get_minimum_free_heap_size()) + " bytes");
+
+  // PSRAM (external RAM)
+  PRINTLN("Free PSRAM: " + String(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)) + " bytes");
+  PRINTLN("Largest PSRAM block: " + String(heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM)) + " bytes");
+
+  // start I2C
+  if (!Wire.begin(IIC_SDA,IIC_SCL))
+  {
+    PRINTLN("Failed to init I2C bus!");
+    while(true)
+    {
+      delay(10);
+    }
+  }
+
+  // Flash size
+  uint32_t flash_size = 0;
+  if (esp_flash_get_size(nullptr, &flash_size) == ESP_OK) {
+    PRINTLN("Flash size: " + String(flash_size) + " bytes");
+  }
+  else 
+  {
+    PRINTLN("[ERROR] Failed to get flash size!");
+  }  
   esp_err_t ret = ESP_OK;
   uint8_t null_mac[6] = {0};
 
-//  ++bootCount;
-
   ret = esp_efuse_mac_get_custom(efuse_mac);
-  if (ret != ESP_OK) {
-      // ESP_LOGE(TAG, "Get base MAC address from BLK3 of EFUSE error (%s)", esp_err_to_name(ret));
+  if (ret != ESP_OK) 
+  {
+    // ESP_LOGE(TAG, "Get base MAC address from BLK3 of EFUSE error (%s)", esp_err_to_name(ret));
     /* If get custom base MAC address error, the application developer can decide what to do:
      * abort or use the default base MAC address which is stored in BLK0 of EFUSE by doing
      * nothing.
@@ -254,15 +307,16 @@ static void ESP32_setup()
 
     // ESP_LOGI(TAG, "Use base MAC address which is stored in BLK0 of EFUSE");
     chipmacid = ESP.getEfuseMac();
-  } else {
-    if (memcmp(efuse_mac, null_mac, 6) == 0) {
+  }
+  else 
+  {
+    if (memcmp(efuse_mac, null_mac, 6) == 0) 
+    {
       // ESP_LOGI(TAG, "Use base MAC address which is stored in BLK0 of EFUSE");
       chipmacid = ESP.getEfuseMac();
     }
   }
 
-  uint32_t flash_id = ESP32_getFlashId();
-  Serial.printf("Flash ID: %08X\n", flash_id);
   /*
    *    Board         |   Module   |  Flash memory IC
    *  ----------------+------------+--------------------
@@ -279,9 +333,10 @@ static void ESP32_setup()
    *  TTGO T-Watch    |            | WINBOND_NEX_W25Q128_V
    */
 
-  if (psramFound()) {
-         // Check if PSRAM is available
-
+  // Check if PSRAM is available (it should)
+  if (psramFound()) 
+  {
+    PRINTLN("PSRAM available");
     hw_info.revision = HW_REV_H741_01;
     // switch(flash_id)
     // {
@@ -297,8 +352,10 @@ static void ESP32_setup()
     //   hw_info.revision = HW_REV_UNKNOWN;
     //   break;
     // }
-  } else {
-    Serial.println("PSRAM is NOT enabled or not available!");
+  }
+  else
+  {
+    LOG_ERROR("PSRAM is NOT enabled or not available!");
     // switch(flash_id)
     // {
     // case MakeFlashId(GIGADEVICE_ID, GIGADEVICE_GD25Q32):
@@ -329,7 +386,8 @@ static bool ESP32_EEPROM_begin(size_t size)
   return EEPROM.begin(size);
 }
 
-static const int8_t ESP32_dB_to_power_level[21] = {
+static const int8_t ESP32_dB_to_power_level[21] = 
+{
   8,  /* 2    dB, #0 */
   8,  /* 2    dB, #1 */
   8,  /* 2    dB, #2 */
@@ -355,11 +413,13 @@ static const int8_t ESP32_dB_to_power_level[21] = {
 
 static void ESP32_WiFi_setOutputPower(int dB)
 {
-  if (dB > 20) {
+  if (dB > 20) 
+  {
     dB = 20;
   }
 
-  if (dB < 0) {
+  if (dB < 0) 
+  {
     dB = 0;
   }
 
@@ -847,12 +907,22 @@ static void ESP32_DB_fini()
 void ESP32_TTS(char *message)
 {
     Serial.println("TTS: '" + String(message) + "'");
+
+    // TTS not possible if sound is not correctly initialized
+    if (!IsSoundInitialized())
+    {
+      return;
+    }
+    if (settings->voice == VOICE_OFF || settings->adapter != ADAPTER_TTGO_T5S)
+    {
+      return;
+    }
+
     char filename[MAX_FILENAME_LEN];
 
-    if (settings->voice == VOICE_OFF || settings->adapter != ADAPTER_TTGO_T5S)
-      return;
-
-    if (strcmp(message, "POST")) {   // *not* the post-booting demo
+    // *not* the post-booting demo
+    if (strcmp(message, "POST")) 
+    {
 
 #if defined(USE_EPAPER)
       while (!SoC->EPD_is_ready()) {yield();}
@@ -862,9 +932,8 @@ void ESP32_TTS(char *message)
 #endif /* USE_EPAPER */
       bool wdt_status = loopTaskWDTEnabled;
 
-
       if (SD_MMC.cardType() == CARD_NONE) {
-        Serial.print(F("TTS: no SD card"));
+        LOG_ERROR(F("TTS: no SD card"));
         return;
       }
 
@@ -897,11 +966,14 @@ void ESP32_TTS(char *message)
 //        enableLoopWDT(); // enable watchdog again
 //      }
 
-   } else {   /* post-booting */
+   }
+   else
+   {
+       /* post-booting */
 
       if (SD_MMC.cardType() == CARD_NONE) {
         /* no SD card, can't play WAV files */
-        Serial.print(F("POST: no SD card"));
+        LOG_ERROR(F("POST: no SD card"));
         //if (hw_info.display == DISPLAY_EPD_2_7)
         {
           /* keep boot-time SkyView logo on the screen for a while */
@@ -935,8 +1007,8 @@ void ESP32_TTS(char *message)
       play_file(filename, 1);   // make voice3 6dB louder
       delay(1000);
 */
-// Not working?
-//      add_file("/Audio/startup.wav");
+      // Not working?
+      add_file("/Audio/startup.wav");
     }
 }
 #endif /* AUDIO */
@@ -1047,7 +1119,7 @@ static void ESP32_WDT_fini()
 
 const SoC_ops_t ESP32_ops = {
   SOC_ESP32,
-  "ESP32",
+  "ESP32S3",
   ESP32_setup,
   ESP32_fini,
   ESP32_getChipId,

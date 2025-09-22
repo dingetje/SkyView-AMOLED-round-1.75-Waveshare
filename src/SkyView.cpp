@@ -39,7 +39,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-// #include "Arduino.h"
+#include "Arduino.h"
+#include "esp_system.h"
 #include "SoCHelper.h"
 #include "EEPROMHelper.h"
 #include "NMEAHelper.h"
@@ -57,6 +58,10 @@
 #include "SoundHelper.h"
 #endif
 
+#if defined(WAVESHARE_AMOLED_1_75)
+#include "RTCHelper.h"
+#endif
+
 #include "SPIFFS.h"
 #include "SkyView.h"
 // #include "TFTHelper.h"
@@ -65,6 +70,14 @@ extern "C" {
   #include "esp_pm.h"
 }
 #endif
+
+// If you want use SD_MMC (ESP) or other FileSystems
+#include <SD_MMC.h>
+#if defined(DEBUG_MODE)
+// define DEBUGLOG_ENABLE_FILE_LOGGER to enable file logger
+#define DEBUGLOG_ENABLE_FILE_LOGGER
+#endif
+#include <DebugLog.h>
 
 hardware_info_t hw_info = {
   .model    = SOFTRF_MODEL_SKYVIEW,
@@ -87,17 +100,101 @@ void Input_loop() {
   }
 }
 
+String listDir(fs::FS &fs, const char *dirname, uint8_t levels) {
+  Serial.println("Listing directory: " + String(dirname));
+
+  String dirContent = "Listing directory: " + String(dirname) + "\n";
+
+  fs::File root = fs.open(dirname);
+  if (!root) {
+    Serial.println("Failed to open directory");
+    return "Failed to open directory\n";
+  }
+  if (!root.isDirectory()) {
+    Serial.println("Not a directory");
+    return "Not a directory\n";
+  }
+
+  fs::File file = root.openNextFile();
+  while (file) {
+    if (file.isDirectory()) {
+      String dirName = "  DIR : " + String(file.name());
+      Serial.println(dirName);
+      dirContent += dirName;
+      if (levels) {
+        dirContent += listDir(fs, file.path(), levels - 1);
+      }
+    } else {
+      String fileInfo = "  FILE: " + String(file.name()) + "  SIZE: " + String(file.size());
+      Serial.println(fileInfo);
+      dirContent += fileInfo;
+    }
+    file = root.openNextFile();
+  }
+  return dirContent;
+}
+
+void MountSDCard()
+{
+  PRINTLN("Mounting SD card...");
+  if (!SD_MMC.setPins(SDMMC_CLK, SDMMC_CMD, SDMMC_DATA))
+  {
+    PRINTLN("[ERROR] SD_MMC setPins failed!");
+  }
+  else
+  {
+    if (!SD_MMC.begin("/sdcard", true)) 
+    {
+      PRINTLN("[ERROR] SD_MMC card mount failed!");
+    }
+    else
+    {
+      uint8_t cardType = SD_MMC.cardType();
+      if (cardType == CARD_NONE) 
+      {
+        PRINTLN("[ERROR] No SD_MMC card attached");
+      }
+      else
+      {
+        PRINT("SD_MMC Card Type: ");
+        switch(cardType)
+        {
+          case CARD_MMC:  PRINTLN("MMC"); break;
+          case CARD_SD:   PRINTLN("SDSC"); break;
+          case CARD_SDHC: PRINTLN("SDHC"); break;
+          default:        PRINTLN("UNKNOWN"); break;
+        }
+        uint64_t cardSize = SD_MMC.cardSize() / (1024 * 1024);
+        PRINTLN("SD_MMC Card Size: " + String(cardSize) + "MB");
+        listDir(SD_MMC, "/", 1);
+        PRINTLN("SD_MMC fileSystem initialization success");
+        String filename = "/logs/log_" + String(__TIME__) + ".txt";
+
+#if defined(DEBUG_MODE)
+        // Set file system to save every log automatically
+        LOG_ATTACH_FS_AUTO(SD_MMC, filename, FILE_WRITE);  // overwrite file
+        LOG_FILE_SET_LEVEL(DebugLogLevel::LVL_INFO);
+
+        // The default log_leval is DebugLogLevel::LVL_INFO
+        // The default file_leval is DebugLogLevel::LVL_ERROR
+        // 0: NONE, 1: ERROR, 2: WARN, 3: INFO, 4: DEBUG, 5: TRACE
+        PRINTLN_FILE("current file log level is", (int)LOG_FILE_GET_LEVEL());
+#endif
+      }
+    }
+  }
+}
 
 void setup()
 {
+  uint8_t mac[6];
+
   Serial.begin(SERIAL_OUT_BR); 
-  // wait for Serial to be ready
-  while (! Serial); 
-  delay(3000);
+  delay(3000); // allow to connect terminal
 
   Serial.println();
   hw_info.soc = SoC_setup(); // Has to be very first procedure in the execution order
-  
+
   Serial.println();
   Serial.print(F(SKYVIEW_IDENT));
   Serial.print(SoC->name);
@@ -110,39 +207,71 @@ void setup()
   Serial.print(F(" FLASH SIZE: "));
   Serial.print(ESP.getFlashChipSize() / 1024);
   Serial.println(F(" KB"));
-  if (!SPIFFS.begin(true)) {
-    Serial.println("SPIFFS Mount Failed");
-    return;
-  }
-  Serial.println("SPIFFS mounted successfully");
-  Serial.print("SPIFFS Total space: ");
-  Serial.println(SPIFFS.totalBytes());
-  Serial.print("SPIFFS Used space: ");
-  Serial.println(SPIFFS.usedBytes());
 
-  // List all files in SPIFFS
-  Serial.print("Dumping SPIFFS files:\n");
-  fs::File root = SPIFFS.open("/");
-  fs::File file = root.openNextFile(); 
-  while(file){
- 
-      Serial.print("FILE: ");
-      Serial.println(file.name()); 
-      file = root.openNextFile();
-  }
+   // Options: ESP_MAC_WIFI_STA, ESP_MAC_WIFI_SOFTAP, ESP_MAC_BT, ESP_MAC_ETH
+  esp_read_mac(mac, ESP_MAC_WIFI_STA);
+  Serial.printf("WiFi MAC Address: %02X:%02X:%02X:%02X:%02X:%02X\r\n",
+                mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  esp_read_mac(mac, ESP_MAC_BT);
+  Serial.printf("BLE MAC Address: %02X:%02X:%02X:%02X:%02X:%02X\r\n",
+                mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
-  BuddyManager::readBuddyList("/buddylist.txt");  // Read buddy list from SPIFFS
-  // Print buddy list to serial
-  BuddyManager::printBuddyList();
 
-  Serial.println(F("Copyright (C) 2019-2021 Linar Yusupov. All rights reserved."));
-  // Serial.flush();
-
+  // load settings
   EEPROM_setup();
-  if (settings == NULL || SoC == NULL || SoC->Bluetooth == NULL) {
-    Serial.println("Error: Null pointer detected!");
+  if (settings == NULL || SoC == NULL || SoC->Bluetooth == NULL) 
+  {
+    PRINTLN("Error: Null pointer detected!");
     return;
   }
+#if defined(USE_TFT)
+  TFT_setup();
+  hw_info.display = DISPLAY_TFT;
+#endif /* USE_TFT */
+  if (hw_info.display != DISPLAY_NONE) 
+  {
+    Serial.println(F(" done."));
+  }
+  else
+  {
+    Serial.println(F(" failed!"));
+  }
+
+
+  // required for Voice output
+  MountSDCard();
+
+  // BuddyList.txt
+  if (!SPIFFS.begin(true)) 
+  {
+    PRINTLN("SPIFFS Mount Failed");
+  }
+  else
+  {
+    PRINTLN("SPIFFS mounted successfully");
+    PRINT("SPIFFS Total space: ");
+    PRINTLN(SPIFFS.totalBytes());
+    PRINT("SPIFFS Used space: ");
+    PRINTLN(SPIFFS.usedBytes());
+
+    // List all files in SPIFFS
+    PRINTLN("Dumping SPIFFS files:");
+    fs::File root = SPIFFS.open("/");
+    fs::File file = root.openNextFile(); 
+    while(file)
+    {
+        PRINT("FILE: ");
+        PRINTLN(file.name()); 
+        file = root.openNextFile();
+    }
+    BuddyManager::readBuddyList("/buddylist.txt");  // Read buddy list from SPIFFS
+    // Print buddy list to serial
+    BuddyManager::printBuddyList();
+  }
+
+  PRINTLN(F("Copyright (C) 2019-2025 Linar Yusupov. All rights reserved."));
+  Serial.flush();
+
   //temporary settings
  /* settings->adapter       = ADAPTER_TTGO_T5S;
   settings->connection      = CON_BLUETOOTH_LE;
@@ -166,6 +295,14 @@ void setup()
   SoC->Button_setup();
 #endif /* BUTTONS */
 
+#if defined(WAVESHARE_AMOLED_1_75)
+  RTC_Setup();
+#endif
+#if defined(ES8311_AUDIO)
+  PRINTLN("Intializing I2S and ES8311 audio module... ");
+  SetupSound();
+#endif /* ES8311_AUDIO */
+
   switch (settings->protocol)
   {
   case PROTOCOL_GDL90:
@@ -179,33 +316,12 @@ void setup()
 
   /* If a Dongle is connected - try to wake it up */
   if (settings->connection == CON_SERIAL &&
-      settings->protocol   == PROTOCOL_NMEA) {
+      settings->protocol   == PROTOCOL_NMEA) 
+  {
     SerialInput.write("$PSRFC,?*47\r\n");
     SerialInput.flush();
   }
 
-#if defined(ES8311_AUDIO)
-  Serial.println();
-  Serial.println(F("Intializing I2S and ES8311 audio module... "));
-  Serial.flush();
-  SetupSound();
-  Serial.println(F(" done."));
-#endif /* ES8311_AUDIO */
-
-#if defined(USE_EPAPER)
-  Serial.println();
-  Serial.print(F("Intializing E-ink display module (may take up to 10 seconds)... "));
-  Serial.flush();
-  hw_info.display = EPD_setup(true);
-#elif defined(USE_TFT)
-  TFT_setup();
-  hw_info.display = DISPLAY_TFT;
-#endif /* USE_EPAPER */
-  if (hw_info.display != DISPLAY_NONE) {
-    Serial.println(F(" done."));
-  } else {
-    Serial.println(F(" failed!"));
-  }
 #if defined(CPU_float)
   esp_pm_config_esp32s3_t pm_config = {
     .max_freq_mhz = 240,
@@ -216,6 +332,7 @@ void setup()
 #endif /* CPU_float */
 
   WiFi_setup();
+
 #if defined(DB)
   SoC->DB_init();
 #endif
@@ -229,7 +346,7 @@ void setup()
 #if defined(AMOLED)
   Touch_setup();
 #endif
-
+  print_wakeup_reason();
   SoC->WDT_setup();
 }
 
@@ -269,10 +386,12 @@ void loop()
   SoC->Button_loop();
 #endif
   Battery_loop();
+  RTC_Loop();
 }
 
 void shutdown(const char *msg)
 {
+  PRINTLN("Shutdown '" + String(msg) + "'");
   SoC->WDT_fini();
   /* If a Dongle is connected - try to shut it down */
   if (settings->connection == CON_SERIAL &&

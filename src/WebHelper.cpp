@@ -31,8 +31,6 @@
 #include "esp_private/esp_clk.h"
 #include "esp_private/pm_impl.h"
 
-
-
 #define NOLOGO
 
 // static uint32_t prev_rx_pkt_cnt = 0;
@@ -400,9 +398,9 @@ void handleSettings() {
 <th align=left>Display adapter</th>\
 <td align=right>\
 <select name='adapter'>\
-<option %s value='%d'>T-Display AMOLED 1.75</option>\
+<option %s value='%d'>Waveshare Display AMOLED 1.75</option>\
 <!-- <option %s value='%d'>e-Paper TTGO T5 4.7</option> -->\
-<option %s value='%d'>e-Paper Waveshare ESP32</option>\
+<!-- option %s value='%d'>e-Paper Waveshare ESP32</option> -->\
 <!-- <option %s value='%d'>OLED</option> -->\
 </select>\
 </td>\

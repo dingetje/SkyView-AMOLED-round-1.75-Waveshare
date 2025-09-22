@@ -270,6 +270,11 @@ void WiFi_loop()
 #endif
 }
 
+bool WiFi_IsConnected()
+{
+  return WiFi_STA_connected;
+}
+
 void WiFi_fini()
 {
   if (settings->connection == CON_WIFI_UDP && UDP_Data_Port) {

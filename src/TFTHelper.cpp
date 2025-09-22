@@ -34,10 +34,9 @@ extern bool wifi_sta;
 extern bool TFTrefresh;
 
 
-
 #if defined(AMOLED)
 
-
+#define MAX_BRIGHTNESS 255
 
 // SPIClass SPI_2(HSPI);
 
@@ -197,7 +196,7 @@ void draw_first()
   sprite.drawString("powered by SoftRF",233,293,4);
   sprite.drawString(SKYVIEW_FIRMWARE_VERSION,180,400,2);
   lcd_PushColors(6, 0, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer());
-  for (int i = 0; i <= 255; i++)
+  for (int i = 0; i <= MAX_BRIGHTNESS; i++)
   {
     lcd_brightness(i);
     delay(3);
@@ -227,7 +226,7 @@ void TFT_setup(void) {
       Serial.println("Failed to create SPI mutex!");
   }
   lcd_setRotation(0); //adjust #define display_column_offset for different rotations
-  lcd_brightness(0); // 0-255    
+  lcd_brightness(0); // 0-255
 
   Serial.printf("Free heap: %d bytes\n", esp_get_free_heap_size());
   Serial.printf("Largest block: %d bytes\n", heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
@@ -309,7 +308,7 @@ void TFT_Mode(boolean next)
               bearingSprite.setSwapBytes(true);
             } 
           }
-          lcd_brightness(255);
+          lcd_brightness(MAX_BRIGHTNESS);
           TFTrefresh = true;
           TFTTimeMarker = millis() + 1001;
           xSemaphoreGive(spiMutex);
@@ -338,7 +337,7 @@ void TFT_Mode(boolean next)
               compas2Sprite.setColorDepth(16);
               compas2Sprite.setSwapBytes(true);
             }
-            lcd_brightness(255);
+            lcd_brightness(MAX_BRIGHTNESS);
             TFTTimeMarker = millis() + 1001;
             TFTrefresh = true;
             xSemaphoreGive(spiMutex);
@@ -370,7 +369,7 @@ void TFT_Mode(boolean next)
           // sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
           // sprite.setColorDepth(16);
           // sprite.setSwapBytes(true);
-          lcd_brightness(255);
+          lcd_brightness(MAX_BRIGHTNESS);
           TFTTimeMarker = millis() + 1001;
           // EPD_display_frontpage = false;
           xSemaphoreGive(spiMutex);
@@ -390,7 +389,7 @@ void TFT_Mode(boolean next)
           // bearingSprite.createSprite(78, 54);
           // bearingSprite.setColorDepth(16);
           // bearingSprite.setSwapBytes(true);
-          lcd_brightness(255);
+          lcd_brightness(MAX_BRIGHTNESS);
           TFTTimeMarker = millis() + 1001;
           // EPD_display_frontpage = false;
           xSemaphoreGive(spiMutex);
@@ -523,7 +522,7 @@ void settings_page() {
     sprite.pushImage(button_x, 350, 48, 47, power_button_small);
     
     lcd_PushColors(display_column_offset, 0, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer());
-    lcd_brightness(255);
+    lcd_brightness(MAX_BRIGHTNESS);
     xSemaphoreGive(spiMutex);
 } else {
     Serial.println("Failed to acquire SPI semaphore!");

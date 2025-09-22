@@ -161,7 +161,7 @@ void Traffic_Update(traffic_t *fop)
     fop->RelativeBearing = bearing - ThisAircraft.Track;
   }
 
-  Serial.printf("Traffic_Update: ID=%X, fop->alarm_level = %d, fop->alert_level = %d\r\n",fop->ID, fop->alarm_level, fop->alert_level);
+//  Serial.printf("Traffic_Update: ID=%X, fop->alarm_level = %d, fop->alert_level = %d\r\n",fop->ID, fop->alarm_level, fop->alert_level);
   if (fop->alarm_level < fop->alert_level)     /* if gone farther then...   */
       fop->alert_level = fop->alarm_level;     /* ...alert if comes nearer again */
 }
@@ -227,7 +227,7 @@ static void Traffic_Voice_One(traffic_t *fop)
 
     /* for alarm messages use very short wording */
     if (max_alarm_level > ALARM_LEVEL_NONE) {
-        Serial.printf("Alarm: max_alarm_level = %d\r\n", max_alarm_level);
+//        Serial.printf("Alarm: max_alarm_level = %d\r\n", max_alarm_level);
         voc_alt = (int) fop->RelativeVertical;
         snprintf(message, sizeof(message), "%s %s %s",
              (fop->alarm_level < ALARM_LEVEL_URGENT ? WARNING_WORD1 : WARNING_WORD3),
@@ -301,8 +301,6 @@ static void Traffic_Voice()
 {
   int i=0;
   int ntraffic=0;
-//  int bearing;
-//  char message[80];
   int sound_alarm_ndx = -1;
   int sound_advisory_ndx = -1;
   max_alarm_level = ALARM_LEVEL_NONE;
@@ -346,30 +344,32 @@ static void Traffic_Voice()
   // no traffic
   if (ntraffic == 0)
   {
-    Serial.println("ntraffic = 0");
     return;
   }
-  Serial.printf("sound_alarm_level = %d, max_alarm_level = %d\r\n",sound_alarm_level, max_alarm_level);
+
+//  Serial.printf("sound_alarm_level = %d, max_alarm_level = %d, sound_advisory_ndx = %d, sound_alarm_ndx = %d\r\n",
+//      sound_alarm_level, max_alarm_level, sound_advisory_ndx, sound_alarm_ndx);
 
   if (sound_alarm_level > ALARM_LEVEL_NONE) {
       traffic_t *fop = &Container[sound_alarm_ndx];
       Traffic_Voice_One(fop);
+      /* no more alerts for this aircraft at this alarm level */
       fop->alert_level = sound_alarm_level;
-         /* no more alerts for this aircraft at this alarm level */
       fop->timestamp = now();
   }
 
-//  if (max_alarm_level > ALARM_LEVEL_NONE)    // do not create distractions
-//  {
-//    return; // huh?
-//  }
+  // in alarm condition, do not create distractions with non-alarm traffic advisories!
+  if (max_alarm_level > ALARM_LEVEL_NONE)
+  {
+    return; 
+  }
 
   /* do issue voice advisories for non-alarm traffic, if no alarms */
   if (sound_advisory_ndx >= 0 && settings->filter < TRAFFIC_FILTER_ALARM) {
       traffic_t *fop = &Container[sound_advisory_ndx];
       Traffic_Voice_One(fop);
-      fop->alert |= TRAFFIC_ALERT_VOICE;
       /* no more advisories for this aircraft until it expires or alarms */
+      fop->alert |= TRAFFIC_ALERT_VOICE;
       fop->timestamp = now();
   }
 }
@@ -398,7 +398,7 @@ void Traffic_loop()
   }
 
   if (isTimeToUpdateTraffic()) {
-    Serial.println("Updating Traffic...");
+//    Serial.println("Updating Traffic...");
     for (int i=0; i < MAX_TRACKING_OBJECTS; i++) {
       traffic_t *fop = &Container[i];
       // not an empty slot?

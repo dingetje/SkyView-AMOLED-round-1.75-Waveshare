@@ -16,5 +16,5 @@ void add_file(char* filePath);
 
 extern void SoundLoop();
 extern bool SetupSound();
-
+extern bool IsSoundInitialized();
 #endif

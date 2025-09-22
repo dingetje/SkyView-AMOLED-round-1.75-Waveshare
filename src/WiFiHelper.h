@@ -38,6 +38,7 @@ void    WiFi_loop(void);
 size_t  WiFi_Receive_UDP(uint8_t *, size_t);
 void    WiFi_Transmit_UDP(char *, size_t);
 void    WiFi_fini(void);
+extern bool WiFi_IsConnected();
 
 extern String host_name;
 #if defined(ARDUINO) && !defined(ENERGIA_ARCH_CC13XX) && !defined(RASPBERRY_PI)

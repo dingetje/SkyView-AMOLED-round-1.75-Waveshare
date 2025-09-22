@@ -71,8 +71,6 @@ TFT_eSprite altSprite = TFT_eSprite(&tft);
 
 // extern buddy_info_t buddies[];
 
-
-
 static navbox_t navbox1;
 static navbox_t navbox2;
 static navbox_t navbox3;
@@ -82,7 +80,7 @@ static int EPD_zoom = ZOOM_MEDIUM;
 
 bool blink = false;
 
-// #define ICON_AIRPLANE
+#define ICON_AIRPLANE
 
 #if defined(ICON_AIRPLANE)
 //#define ICON_AIRPLANE_POINTS 6
@@ -92,14 +90,14 @@ const float epd_Airplane[ICON_AIRPLANE_POINTS][2] = {{0,-4},{0,10},{-8,0},{9,0},
 #else  //ICON_AIRPLANE
 #define ICON_ARROW_POINTS 4
 const float epd_Arrow[ICON_ARROW_POINTS][2] = {{-6,5},{0,-6},{6,5},{0,2}};
-
 const float own_Points[ICON_ARROW_POINTS][2] = {{-6,5},{0,-6},{6,5},{0,2}};
+const float pg_Points[ICON_ARROW_POINTS][2] = {{-36, 42}, {0, -48}, {36, 42}, {0, 12}};
 #endif //ICON_AIRPLANE
 #define ICON_TARGETS_POINTS 5
 #define HGLIDER_POINTS 6
 const float epd_Target[ICON_TARGETS_POINTS][2] = {{4,4},{0,-6},{-4,4},{-5,-3},{0,2}};
 // const float pg_Points[ICON_ARROW_POINTS][2] = {{-12,14},{0,-16},{12,14},{0,4}};
-const float pg_Points[ICON_ARROW_POINTS][2] = {{-36, 42}, {0, -48}, {36, 42}, {0, 12}};
+
 const float hg_points[HGLIDER_POINTS][2] = {{-42, 44}, {0, -50}, {42, 44}, {0, 18}, {-21, 31}, {21, 31}};
 
 #define PG_TARGETS_POINTS 3 // triangle
@@ -124,6 +122,7 @@ void TFT_2D_Rotate(float &tX, float &tY, float tCos, float tSin)
     tY = tX * tSin + tY *  tCos;
     tX = tTemp;
 }
+
 #if !defined(ROUND_AMOLED)
 static void EPD_Draw_NavBoxes()
 {
@@ -402,7 +401,7 @@ static void TFT_Draw_Radar()
         sprite.drawString("S", x, y, 4);
 
             // draw own aircaft
-        if (!ownAcrft.created()) {
+/*        if (!ownAcrft.created()) {
             ownAcrft.createSprite(36, 36);
             ownAcrft.setColorDepth(16);
             ownAcrft.setSwapBytes(true);
@@ -434,7 +433,7 @@ static void TFT_Draw_Radar()
         TFT_WHITE, TFT_DARKGREY);
         sprite.setPivot(233, 233);
         ownAcrft.pushRotated(&sprite, ThisAircraft.Track, TFT_BLACK);
-        
+*/        
         break;
     case DIRECTION_TRACK_UP:
         // draw aircraft heading box
@@ -859,7 +858,7 @@ static void TFT_Draw_Radar()
     case DIRECTION_NORTH_UP:
         // rotate relative to ThisAircraft.Track
         for (int i=0; i < ICON_AIRPLANE_POINTS; i++) {
-        EPD_2D_Rotate(epd_Points[i][0], epd_Points[i][1], trCos, trSin);
+          TFT_2D_Rotate(epd_Points[i][0], epd_Points[i][1], trCos, trSin);
         }
         break;
     case DIRECTION_TRACK_UP:
@@ -872,32 +871,32 @@ static void TFT_Draw_Radar()
                 radar_center_y + (int) epd_Points[0][1],
                 radar_center_x + (int) epd_Points[1][0],
                 radar_center_y + (int) epd_Points[1][1],
-                WHITE);
+                TFT_WHITE);
     sprite.drawLine(radar_center_x + (int) epd_Points[2][0],
                 radar_center_y + (int) epd_Points[2][1],
                 radar_center_x + (int) epd_Points[3][0],
                 radar_center_y + (int) epd_Points[3][1],
-                WHITE);
+                TFT_WHITE);
     sprite.drawLine(radar_center_x + (int) epd_Points[4][0],
                 radar_center_y + (int) epd_Points[4][1],
                 radar_center_x + (int) epd_Points[5][0],
                 radar_center_y + (int) epd_Points[5][1],
-                WHITE);
+                TFT_WHITE);
     sprite.drawLine(radar_center_x + (int) epd_Points[6][0],
                 radar_center_y + (int) epd_Points[6][1],
                 radar_center_x + (int) epd_Points[7][0],
                 radar_center_y + (int) epd_Points[7][1],
-                WHITE);
+                TFT_WHITE);
     sprite.drawLine(radar_center_x + (int) epd_Points[8][0],
                 radar_center_y + (int) epd_Points[8][1],
                 radar_center_x + (int) epd_Points[9][0],
                 radar_center_y + (int) epd_Points[9][1],
-                WHITE);
+                TFT_WHITE);
     sprite.drawLine(radar_center_x + (int) epd_Points[10][0],
                 radar_center_y + (int) epd_Points[10][1],
                 radar_center_x + (int) epd_Points[11][0],
                 radar_center_y + (int) epd_Points[11][1],
-                WHITE);
+                TFT_WHITE);
 #else  //ICON_AIRPLANE
     /* draw arrow tip */
     // for (int i=0; i < ICON_ARROW_POINTS; i++) {

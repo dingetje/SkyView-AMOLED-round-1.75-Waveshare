@@ -27,6 +27,7 @@
 #include "WiFiHelper.h"
 
 #include "SkyView.h"
+#include "RTCHelper.h"
 
 TinyGPSPlus nmea;
 
@@ -59,6 +60,8 @@ static unsigned long NMEA_TimeMarker = 0;
 // static unsigned long lastGGA = 0;
 boolean TFTrefresh = false;
 
+static bool RTCTimeSet = false;
+
 static void NMEA_Parse_Character(char c)
 {
     static uint32_t old_id;
@@ -71,6 +74,19 @@ static void NMEA_Parse_Character(char c)
     }
 //      Serial.println("Valid NMEA sentence");
 
+      // is GPS date and time updated?
+      if (!RTCTimeSet && nmea.date.isUpdated() && nmea.time.isUpdated())
+      {
+        RTCTimeSet = true;
+        Serial.println("Setting RTC from GPS!");
+        RTC_SetDateTime(
+          (int)nmea.date.year(),
+          (int)nmea.date.month(),
+          (int)nmea.date.day(), 
+          (int)nmea.time.hour(), 
+          (int)nmea.time.minute(), 
+          (int)nmea.time.second());
+      }
       if (nmea.location.isUpdated()) {
         ThisAircraft.latitude  = nmea.location.lat();
         ThisAircraft.longitude = nmea.location.lng();
@@ -457,8 +473,10 @@ void NMEA_loop()
         char c = UDPpacketBuffer[i];
         if (settings->bridge == BRIDGE_SERIAL)
             NMEA_bridge_buffer(c);   // only output complete sentences
+#if !defined(DISABLE_NMEAOUT)
         else
             Serial.print(c);         // as received, unfiltered
+#endif
         NMEA_Parse_Character(c);
       }
       NMEA_TimeMarker = millis();
@@ -479,57 +497,6 @@ void NMEA_loop()
         NMEA_TimeMarker = millis();
       }
     }
-    break;
-  case CON_FILE:
-      {
-        static bool bOneTime = true;
-        static bool bFileOpen = false;
-        static fs::File fs;
-        uint8_t cardType = SD_MMC.cardType();
-        if (cardType == CARD_NONE && bOneTime) {
-          bOneTime = false;
-          Serial.println("NMEA is file based, but no SD_MMC card attached!");
-          return;
-        }
-        if (!SD_MMC.exists("/NMEA/debug.txt"))
-        {
-          bOneTime = false;
-          Serial.println("NMEA is file based, but file /NMEA/debug.txt not found!");
-          return;
-        }
-        if (!bFileOpen)
-        {
-          fs = SD_MMC.open("/NMEA/debug.txt");
-          if (fs.available())
-          {
-            bFileOpen = true;
-          }
-          else
-          {
-            bOneTime = false;
-            Serial.println("NMEA is file based, but failed to open /NMEA/debug.txt for reading!");
-            return;
-          }
-        }
-        else
-        {
-          char c;
-          if (fs.readBytes(&c,1))
-          {
-            NMEA_bridge_buffer(c);
-            NMEA_Parse_Character(c);
-            NMEA_TimeMarker = millis();
-#if !defined(DISABLE_NMEAOUT)
-            Serial.print(c);
-#endif
-          }
-          else
-          {
-            Serial.println("reached end of NMEA file, resetting...");
-            fs.seek(0);
-          }
-        }
-      }
     break;
   case CON_NONE:
   default:

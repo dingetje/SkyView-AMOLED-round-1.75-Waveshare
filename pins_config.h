@@ -67,3 +67,7 @@ const int SDMMC_CS = 41;
 #define DOPIN                8
 #define DIPIN               10
 #define PAPIN               46
+
+// IO Expander
+#define PWR_BUTTON  4   // PWR button via EXI04?
+#define AXP_IRQ     5   // AXP2101 interrupt is tied to EXIO5

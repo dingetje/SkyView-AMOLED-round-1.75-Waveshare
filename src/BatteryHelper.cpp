@@ -27,6 +27,7 @@
 #include "WebHelper.h"
 #include "Arduino_DriveBus_Library.h"
 #include "Platform_ESP32.h"
+#include <DebugLog.h>
 
 // for Waveshare AMOLED 1.75 inch round display
 #if defined(XPOWERS_CHIP_AXP2101)
@@ -36,15 +37,15 @@
 #define _EXAMPLE_CHIP_CLASS(name, ...) ESP_IOExpander_##name(__VA_ARGS__)
 #define EXAMPLE_CHIP_CLASS(name, ...) _EXAMPLE_CHIP_CLASS(name, ##__VA_ARGS__)
 
+uint32_t printTime = 0;
+
 XPowersPMU power;
 ESP_IOExpander *expander = NULL;
 
-bool pmu_flag = false;
-bool adc_switch = false;
-
-void setFlag(void)
+bool pmu_irq = false;
+void setPmuIrqFlag(void)
 {
-    pmu_flag = true;
+    pmu_irq = true;
 }
 
 #endif
@@ -67,14 +68,14 @@ void SY6970_setup() {
 
   SY6970 = std::unique_ptr<Arduino_SY6970>(new Arduino_SY6970(IIC_Bus, SY6970_DEVICE_ADDRESS, DRIVEBUS_DEFAULT_VALUE, DRIVEBUS_DEFAULT_VALUE));
   if (!SY6970->begin()) {
-    Serial.println("SY6970 init failed");
+    PRINTLN("SY6970 init failed");
     while (1);
   }
-  Serial.println("SY6970 init success");
-  Serial.println("SY6970 setup Chrging parameters");
+  PRINTLN("SY6970 init success");
+  PRINTLN("SY6970 setup Chrging parameters");
   SY6970->IIC_Write_Device_State(SY6970->Arduino_IIC_Power::Device::POWER_DEVICE_ADC_MEASURE, SY6970->Arduino_IIC_Power::Device_State::POWER_DEVICE_ON);
   SY6970->IIC_Write_Device_Value(SY6970->Arduino_IIC_Power::Device_Value::POWER_DEVICE_WATCHDOG_TIMER, 0);
-  Serial.println("SY6970 Device ON and set Watchdog Timer to 0");
+  PRINTLN("SY6970 Device ON and set Watchdog Timer to 0");
    // Set fast charging current limit
   SY6970->IIC_Write_Device_Value(SY6970->Arduino_IIC_Power::Device_Value::POWER_DEVICE_FAST_CHARGING_CURRENT_LIMIT, 200);
   // Set precharge charging current limit
@@ -124,6 +125,7 @@ static void adcOn() {
   power.enableSystemVoltageMeasure();
 }
 
+/*
 static void adcOff() {
   power.disableTemperatureMeasure();
   // Enable internal ADC detection
@@ -132,6 +134,43 @@ static void adcOff() {
   power.disableBattVoltageMeasure();
   power.disableSystemVoltageMeasure();
 }
+*/
+
+void prepare_AXP2101_deep_sleep()
+{
+  LOG_DEBUG("Prepare AXP2101 PMU for deep sleep wake up...");
+  power.clearIrqStatus();
+  // Enable the required interrupt function
+  power.enableIRQ(
+     XPOWERS_AXP2101_PKEY_SHORT_IRQ  | XPOWERS_AXP2101_PKEY_LONG_IRQ  //POWER KEY
+  );
+  // Enable PMU sleep
+  power.enableSleep();
+
+  // Reserve the MCU chip power supply, AXP2101 usually uses DC as ESP power supply
+  power.enableDC1();
+
+  // Turn off the power output of other channels
+  power.disableDC2();
+  power.disableDC3();
+  power.disableDC4();
+  power.disableDC5();
+  power.disableALDO1();
+  power.disableALDO2();
+  power.disableALDO3();
+  power.disableALDO4();
+  power.disableBLDO1();
+  power.disableBLDO2();
+  power.disableCPUSLDO();
+  power.disableDLDO1();
+  power.disableDLDO2();
+
+  // Clear PMU Interrupt Status Register
+  power.clearIrqStatus();
+
+  // Send IRQ wakeup command
+//  power.enableWakeup();
+}
 
 #if defined(I2C_SCAN)
 static void I2C_Scan()
@@ -139,8 +178,8 @@ static void I2C_Scan()
   byte error, address;
   int nDevices;
 
-  Serial.println("==============================================================");  
-  Serial.println("Scanning I2C bus...");
+  PRINTLN("==============================================================");  
+  PRINTLN("Scanning I2C bus...");
 
   nDevices = 0;
   for(address = 1; address < 127; address++ )
@@ -153,72 +192,77 @@ static void I2C_Scan()
 
     if (error == 0)
     {
-      Serial.print("I2C device found at address 0x");
+      PRINT("I2C device found at address 0x");
       if (address<16)
-        Serial.print("0");
-      Serial.print(address,HEX);
-      Serial.println("  !");
+        PRINT("0");
+      PRINT(address,HEX);
+      PRINTLN("  !");
 
       nDevices++;
     }
     else if (error==4)
     {
-      Serial.print("Unknown error at address 0x");
+      PRINT("Unknown error at address 0x");
       if (address<16)
-        Serial.print("0");
-      Serial.println(address,HEX);
+        PRINT("0");
+      PRINTLN(address,HEX);
     }
   }
   if (nDevices == 0)
-    Serial.println("No I2C devices found!");
+    PRINTLN("No I2C devices found!");
   else
-    Serial.println("done!");  
+    PRINTLN("done!");  
 
-  Serial.println("==============================================================");  
+  PRINTLN("==============================================================");  
 }
 #endif
 
+void AXP2101_ChkIRQ()
+{
+  int chk_pmu_irq = expander->digitalRead(AXP_IRQ); // HIGH or LOW?
+  if (chk_pmu_irq == HIGH) 
+  {
+    // handled in loop
+    setPmuIrqFlag();
+  }
+}
+
 void AXP2101_setup()
 {
+  // already been here?
+  if (expander != NULL)
+  {
+    return;
+  }
+
   Wire.begin(IIC_SDA, IIC_SCL);
 
 #if defined(I2C_SCAN)
   I2C_Scan();
 #endif
 
-  Serial.println("Create ESP_IOExpander object...");
+  LOG_DEBUG("Create ESP_IOExpander object...");
   expander = new EXAMPLE_CHIP_CLASS(TCA95xx_8bit,
                                     (i2c_port_t)0, 
                                     ESP_IO_EXPANDER_I2C_TCA9554_ADDRESS_000,
                                     IIC_SCL, IIC_SDA);
 
-  bool result = power.begin(Wire, AXP2101_SLAVE_ADDRESS, IIC_SDA, IIC_SCL);
+  expander->begin();
+  expander->pinMode(AXP_IRQ, INPUT);
+  expander->pinMode(PWR_BUTTON, INPUT);
+  expander->printStatus();
 
-  if (result == false) {
-    Serial.println("AXP2101 PMU is not online...");
+  bool result = power.begin(Wire, AXP2101_SLAVE_ADDRESS, IIC_SDA, IIC_SCL);
+  if (result == false) 
+  {
+    PRINTLN("AXP2101 PMU is not online...");
     return;
   }
 
-  Serial.println("Init ESP_IOExpander object...");
-  expander->init();
-  Serial.println("Start ESP_IOExpander object...");
-  expander->begin();
-  Serial.println("Set ESP_IOExpander pin config...");
-  expander->pinMode(5, INPUT);
-  expander->pinMode(4, INPUT);
-  
-  Serial.println("Read ESP_IOExpander pin 5...");
-  int pmu_irq = expander->digitalRead(5);
-  Serial.println("ESP_IOExpander pin 5 = " + String(pmu_irq));
-  if (pmu_irq == 1) {
-    pmu_flag = true;
-  } else {
-    pmu_flag = false;
-  }
-
   power.disableIRQ(XPOWERS_AXP2101_ALL_IRQ);
-  power.setChargeTargetVoltage(3);
 
+  // Clear all interrupt flags
+  power.clearIrqStatus();
   // Enable the required interrupt function
   power.enableIRQ(
       XPOWERS_AXP2101_BAT_INSERT_IRQ    | XPOWERS_AXP2101_BAT_REMOVE_IRQ      |   //BATTERY
@@ -226,8 +270,6 @@ void AXP2101_setup()
       XPOWERS_AXP2101_PKEY_SHORT_IRQ    | XPOWERS_AXP2101_PKEY_LONG_IRQ       |   //POWER KEY
       XPOWERS_AXP2101_BAT_CHG_DONE_IRQ  | XPOWERS_AXP2101_BAT_CHG_START_IRQ       //CHARGE
   );
-  // Clear all interrupt flags
-  power.clearIrqStatus();
 
   // Set the minimum common working voltage of the PMU VBUS input,
   // below this value will turn off the power
@@ -246,7 +288,55 @@ void AXP2101_setup()
   // Set charge cut-off voltage
   power.setChargeTargetVoltage(XPOWERS_AXP2101_CHG_VOL_4V1);
 
+  LOG_DEBUG("Read ESP_IOExpander IRQ pin of AXP2101...");
+  AXP2101_ChkIRQ();
+
+  // power OLED
+  power.setBLDO1Voltage(3300);
+  power.enableALDO1();
+  LOG_DEBUG("AXP2101 Power chip initialized");
+
   adcOn();
+}
+
+void printPMU()
+{
+    PRINTLN("---------------------------------------------------------------------------------------------------------");
+    PRINTLN("Satus1  Satus2  CHARG   DISC   STBY    VBUSIN    VGOOD    VBAT   VBUS   VSYS   Percentage    CHG_STATUS");
+    PRINTLN("(Bin)   (Bin)   (bool)  (bool) (bool)  (bool)    (bool)   (mV)   (mV)   (mV)      (%)           (str)  ");
+    PRINTLN("---------------------------------------------------------------------------------------------------------");
+    uint16_t statusVal =  power.status();
+    PRINT("0b"); PRINT(statusVal >> 8, BIN); PRINT("\t");
+    PRINT("0b"); PRINT(statusVal & 0xFF, BIN); PRINT("\t");
+    PRINT(power.isCharging() ? "YES" : "NO "); PRINT("\t");
+    PRINT(power.isDischarge() ? "YES" : "NO "); PRINT("\t");
+    PRINT(power.isStandby() ? "YES" : "NO "); PRINT("\t");
+    PRINT(power.isVbusIn() ? "YES" : "NO "); PRINT("\t");
+    PRINT(power.isVbusGood() ? "YES" : "NO "); PRINT("\t");
+    PRINT(power.getBattVoltage());     PRINT("\t");
+    PRINT(power.getVbusVoltage());     PRINT("\t");
+    PRINT(power.getSystemVoltage());   PRINT("\t");
+
+    // The battery percentage may be inaccurate at first use, the PMU will automatically
+    // learn the battery curve and will automatically calibrate the battery percentage
+    // after a charge and discharge cycle
+    PRINT(power.getBatteryPercent()); PRINT("\t");
+
+    uint8_t charge_status = power.getChargerStatus();
+    if (charge_status == XPOWERS_AXP2101_CHG_TRI_STATE) {
+        PRINTLN("tri_charge");
+    } else if (charge_status == XPOWERS_AXP2101_CHG_PRE_STATE) {
+        PRINTLN("pre_charge");
+    } else if (charge_status == XPOWERS_AXP2101_CHG_CC_STATE) {
+        PRINTLN("constant charge(CC)");
+    } else if (charge_status == XPOWERS_AXP2101_CHG_CV_STATE) {
+        PRINTLN("constant voltage(CV)");
+    } else if (charge_status == XPOWERS_AXP2101_CHG_DONE_STATE) {
+        PRINTLN("charge done");
+    } else if (charge_status == XPOWERS_AXP2101_CHG_STOP_STATE) {
+        PRINTLN("not charge");
+    }
+    PRINTLN();
 }
 
 float read_AXP2101_voltage()
@@ -274,7 +364,9 @@ uint8_t read_AXP2101_charging_status()
   }
   return -1; // Unknown
 }
-int read_AXP2101_charge_current() {
+
+int read_AXP2101_charge_current() 
+{
   return power.getChargerConstantCurr();
 }
 #endif
@@ -305,6 +397,7 @@ float Battery_cutoff()
 {
   return BATTERY_CUTOFF_LIPO;
 }
+
 void battery_fini() {
   voltage_end = SoC->Battery_voltage();
   end_time_ms = millis();
@@ -313,6 +406,7 @@ void battery_fini() {
 
   float voltage_drop = voltage_start - voltage_end;
   // Simplified estimate: assume linear discharge, estimate mAh used
+  // TBD: determine fudge factor for Waveshare board
   float estimated_mAh = (voltage_drop / 0.001) * 0.0015f; // tuning factor as needed
   writeBatteryLog(voltage_start, voltage_end, durationSeconds, estimated_mAh);
 
@@ -322,56 +416,72 @@ void Battery_loop()
 {
 #if defined(XPOWERS_CHIP_AXP2101)
   static int pwr_button_last = 0;
+
+  if (millis() > printTime) 
+  {
+      // every ~30 sec.
+      printTime = millis() + 30000;
+      printPMU();
+  }
+
   // PWR button is tied to IO Expander pin 4
-  int pwr_button = expander->digitalRead(4);
+  int pwr_button = expander->digitalRead(PWR_BUTTON);
   if (pwr_button != pwr_button_last) {
-      Serial.println("Power Button state changed: " + String(pwr_button));
+      LOG_DEBUG("PWR button state changed: " + String(pwr_button));
+      // TODO: button press not tied to anything yet
       pwr_button_last = pwr_button;
   }
-  // Waveshare has tied the PMU IRQ to an IO Expander pin...
-  int pmu_irq = expander->digitalRead(5);
-  pmu_flag = (pmu_irq != 0);
-  if (pmu_flag) {
-      pmu_flag = false;
-      // Get PMU Interrupt Status Register
-      power.getIrqStatus();
-      // Check if the power button was pressed
-      if (power.isPekeyShortPressIrq()) {
-        Serial.println("Power Button Short Press detected");
-      }
-      else if (power.isPekeyLongPressIrq()) {
-        Serial.println("Power Button Long Press detected");
-        ESP32_TFT_fini("Power Button Long Press");
-        shutdown("Power Button Long Press");
-      }
-      // Clear PMU Interrupt Status Register
-      power.clearIrqStatus();
+
+  // Waveshare has tied the PMU IRQ to an IO Expander pin too
+  // which means we need to poll the IO Expander to find out if
+  // Power chip has raised an interrupt...
+  AXP2101_ChkIRQ();
+
+  if (pmu_irq) 
+  {
+    pmu_irq = false;
+    char buf[8];
+    // Get PMU Interrupt Status Register
+    uint32_t status = power.getIrqStatus();
+    snprintf(buf,sizeof(buf), "0x%04X",status);
+    LOG_DEBUG("AXP2101 IRQ status reg = " + String(buf));
+    if (power.isPekeyLongPressIrq()) 
+    {
+      LOG_DEBUG("PWR button long press!");
+    }
+    power.clearIrqStatus();
   }
 #endif
-  // Read battery voltage and charging status every x seconds
-  if (isTimeToBattery()) {
+
+   // Read battery voltage and charging status every 30 seconds
+  if (isTimeToBattery()) 
+  {
 
   #if defined(SY6970)
     if (!SY6970) {
-      Serial.println("Error: SY6970 not initialized!");
+      PRINTLN("Error: SY6970 not initialized!");
       return;
   }
   #endif
 
-  float voltage = SoC->Battery_voltage();
-  Serial.println("Battery_loop: Battery voltage: " + String(voltage) + " V");
   #if defined(SY6970)
     int charging_status = read_SY6970_charging_status();
   #elif defined(XPOWERS_CHIP_AXP2101)
     int charging_status = read_AXP2101_charging_status();
+    adcOn();
   #endif
+    float voltage = SoC->Battery_voltage();
+    PRINTLN("Battery_loop: Battery voltage: " + String(voltage) + " V");
+ 
     if ( hw_info.model    == SOFTRF_MODEL_SKYVIEW &&
         (hw_info.revision == HW_REV_H741_01)) {
 
       if (voltage > 2.0 && voltage < Battery_cutoff()) {
         if (Battery_cutoff_count > 3) {
-          ESP32_TFT_fini("LOW BATTERY");
-          shutdown("LOW BATTERY");
+          const char* lowBat = "LOW BATTERY";
+          LOG_WARN(lowBat);
+          ESP32_TFT_fini(lowBat);
+          shutdown(lowBat);
         } else {
           Battery_cutoff_count++;
         }
@@ -379,7 +489,6 @@ void Battery_loop()
         Battery_cutoff_count = 0;
       }
     }
-
     Battery_voltage_cache = voltage;
     charging_status_cache = charging_status;
     Battery_TimeMarker = millis();

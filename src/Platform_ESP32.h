@@ -116,6 +116,7 @@ void ESP32_TFT_fini(const char *msg);
 
 extern std::shared_ptr<Arduino_IIC_DriveBus> IIC_Bus;
 
+extern void print_wakeup_reason();
 extern bool SetupSound();
 #endif /* PLATFORM_ESP32_H */
 
