@@ -65,7 +65,7 @@ A specialised page for orientation and navigation.
 Key added feature is the **Settings Page** which allows to change settings "on the fly". Such as Radar View Orientation- North Up or Track Up. Traffic Filtering.
 Powering Off the device (Sleep mode).
 
-<img src="https://github.com/user-attachments/assets/874b9fbc-2495-44c0-a77c-07b0165dae16" alt="Settings Page" width="300px">
+<img width="405" height="410" alt="image" src="https://github.com/user-attachments/assets/d78a2057-068a-4a9d-97e6-22c7c6ca96b9" />
 
 
 ---
