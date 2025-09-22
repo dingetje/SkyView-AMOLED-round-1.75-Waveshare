@@ -30,6 +30,7 @@
 #include <ArduinoJson.h>  
 #include "esp_private/esp_clk.h"
 #include "esp_private/pm_impl.h"
+#include <DebugLog.h>
 
 #define NOLOGO
 
@@ -44,19 +45,20 @@ static const char Logo[] PROGMEM = {
 
 #include "jquery_min_js.h"
 
-int get_cpu_frequency_mhz() {
+int get_cpu_frequency_mhz() 
+{
   rtc_cpu_freq_config_t conf;
   rtc_clk_cpu_freq_get_config(&conf);
   return conf.freq_mhz;
 }
 
-
 byte getVal(char c)
 {
-   if(c >= '0' && c <= '9')
-     return (byte)(c - '0');
-   else
-     return (byte)(toupper(c)-'A'+10);
+  if(c >= '0' && c <= '9')
+  {
+    return (byte)(c - '0');
+  }
+  return (byte)(toupper(c)-'A'+10);
 }
 
 #if DEBUG
@@ -115,11 +117,13 @@ Copyright (C) 2019-2022 &nbsp;&nbsp;&nbsp; Linar Yusupov\
 #include <FS.h>
 #include <SPIFFS.h>
 
-void writeBatteryLog(float startVoltage, float endVoltage, unsigned long durationSeconds, float estimated_mAh) {
-  Serial.println("writeBatteryLog: logging battery usage...");
+void writeBatteryLog(float startVoltage, float endVoltage, unsigned long durationSeconds, float estimated_mAh) 
+{
+  PRINTLN("writeBatteryLog: logging battery usage...");
   File file = SPIFFS.open("/battery_log.txt", FILE_APPEND);
-  if (!file) {
-    Serial.println("Failed to open battery_log.txt for appending");
+  if (!file) 
+  {
+    PRINTLN("Failed to open battery_log.txt for appending");
     return;
   }
 
@@ -128,12 +132,14 @@ void writeBatteryLog(float startVoltage, float endVoltage, unsigned long duratio
   file.close();
 }
 
-String getLastBatteryLogEntry() {
+String getLastBatteryLogEntry() 
+{
   File file = SPIFFS.open("/battery_log.txt", FILE_READ);
   if (!file) return "No battery log found.";
 
   String lastLine = "";
-  while (file.available()) {
+  while (file.available()) 
+  {
     String line = file.readStringUntil('\n');
     if (line.length() > 5) lastLine = line;
   }
@@ -141,12 +147,16 @@ String getLastBatteryLogEntry() {
   file.close();
   return lastLine;
 }
-String formatBatteryLog(String logLine) {
+
+String formatBatteryLog(String logLine) 
+{
   int idx = 0;
   String parts[4];
-  while (logLine.length() && idx < 4) {
+  while (logLine.length() && idx < 4) 
+  {
     int comma = logLine.indexOf(',');
-    if (comma == -1) {
+    if (comma == -1) 
+    {
       parts[idx++] = logLine;
       break;
     }
@@ -173,24 +183,29 @@ String formatBatteryLog(String logLine) {
 }
 
 
-std::vector<String> getAllowedBLENameList() {
+std::vector<String> getAllowedBLENameList() 
+{
   std::vector<String> allowedNames;
 
-  if (!SPIFFS.begin(true)) {
-    Serial.println("[BLE] Failed to mount SPIFFS");
+  if (!SPIFFS.begin(true)) 
+  {
+    PRINTLN("[BLE] Failed to mount SPIFFS");
     return allowedNames;
   }
 
   File file = SPIFFS.open("/BLEConnections.txt", "r");
-  if (!file || file.isDirectory()) {
-    Serial.println("[BLE] No allowed BLE file found.");
+  if (!file || file.isDirectory()) 
+  {
+    PRINTLN("[BLE] No allowed BLE file found.");
     return allowedNames;
   }
 
-  while (file.available()) {
+  while (file.available()) 
+  {
     String line = file.readStringUntil('\n');
     line.trim();  // Remove whitespace, including \r
-    if (line.length() > 0) {
+    if (line.length() > 0) 
+    {
       allowedNames.push_back(line);
     }
   }
@@ -199,25 +214,24 @@ std::vector<String> getAllowedBLENameList() {
   return allowedNames;
 }
 
-void handleBLEScan() {
+void handleBLEScan() 
+{
   std::vector<String> foundDevices = scanForBLEDevices(3);
-
   DynamicJsonDocument doc(1024);
   JsonArray array = doc.to<JsonArray>();
-
-  for (const auto& name : foundDevices) {
+  for (const auto& name : foundDevices) 
+  {
     array.add(name);
   }
-
   String json;
   serializeJson(doc, json);
-
   server.send(200, "application/json", json);
 }
 
-
-void handleAddBLEDevice() {
-  if (!server.hasArg("name")) {
+void handleAddBLEDevice() 
+{
+  if (!server.hasArg("name")) 
+  {
     server.send(400, "text/plain", "Missing name");
     return;
   }
@@ -231,8 +245,10 @@ void handleAddBLEDevice() {
   server.send(200, "text/plain", "Added");
 }
 
-void handleDeleteBLEDevice() {
-  if (!server.hasArg("name")) {
+void handleDeleteBLEDevice() 
+{
+  if (!server.hasArg("name")) 
+  {
     server.send(400, "text/plain", "Missing name");
     return;
   }
@@ -240,12 +256,14 @@ void handleDeleteBLEDevice() {
   String toDelete = server.arg("name");
   std::vector<String> updatedList;
   auto allowedBLENames = getAllowedBLENameList();
-  for (const auto& name : allowedBLENames) {
+  for (const auto& name : allowedBLENames) 
+  {
     if (name != toDelete) updatedList.push_back(name);
   }
 
   File file = SPIFFS.open("/BLEConnections.txt", FILE_WRITE);
-  for (const auto& name : updatedList) {
+  for (const auto& name : updatedList) 
+  {
     file.println(name);
   }
   file.close();
@@ -254,15 +272,16 @@ void handleDeleteBLEDevice() {
   server.send(200, "text/plain", "Deleted");
 }
 
-  const char* charging_status_string(int status_code) {
-    switch (status_code) {
-      case 0: return "Not Charging";
-      case 1: return "Pre-Charge";
-      case 2: return "Fast Charging";
-      case 3: return "Charge Done";
-      default: return "Unknown";
-    }
+const char* charging_status_string(int status_code) 
+{
+  switch (status_code) {
+    case 0: return "Not Charging";
+    case 1: return "Pre-Charge";
+    case 2: return "Fast Charging";
+    case 3: return "Charge Done";
+    default: return "Unknown";
   }
+}
 
 const char* bleManagerHTML = R"rawliteral(
 <!DOCTYPE html>
@@ -574,9 +593,9 @@ void handleSettings() {
 <select name='adb'>\
 <option %s value='%d'>off</option>\
 <!-- <option %s value='%d'>auto</option> -->\
-<option %s value='%d'>FlarmNet</option>\
-<option %s value='%d'>GliderNet</option>\
-<option %s value='%d'>ICAO</option>\
+<!-- <option %s value='%d'>FlarmNet</option> -->\
+<option %s value='%d'>GliderNet (OGN)</option>\
+<!-- <option %s value='%d'>ICAO</option> -->\
 </select>\
 </td>\
 </tr>\
@@ -840,6 +859,19 @@ void handleRoot() {
     break;
   }
 
+  // show number of OGN records
+  if (settings->adb == DB_OGN)
+  {
+    snprintf_P(offset, size,
+    PSTR("\
+      <tr><th align=left>OGN Records</th><td align=right>%d</td></tr>"), 
+      OGN_Records());
+
+    len = strlen(offset);
+    offset += len;
+    size -= len;
+  }
+
   snprintf_P(offset, size,
   PSTR("\
     <tr><th align=left>Bridge output</th><td align=right>%s</td></tr>\
@@ -1037,18 +1069,18 @@ void handleNotFound() {
 void Web_setup()
 {
   if (!SPIFFS.begin(true)) {
-    Serial.println("SPIFFS Mount Failed. Trying to format...");
+    PRINTLN("SPIFFS Mount Failed. Trying to format...");
     // if (!SPIFFS.format()) {
-    //   Serial.println("SPIFFS Format Failed");
+    //   PRINTLN("SPIFFS Format Failed");
     //   return;
     // }
     // if (!SPIFFS.begin()) {
-    //   Serial.println("SPIFFS Mount Failed again");
+    //   PRINTLN("SPIFFS Mount Failed again");
     //   return;
     // }
   }
 
-  Serial.println("SPIFFS mounted successfully");
+  PRINTLN("SPIFFS mounted successfully");
   server.on ( "/", handleRoot );
   server.on ( "/settings", handleSettings );
   server.on("/buddylist", handleBuddyList);
@@ -1060,7 +1092,7 @@ void Web_setup()
     static File fsUploadFile;
   
     if (upload.status == UPLOAD_FILE_START) {
-      Serial.println("Starting upload: buddylist.txt");
+      PRINTLN("Starting upload: buddylist.txt");
       fsUploadFile = SPIFFS.open("/buddylist.txt", FILE_WRITE);
     } else if (upload.status == UPLOAD_FILE_WRITE) {
       if (fsUploadFile)
@@ -1068,7 +1100,7 @@ void Web_setup()
     } else if (upload.status == UPLOAD_FILE_END) {
       if (fsUploadFile)
         fsUploadFile.close();
-      Serial.println("Upload complete.");
+      PRINTLN("Upload complete.");
       BuddyManager::readBuddyList(); // Read the buddy list after upload
     }
   });

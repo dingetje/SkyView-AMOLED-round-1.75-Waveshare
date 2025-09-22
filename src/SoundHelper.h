@@ -12,7 +12,7 @@
 // much higher values may cause distortion
 //bool play_file(char *filename, float volume = 0.7f);
 
-void add_file(char* filePath);
+void add_file(const char* filePath);
 
 extern void SoundLoop();
 extern bool SetupSound();

@@ -7,6 +7,7 @@
 #include "SatDish.h"
 #include "Speed.h"
 #include "altitude2.h"
+#include <DebugLog.h>
 
 extern xSemaphoreHandle spiMutex;
 extern bool TFTrefresh;
@@ -14,12 +15,14 @@ extern TFT_eSPI tft;
 // extern TFT_eSprite sprite;
 extern TFT_eSprite compasSprite;
 extern TFT_eSprite compas2Sprite;
-    
 
-void TFT_compass_loop() {
-    if (TFTrefresh && show_compass) {
-        Serial.println("TFT_compass_display");
-        if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
+void TFT_compass_loop() 
+{
+    if (TFTrefresh && show_compass) 
+    {
+        LOG_DEBUG("TFT_compass_display");
+        if (xSemaphoreTake(spiMutex, portMAX_DELAY)) 
+        {
             compasSprite.fillSprite(TFT_BLACK);
             // sprite.fillSprite(TFT_BLACK);
             compasSprite.pushImage(0, 0, 466, 466, Compas466x466);
@@ -34,11 +37,13 @@ void TFT_compass_loop() {
             compas2Sprite.pushImage(180, 230, 32, 24, Speed);
             compas2Sprite.pushImage(135, 280, 32, 32, SatDishpng);
             compas2Sprite.setCursor(180, 290, 4);
-            if (nmea.satellites.isValid()) {
+            if (nmea.satellites.isValid()) 
+            {
                 int satelliteCount = nmea.satellites.value();
                 compas2Sprite.printf("%d", satelliteCount);
             }
-            else {
+            else 
+            {
                 compas2Sprite.setTextColor(TFT_RED, TFT_BLACK);
                 compas2Sprite.printf("NO FIX");
                 compas2Sprite.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -46,7 +51,8 @@ void TFT_compass_loop() {
 
             compas2Sprite.pushImage(255, 280, 32, 32, altitude2);
             compas2Sprite.setCursor(300, 290, 4);
-            switch (settings->units) {
+            switch (settings->units) 
+            {
                 case UNITS_METRIC:
                     compas2Sprite.printf("%d m", (int)(ThisAircraft.altitude));
                     break;
@@ -69,8 +75,10 @@ void TFT_compass_loop() {
             
             xSemaphoreGive(spiMutex);
             delay(100);
-          } else {
-            Serial.println("Failed to acquire SPI semaphore!");
+          }
+          else
+          {
+            LOG_ERROR("Failed to acquire SPI semaphore!");
           }
           TFTrefresh = false;
         //   TFTTimeMarker = millis();

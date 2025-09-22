@@ -17,6 +17,8 @@
 #include <driver/display/CO5300.h>
 #include "power.h"
 
+#include <DebugLog.h>
+
 // #include <Adafruit_ST7789.h> // Hardware-specific library for ST7789
 // #include <Adafruit_ST77xx.h> // Hardware-specific library for ST7789
 
@@ -88,7 +90,8 @@ float batteryToPercentage(float voltage) {
   }
   return 0.0; // Fallback
 }
-void draw_battery() {
+void draw_battery() 
+{
     //Battery indicator
     uint16_t battery_x = 295;
     uint16_t battery_y = 35;
@@ -99,30 +102,39 @@ void draw_battery() {
    
     
     battery = Battery_voltage();
-    // Serial.print(F(" Battery= "));  Serial.println(battery);
+    // PRINT(F(" Battery= "));  PRINTLN(battery);
     batteryPercentage = (int)batteryToPercentage(battery);
-    // Serial.print(F(" Batterypercentage= "));  Serial.println(batteryPercentage);
+    // PRINT(F(" Batterypercentage= "));  PRINTLN(batteryPercentage);
 
-    if (battery < 3.65 &&  battery >= 3.5) {
+    // battery is a 1S Lipo, so ~3.7V nominal with a ~4.1V max.
+    if (battery < 3.65 &&  battery >= 3.5) 
+    {
       batt_color = TFT_YELLOW;
-    } else if (battery < 3.5) {
+    }
+    else if (battery < 3.5) 
+    {
       batt_color = TFT_RED;
-    } else  {
+    }
+    else
+    {
       batt_color = TFT_CYAN;
     }
-    if (charging_status() == 3) { //chargin Done.
+    // Chargin Done?
+    if (charging_status() == 3) 
+    { 
       batt_color = TFT_GREEN;
     }
-    if (charging_status() == 1 || charging_status() == 2) {
+    if (charging_status() == 1 || charging_status() == 2) 
+    {
       //draw charging icon
-    sprite.fillTriangle(battery_x - 20, battery_y + 10, battery_x - 8, battery_y - 3, battery_x - 12, battery_y + 10, batt_color);
-    sprite.fillTriangle(battery_x -4, battery_y + 10, battery_x - 16, battery_y + 23, battery_x - 12, battery_y + 10, batt_color);
+      sprite.fillTriangle(battery_x - 20, battery_y + 10, battery_x - 8, battery_y - 3, battery_x - 12, battery_y + 10, batt_color);
+      sprite.fillTriangle(battery_x -4, battery_y + 10, battery_x - 16, battery_y + 23, battery_x - 12, battery_y + 10, batt_color);
     }
     sprite.drawRoundRect(battery_x, battery_y, 32, 20, 3, batt_color);
     sprite.fillRect(battery_x + 32, battery_y + 7, 2, 7, batt_color);
     int fillWidth = (int)(30 * ((float)batteryPercentage / 100));
-    // Serial.print(F("Fill width = "));
-    // Serial.println(fillWidth);
+    // PRINT(F("Fill width = "));
+    // PRINTLN(fillWidth);
     sprite.fillRect(battery_x + 2, battery_y + 3, fillWidth, 14, batt_color);
 
     sprite.setCursor(battery_x, battery_y + 24, 4);
@@ -130,48 +142,56 @@ void draw_battery() {
     sprite.printf("%d%%", batteryPercentage); // Use %% to print the % character
 }
 
-void draw_extBattery() {
+// if BLE source, also draw remote BLE battery state
+void draw_extBattery() 
+{
   uint8_t extBatteryPerc = getBLEbattery();
-  if (extBatteryPerc == 0) {
+  if (extBatteryPerc == 0) 
+  {
     return; // No external battery data available
   }
-    //Battery indicator
-    uint16_t battery_x = 80;
-    uint16_t battery_y = 325;
-    // uint8_t extBatteryPerc = 75;
-    uint16_t batt_color = TFT_CYAN;
+  //Battery indicator
+  uint16_t battery_x = 80;
+  uint16_t battery_y = 325;
+  // uint8_t extBatteryPerc = 75;
+  uint16_t batt_color = TFT_CYAN;
 
-    if (extBatteryPerc < 50 &&  extBatteryPerc >= 25) {
-      batt_color = TFT_YELLOW;
-    } else if (extBatteryPerc < 25) {
-      batt_color = TFT_RED;
-    } else  {
-      batt_color = TFT_CYAN;
-    }
+  if (extBatteryPerc < 50 &&  extBatteryPerc >= 25) 
+  {
+    batt_color = TFT_YELLOW;
+  }
+  else if (extBatteryPerc < 25) 
+  {
+    batt_color = TFT_RED;
+  }
+  else
+  {
+    batt_color = TFT_CYAN;
+  }
 
-      //draw bluetooth icon
-    sprite.drawWideLine(battery_x - 15, battery_y - 3, battery_x - 15, battery_y + 28, 2, TFT_BLUEBUTTON);
-    sprite.drawWideLine(battery_x - 15, battery_y - 3, battery_x - 7, battery_y + 5, 2, TFT_BLUEBUTTON);
-    sprite.drawWideLine(battery_x - 25, battery_y + 18, battery_x - 7, battery_y + 5, 2, TFT_BLUEBUTTON);
-    sprite.drawWideLine(battery_x - 25, battery_y + 5, battery_x - 7, battery_y + 18, 2, TFT_BLUEBUTTON);
-    sprite.drawWideLine(battery_x - 15, battery_y + 28, battery_x - 7, battery_y + 18, 2, TFT_BLUEBUTTON);
+  //draw bluetooth icon
+  sprite.drawWideLine(battery_x - 15, battery_y - 3, battery_x - 15, battery_y + 28, 2, TFT_BLUEBUTTON);
+  sprite.drawWideLine(battery_x - 15, battery_y - 3, battery_x - 7, battery_y + 5, 2, TFT_BLUEBUTTON);
+  sprite.drawWideLine(battery_x - 25, battery_y + 18, battery_x - 7, battery_y + 5, 2, TFT_BLUEBUTTON);
+  sprite.drawWideLine(battery_x - 25, battery_y + 5, battery_x - 7, battery_y + 18, 2, TFT_BLUEBUTTON);
+  sprite.drawWideLine(battery_x - 15, battery_y + 28, battery_x - 7, battery_y + 18, 2, TFT_BLUEBUTTON);
 
-    
-    sprite.drawRoundRect(battery_x + 2, battery_y, 14, 28, 2, batt_color);
-    sprite.fillRect(battery_x + 5, battery_y - 4, 7, 3, batt_color);
-    float fillHeight = 24 * extBatteryPerc / 100; // Calculate fill height based on percentage
+  // draw battery with color
+  sprite.drawRoundRect(battery_x + 2, battery_y, 14, 28, 2, batt_color);
+  sprite.fillRect(battery_x + 5, battery_y - 4, 7, 3, batt_color);
+  float fillHeight = 24 * extBatteryPerc / 100; // Calculate fill height based on percentage
 
-    sprite.fillRect(battery_x + 4, battery_y + (24 - fillHeight), 10, fillHeight, batt_color);
+  sprite.fillRect(battery_x + 4, battery_y + (24 - fillHeight), 10, fillHeight, batt_color);
 
-    sprite.setCursor(battery_x + 24, battery_y + 7, 4);
-    sprite.setTextColor(TFT_WHITE, TFT_BLACK);
-    sprite.printf("%d%%", extBatteryPerc); // Use %% to print the % character
+  sprite.setCursor(battery_x + 24, battery_y + 7, 4);
+  sprite.setTextColor(TFT_WHITE, TFT_BLACK);
+  sprite.printf("%d%%", extBatteryPerc); // Use %% to print the % character
 }
 
 
-void draw_first()
+void draw_splash_screen()
 {
-  Serial.println("Drawing SkyView Splash screen...");
+  PRINTLN("Drawing SkyView Splash screen...");
   sprite.fillSprite(TFT_BLACK);
   sprite.setTextDatum(MC_DATUM);
   sprite.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -179,15 +199,15 @@ void draw_first()
   sprite.setCursor(144, 160);
   // sprite.setTextSize(2);
   sprite.printf("SkyView");
-  Serial.print("SkyView width: ");
-  Serial.println(sprite.textWidth("SkyView"));
-  Serial.print("SkyView height: ");
-  Serial.println(sprite.fontHeight(4));
+  PRINT("SkyView width: ");
+  PRINTLN(sprite.textWidth("SkyView"));
+  PRINT("SkyView height: ");
+  PRINTLN(sprite.fontHeight(4));
   sprite.setFreeFont(&FreeSansBold12pt7b);
-  Serial.print("powered by... width: ");
-  Serial.println(sprite.textWidth("powered by SoftRF"));
-  Serial.print("powered by ... height: ");
-  Serial.println(sprite.fontHeight(4));
+  PRINT("powered by... width: ");
+  PRINTLN(sprite.textWidth("powered by SoftRF"));
+  PRINT("powered by ... height: ");
+  PRINTLN(sprite.fontHeight(4));
   sprite.fillRect(114,200,66,66,TFT_RED);
   sprite.fillRect(200,200,66,66,TFT_GREEN);
   sprite.fillRect(286,200,66,66,TFT_BLUE); 
@@ -199,13 +219,19 @@ void draw_first()
   for (int i = 0; i <= MAX_BRIGHTNESS; i++)
   {
     lcd_brightness(i);
-    delay(3);
+    delay(5);
   }
   delay(2000);
-  Serial.println("Exit splash screen...");
+  for (int i = MAX_BRIGHTNESS; i > 0; i--)
+  {
+    lcd_brightness(i);
+    delay(5);
+  }
+  PRINTLN("Exit splash screen...");
 }
 
-void TFT_setup(void) {
+void TFT_setup(void) 
+{
   pinMode(LCD_EN, OUTPUT);
   digitalWrite(LCD_EN, HIGH);
   delay(30);
@@ -217,13 +243,14 @@ void TFT_setup(void) {
   Wire.begin(SENSOR_SDA, SENSOR_SCL);
   CO5300_init();
   sprite.setColorDepth(16);
-  Serial.print("TFT_setup. PSRAM_ENABLE: ");
-  Serial.println(sprite.getAttribute(PSRAM_ENABLE));
+  PRINT("TFT_setup. PSRAM_ENABLE: ");
+  PRINTLN(sprite.getAttribute(PSRAM_ENABLE));
   sprite.setAttribute(PSRAM_ENABLE, 1);
   // Initialise SPI Mutex
   spiMutex = xSemaphoreCreateMutex();
-  if (spiMutex == NULL) {
-      Serial.println("Failed to create SPI mutex!");
+  if (spiMutex == NULL) 
+  {
+      PRINTLN("Failed to create SPI mutex!");
   }
   lcd_setRotation(0); //adjust #define display_column_offset for different rotations
   lcd_brightness(0); // 0-255
@@ -232,21 +259,23 @@ void TFT_setup(void) {
   Serial.printf("Largest block: %d bytes\n", heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
   sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);    // full screen landscape sprite in psram
   batterySprite.createSprite(100, 32);
-  if (sprite.createSprite(LCD_WIDTH, LCD_HEIGHT) == NULL) {
-    Serial.println("Failed to create sprite. Not enough memory.");
+  if (sprite.createSprite(LCD_WIDTH, LCD_HEIGHT) == NULL) 
+  {
+    PRINTLN("Failed to create sprite. Not enough memory.");
     delay(5000);
   }
-  else {
-    Serial.print("TFT_setup. Created Sprite| Free Heap: ");
-    Serial.println(esp_get_free_heap_size());
+  else 
+  {
+    PRINT("TFT_setup. Created Sprite| Free Heap: ");
+    PRINTLN(esp_get_free_heap_size());
   }
-
   TFT_view_mode = settings->vmode;
-  draw_first();
+  draw_splash_screen();
   TFT_radar_setup();
 }
 
-void TFT_loop(void) {
+void TFT_loop(void) 
+{
   switch (TFT_view_mode)
   {
   case VIEW_MODE_RADAR:
@@ -261,174 +290,215 @@ void TFT_loop(void) {
   default:
     break;
   }
-  
   yield();  // Ensure the watchdog gets reset
   delay(20);
 }
 
 void TFT_Mode(boolean next)
 {
-  if (hw_info.display == DISPLAY_TFT) {
+  if (hw_info.display != DISPLAY_TFT)
+  {
+    return;
+  }
 
-    if (TFT_view_mode == VIEW_MODE_RADAR) {
-      if (next) {
-        if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
-          TFT_view_mode = VIEW_MODE_TEXT;
-          if (!bearingSprite.created()) {
-            bearingSprite.createSprite(78, 54);
-            bearingSprite.setColorDepth(16);
-            bearingSprite.setSwapBytes(true);
-          }
-          TFTTimeMarker = millis() + 1001;
-          xSemaphoreGive(spiMutex);
-          delay(10);
-        } else {
-          Serial.println("Failed to acquire SPI semaphore!");
+  if (TFT_view_mode == VIEW_MODE_RADAR) 
+  {
+    if (next) 
+    {
+      if (xSemaphoreTake(spiMutex, portMAX_DELAY)) 
+      {
+        TFT_view_mode = VIEW_MODE_TEXT;
+        if (!bearingSprite.created()) 
+        {
+          bearingSprite.createSprite(78, 54);
+          bearingSprite.setColorDepth(16);
+          bearingSprite.setSwapBytes(true);
         }
+        TFTTimeMarker = millis() + 1001;
+        xSemaphoreGive(spiMutex);
+        delay(10);
       }
-      else {
-        if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
-          if (show_compass) {
+      else
+      {
+        LOG_ERROR("Failed to acquire SPI semaphore!");
+      }
+    }
+    else 
+    {
+      if (xSemaphoreTake(spiMutex, portMAX_DELAY)) 
+      {
+        if (show_compass) 
+        {
           TFT_view_mode = VIEW_MODE_COMPASS;
-          if (!compasSprite.created()) {
+          if (!compasSprite.created()) 
+          {
             compasSprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
             compasSprite.setColorDepth(16);
             compasSprite.setSwapBytes(true);
           }
-          if (!compas2Sprite.created()) {
+          if (!compas2Sprite.created()) 
+          {
+            compas2Sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
+            compas2Sprite.setColorDepth(16);
+            compas2Sprite.setSwapBytes(true);
+          }
+        }
+        else 
+        {
+          TFT_view_mode = VIEW_MODE_TEXT;
+          if (!bearingSprite.created()) 
+          {
+            bearingSprite.createSprite(78, 54);
+            bearingSprite.setColorDepth(16);
+            bearingSprite.setSwapBytes(true);
+          } 
+        }
+        lcd_brightness(MAX_BRIGHTNESS);
+        TFTrefresh = true;
+        TFTTimeMarker = millis() + 1001;
+        xSemaphoreGive(spiMutex);
+        delay(10);
+      }
+      else
+      {
+        PRINTLN("Failed to acquire SPI semaphore!");
+      }
+    }
+  }
+  else if (TFT_view_mode == VIEW_MODE_TEXT) 
+  {
+    if (next && show_compass) 
+    {
+      if (xSemaphoreTake(spiMutex, portMAX_DELAY)) 
+      {
+        TFT_view_mode = VIEW_MODE_COMPASS;
+        if (!compasSprite.created()) 
+        {
+          compasSprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
+          compasSprite.setColorDepth(16);
+          compasSprite.setSwapBytes(true);
+        }
+        if (!compas2Sprite.created()) 
+        {
           compas2Sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
           compas2Sprite.setColorDepth(16);
           compas2Sprite.setSwapBytes(true);
-          }
-          } else {
-            TFT_view_mode = VIEW_MODE_TEXT;
-            if (!bearingSprite.created()) {
-              bearingSprite.createSprite(78, 54);
-              bearingSprite.setColorDepth(16);
-              bearingSprite.setSwapBytes(true);
-            } 
-          }
-          lcd_brightness(MAX_BRIGHTNESS);
-          TFTrefresh = true;
-          TFTTimeMarker = millis() + 1001;
-          xSemaphoreGive(spiMutex);
-          delay(10);
-        } else {
-          Serial.println("Failed to acquire SPI semaphore!");
         }
+        if (!compas2Sprite.created()) 
+        {
+          compas2Sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
+          compas2Sprite.setColorDepth(16);
+          compas2Sprite.setSwapBytes(true);
+        }
+        lcd_brightness(MAX_BRIGHTNESS);
+        TFTTimeMarker = millis() + 1001;
+        TFTrefresh = true;
+        xSemaphoreGive(spiMutex);
+        delay(10);
+        // EPD_display_frontpage = false;
       }
-
-}   else if (TFT_view_mode == VIEW_MODE_TEXT) {
-        if (next && show_compass) {
-          if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
-            TFT_view_mode = VIEW_MODE_COMPASS;
-            if (!compasSprite.created()) {
-              compasSprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
-              compasSprite.setColorDepth(16);
-              compasSprite.setSwapBytes(true);
-            }
-            if (!compas2Sprite.created()) {
-              compas2Sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
-              compas2Sprite.setColorDepth(16);
-              compas2Sprite.setSwapBytes(true);
-            }
-            if (!compas2Sprite.created()) {
-              compas2Sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
-              compas2Sprite.setColorDepth(16);
-              compas2Sprite.setSwapBytes(true);
-            }
-            lcd_brightness(MAX_BRIGHTNESS);
-            TFTTimeMarker = millis() + 1001;
-            TFTrefresh = true;
-            xSemaphoreGive(spiMutex);
-            delay(10);
-            // EPD_display_frontpage = false;
-          } else {
-            Serial.println("Failed to acquire SPI semaphore!");
-          }
-        }
-        else {
-          if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
-          TFT_view_mode = VIEW_MODE_RADAR;
-            bearingSprite.deleteSprite();
-            TFTTimeMarker = millis() + 1001;
-            xSemaphoreGive(spiMutex);
-            delay(10);
-            // EPD_display_frontpage = false;
-          } else {
-            Serial.println("Failed to acquire SPI semaphore!");
-          }
+      else 
+      {
+        PRINTLN("Failed to acquire SPI semaphore!");
       }
     }
-    else if (TFT_view_mode == VIEW_MODE_COMPASS) {
-      if (next) {
-        if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
-          TFT_view_mode = VIEW_MODE_RADAR;
-          compasSprite.deleteSprite();
-          compas2Sprite.deleteSprite();
-          // sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
-          // sprite.setColorDepth(16);
-          // sprite.setSwapBytes(true);
-          lcd_brightness(MAX_BRIGHTNESS);
-          TFTTimeMarker = millis() + 1001;
-          // EPD_display_frontpage = false;
-          xSemaphoreGive(spiMutex);
-          delay(10);
-        } else {
-          Serial.println("Failed to acquire SPI semaphore!");
-        }
+    else 
+    {
+      if (xSemaphoreTake(spiMutex, portMAX_DELAY)) 
+      {
+        TFT_view_mode = VIEW_MODE_RADAR;
+        bearingSprite.deleteSprite();
+        TFTTimeMarker = millis() + 1001;
+        xSemaphoreGive(spiMutex);
+        delay(10);
+        // EPD_display_frontpage = false;
       }
-      else {
-        if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
-          TFT_view_mode = VIEW_MODE_TEXT; 
-          compasSprite.deleteSprite();
-          compas2Sprite.deleteSprite();
-          // sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
-          // sprite.setColorDepth(16);
-          // sprite.setSwapBytes(true);
-          // bearingSprite.createSprite(78, 54);
-          // bearingSprite.setColorDepth(16);
-          // bearingSprite.setSwapBytes(true);
-          lcd_brightness(MAX_BRIGHTNESS);
-          TFTTimeMarker = millis() + 1001;
-          // EPD_display_frontpage = false;
-          xSemaphoreGive(spiMutex);
-          delay(10);
-        } else {
-          Serial.println("Failed to acquire SPI semaphore!");
-        }
+      else 
+      {
+        PRINTLN("Failed to acquire SPI semaphore!");
+      }
     }
   }
-    else if (TFT_view_mode == VIEW_MODE_SETTINGS) {
-      if (next) {
-        TFT_view_mode = prev_TFT_view_mode;
-        EPD_display_frontpage = false;
+  else if (TFT_view_mode == VIEW_MODE_COMPASS) 
+  {
+    if (next) 
+    {
+      if (xSemaphoreTake(spiMutex, portMAX_DELAY)) 
+      {
+        TFT_view_mode = VIEW_MODE_RADAR;
+        compasSprite.deleteSprite();
+        compas2Sprite.deleteSprite();
+        // sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
+        // sprite.setColorDepth(16);
+        // sprite.setSwapBytes(true);
+        lcd_brightness(MAX_BRIGHTNESS);
+        TFTTimeMarker = millis() + 1001;
+        // EPD_display_frontpage = false;
+        xSemaphoreGive(spiMutex);
+        delay(10);
       }
-
+      else 
+      {
+        PRINTLN("Failed to acquire SPI semaphore!");
+      }
+    }
+    else
+    {
+      if (xSemaphoreTake(spiMutex, portMAX_DELAY)) 
+      {
+        TFT_view_mode = VIEW_MODE_TEXT; 
+        compasSprite.deleteSprite();
+        compas2Sprite.deleteSprite();
+        // sprite.createSprite(LCD_WIDTH, LCD_HEIGHT);
+        // sprite.setColorDepth(16);
+        // sprite.setSwapBytes(true);
+        // bearingSprite.createSprite(78, 54);
+        // bearingSprite.setColorDepth(16);
+        // bearingSprite.setSwapBytes(true);
+        lcd_brightness(MAX_BRIGHTNESS);
+        TFTTimeMarker = millis() + 1001;
+        // EPD_display_frontpage = false;
+        xSemaphoreGive(spiMutex);
+        delay(10);
+      }
+      else
+      {
+        PRINTLN("Failed to acquire SPI semaphore!");
+      }
+    }
+  }
+  else if (TFT_view_mode == VIEW_MODE_SETTINGS) 
+  {
+    if (next) 
+    {
+      TFT_view_mode = prev_TFT_view_mode;
+      EPD_display_frontpage = false;
     }
   }
 }
 
 void TFT_Up()
 {
-  if (hw_info.display == DISPLAY_TFT) {
+  if (hw_info.display == DISPLAY_TFT) 
+  {
     switch (TFT_view_mode)
     {
-    case VIEW_MODE_RADAR:
-      TFT_radar_unzoom();
-      break;
-    case VIEW_MODE_TEXT:
-      TFT_text_prev();
-      break;
-    default:
-      break;
+      case VIEW_MODE_RADAR:
+        TFT_radar_unzoom();
+        break;
+      case VIEW_MODE_TEXT:
+        TFT_text_prev();
+        break;
+      default:
+        break;
     }
   }
 }
 
 void TFT_Down()
 {
-  if (hw_info.display == DISPLAY_TFT) {
+  if (hw_info.display == DISPLAY_TFT) 
+  {
     switch (TFT_view_mode)
     {
     case VIEW_MODE_RADAR:
@@ -443,22 +513,30 @@ void TFT_Down()
   }
 }
 
-void settings_button(uint16_t x, uint16_t y, bool on) {
-  if (on) {
+void settings_button(uint16_t x, uint16_t y, bool on) 
+{
+  if (on) 
+  {
     sprite.fillSmoothRoundRect(x, y - 25, 50, 31, 13, TFT_BLUEBUTTON, TFT_BLACK);
     sprite.fillSmoothCircle(x + 33, y - 10, 13, TFT_WHITE, TFT_BLUEBUTTON);
-  } else {
+  }
+  else
+  {
     sprite.fillSmoothRoundRect(x, y - 25, 50, 31, 13, TFT_DARKGREY, TFT_BLACK);
     sprite.fillSmoothCircle(x + 17, y - 10, 13, TFT_LIGHTGREY, TFT_BLUEBUTTON);
   }
 }
 
-void settings_page() {
-  if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
+void settings_page() 
+{
+  if (xSemaphoreTake(spiMutex, portMAX_DELAY)) 
+  {
     delay(50);
-    if (TFT_view_mode != VIEW_MODE_SETTINGS) {
+    if (TFT_view_mode != VIEW_MODE_SETTINGS) 
+    {
       prev_TFT_view_mode = TFT_view_mode; 
-      TFT_view_mode = VIEW_MODE_SETTINGS;}
+      TFT_view_mode = VIEW_MODE_SETTINGS;
+    }
     uint16_t button_x = 340;
     uint16_t text_y = 0;
   
@@ -472,42 +550,36 @@ void settings_page() {
     text_y = 140; //bottom of the text
     sprite.setCursor(button_x - 300, text_y);
     sprite.printf("Traffic filter 500m");
-    if ( settings->filter  == TRAFFIC_FILTER_500M) {
+    if ( settings->filter  == TRAFFIC_FILTER_500M) 
+    {
       settings_button(button_x, text_y, true);
-    } else {
+    }
+    else
+    {
       settings_button(button_x, text_y, false); 
     }
 
     text_y = 200;
     sprite.setCursor(button_x - 300, text_y);
     sprite.printf("Compass Page");
-    if (show_compass) {
+    if (show_compass) 
+    {
       settings_button(button_x, text_y, true);
-    } else {
+    }
+    else
+    {
       settings_button(button_x, text_y, false); 
     }
     
     text_y = 260;
     sprite.setCursor(button_x - 300, text_y);
     sprite.printf("Radar North Up");
-    if (settings->orientation == DIRECTION_NORTH_UP) {
-      settings_button(button_x, text_y, true);
-    } else {
-      settings_button(button_x, text_y, false); 
-    }
+    settings_button(button_x, text_y, settings->orientation == DIRECTION_NORTH_UP);
 
     text_y = 320;
     sprite.setCursor(button_x - 300, text_y);
     sprite.printf("Show Labels");
-
-    if (isLabels) {
-      settings_button(button_x, text_y, true);
-
-    } else {
-      settings_button(button_x, text_y, false);
-
-    }
-
+    settings_button(button_x, text_y, isLabels);
 
     text_y = 400;
     sprite.setCursor(button_x - 120, 380);
@@ -524,9 +596,10 @@ void settings_page() {
     lcd_PushColors(display_column_offset, 0, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer());
     lcd_brightness(MAX_BRIGHTNESS);
     xSemaphoreGive(spiMutex);
-} else {
-    Serial.println("Failed to acquire SPI semaphore!");
-}
-
+  }
+  else
+  {
+    LOG_ERROR("Failed to acquire SPI semaphore!");
+  }
 }
 #endif /* USE_TFT */

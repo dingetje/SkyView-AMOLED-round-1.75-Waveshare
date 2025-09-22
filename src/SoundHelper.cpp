@@ -121,7 +121,7 @@ void SoundLoop()
 }
 
 /* add a file to the audio queue, file already checked for existance on SD */
-void add_file(char* filePath)
+void add_file(const char* filePath)
 {
   // only makes sense if sound was correctly initialized
   if (bSoundInitialized)

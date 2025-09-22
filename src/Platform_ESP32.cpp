@@ -42,7 +42,11 @@
 #include "BatteryHelper.h"
 // #include <SD.h>
 
-// #include "uCDB.hpp"
+#if defined(DB)
+#include <SD_MMC.h>
+#include <uCDB.hpp>
+uCDB<fs::SDMMCFS,fs::File> ucdb(SD_MMC);
+#endif
 
 #include <esp_wifi.h>
 #include <esp_bt.h>
@@ -56,11 +60,6 @@ static const int8_t i2s_num = 0;
 
 #include "driver/rtc_io.h"
 #include "DebugLog.h"
-
-//#if defined(SOUND)
-//#include <uCDB.hpp>
-//#include <SD.h>
-//#endif
 
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
 #define TIME_TO_SLEEP  10       /* Time ESP32 will go to sleep (in seconds) */
@@ -163,7 +162,7 @@ void ESP32_TFT_fini(const char *msg)
     lcd_PushColors(display_column_offset, 0, 466, 466, (uint16_t*)sprite.getPointer());
     xSemaphoreGive(spiMutex);
   } else {
-    Serial.println("Failed to acquire SPI semaphore!");
+    PRINTLN("Failed to acquire SPI semaphore!");
   }
 }
 
@@ -185,7 +184,7 @@ void ESP32_fini()
   WiFi_fini();
   battery_fini();
   // SPI.end();
-  Serial.println("Putting device to deep sleep...");
+  PRINTLN("Putting device to deep sleep...");
   delay(1000);
   lcd_sleep();
   BuddyManager::clearBuddyList();
@@ -372,7 +371,7 @@ static void ESP32_setup()
     //   break;
     // }
   }
-  Serial.println(hw_info.revision);
+  PRINTLN(hw_info.revision);
 }
 
 static uint32_t ESP32_getChipId()
@@ -470,7 +469,7 @@ static void ESP32_Battery_setup()
 
 static float ESP32_Battery_voltage()
 {
-  // Serial.println("Reading battery voltage from SY6970...");
+  // PRINTLN("Reading battery voltage from SY6970...");
   delay(100); // Give some time for the SY6970 to stabilize
   #if defined(SY6970)
   float voltage = read_SY6970_voltage() * 0.001;
@@ -532,8 +531,8 @@ static int ESP32_EPD_ident()
   swSPI.end();
 
 //#if 0
-//  Serial.print("REG 71H: ");
-//  Serial.println(status, HEX);
+//  PRINT("REG 71H: ");
+//  PRINTLN(status, HEX);
 //#endif
 
 //  if (status != 2) {
@@ -582,7 +581,7 @@ static void ESP32_EPD_setup()
       display = &epd_ttgo_t5s_W3;
       break;
     }
-    Serial.println("SPI begin");
+    PRINTLN("SPI begin");
     SPI.begin(SOC_GPIO_PIN_SCK_T5S,
               SOC_GPIO_PIN_MISO_T5S,
               SOC_GPIO_PIN_MOSI_T5S,
@@ -700,76 +699,86 @@ static int ESP32_WiFi_clients_count()
   }
 }
 
-#if !defined(BUILD_SKYVIEW_HD) && !defined(ESP32S3)
+#if defined(DB)
 static bool SD_is_ok = false;
 static bool ADB_is_open = false;
 
 static bool ESP32_DB_init()
 {
   bool rval = false;
+  SD_is_ok = ADB_is_open = false;
 
-  if (settings->adapter != ADAPTER_TTGO_T5S) {
+  if (settings->adapter != ADAPTER_TTGO_T5S) 
+  {
     return rval;
   }
-
-
-
-  sdcard_files_to_open += (settings->adb   == DB_FLN    ? 1 : 0);
-  sdcard_files_to_open += (settings->adb   == DB_OGN    ? 1 : 0);
-  sdcard_files_to_open += (settings->adb   == DB_ICAO   ? 1 : 0);
-  sdcard_files_to_open += (settings->voice != VOICE_OFF ? 2 : 0);   // we use voice1 & voice3
-
-  if (!SD.begin(SOC_SD_PIN_SS_T5S, uSD_SPI, 4000000, "/sd", sdcard_files_to_open)) {
-    Serial.println(F("ERROR: Failed to mount microSD card."));
+  if (settings->adb == DB_NONE)
+  {
     return rval;
   }
-
-  if (SD.cardType() == CARD_NONE)
+ 
+  // SD_MMC already mounted at this point
+  // but check if card is found
+  if (SD_MMC.cardType() == CARD_NONE)
+  {
     return rval;
-
+  }
   SD_is_ok = true;
 
-  if (settings->adb == DB_NONE) {
-    return rval;
-  }
-
-  if (settings->adb == DB_FLN) {
-    if (ucdb.open("/Aircrafts/fln.cdb") == CDB_OK) {
-      Serial.print("FLN records: ");
-      Serial.println(ucdb.recordsNumber());
+#if 0
+  // not yet supported!
+  if (settings->adb == DB_FLN) 
+  {
+    if (ucdb.open("/Aircrafts/fln.cdb") == CDB_OK) 
+    {
+      PRINT("FLN records: ");
+      PRINTLN(ucdb.recordsNumber());
       rval = true;
-    } else {
-      Serial.println(F("Failed to open FlarmNet DB\n"));
+    }
+    else
+    {
+      PRINTLN(F("Failed to open FlarmNet DB"));
+    }
+  }
+#endif
+
+  if (settings->adb == DB_OGN) 
+  {
+    PRINTLN("Loading /Aircrafts/ogn.cdb...");
+    if (ucdb.open("/Aircrafts/ogn.cdb") == CDB_OK) 
+    {
+      PRINT("OGN records: ");
+      PRINTLN(ucdb.recordsNumber());
+      rval = true;
+    }
+    else
+    {
+      PRINTLN(F("Failed to open OGN DB"));
     }
   }
 
-  if (settings->adb == DB_OGN) {
-    if (ucdb.open("/Aircrafts/ogn.cdb") == CDB_OK) {
-      Serial.print("OGN records: ");
-      Serial.println(ucdb.recordsNumber());
+#if 0
+  // not yet supported!
+  if (settings->adb == DB_ICAO) 
+  {
+    if (ucdb.open("/Aircrafts/icao.cdb") == CDB_OK) 
+    {
+      PRINT("ICAO records: ");
+      PRINTLN(ucdb.recordsNumber());
       rval = true;
-    } else {
-      Serial.println(F("Failed to open OGN DB\n"));
+    }
+    else
+    {
+      PRINTLN(F("Failed to open ICAO DB"));
     }
   }
+#endif
 
-  if (settings->adb == DB_ICAO) {
-    if (ucdb.open("/Aircrafts/icao.cdb") == CDB_OK) {
-      Serial.print("ICAO records: ");
-      Serial.println(ucdb.recordsNumber());
-      rval = true;
-    } else {
-      Serial.println(F("Failed to open ICAO DB\n"));
-    }
-  }
-
-
-  if (rval)
-    ADB_is_open = true;
-
+  ADB_is_open = rval;
   return rval;
 }
 
+// check DB if provided id can be found
 static int ESP32_DB_query(uint8_t type, uint32_t id, char *buf, size_t size,
                             char *buf2=NULL, size_t size2=0)
 {
@@ -785,19 +794,25 @@ static int ESP32_DB_query(uint8_t type, uint32_t id, char *buf, size_t size,
   int nothing;
 
   if (!SD_is_ok)
+  {
     return -2;   // no SD card
+  }
 
-  if (!ADB_is_open)
-    return -1;   // no database
+  if (!ADB_is_open || OGN_Records() == 0)
+  {
+    return -1;   // no or empty database
+  }
 
   snprintf(key, sizeof(key),"%06X", id);
-
   rt = ucdb.findKey(key, strlen(key));
-
-  if (rt == KEY_FOUND) {
-      while ((c = ucdb.readValue()) != -1 && i < (sizeof(out) - 1)) {
-        if (c == '|') {
-          if (token_cnt < sizeof(tokens)) {
+  if (rt == KEY_FOUND) 
+  {
+      while ((c = ucdb.readValue()) != -1 && i < (sizeof(out) - 1)) 
+      {
+        if (c == '|') 
+        {
+          if (token_cnt < sizeof(tokens)) 
+          {
             token_cnt++;
             tokens[token_cnt-1] = i+1;     // start of NEXT token
           }
@@ -859,22 +874,33 @@ static int ESP32_DB_query(uint8_t type, uint32_t id, char *buf, size_t size,
         return 2;   // found, but empty record
       }
 #else
-// will be two lines on the display
-      if (out[pref1]) {
+      // will be two lines on the display
+      if (out[pref1]) 
+      {
         snprintf(buf, size, "%s", &out[pref1]);
         if (buf2)
+        {
           snprintf(buf2, size2, "%s",
             (out[pref2] ? &out[pref2] :
              out[pref3] ? &out[pref3] : ""));
-      } else if (out[pref2]) {
+        }
+      }
+      else if (out[pref2]) 
+      {
         snprintf(buf, size, "%s", &out[pref2]);
         if (buf2)
+        {
           snprintf(buf2, size2, "%s",
             (out[pref3] ? &out[pref3] : ""));
-      } else if (out[pref3]) {
+        }
+      }
+      else if (out[pref3]) 
+      {
         snprintf(buf, size, "%s", &out[pref3]);
         if (buf2)  buf2[0] = '\0';
-      } else {
+      }
+      else 
+      {
         buf[0] = '\0';
         if (buf2)  buf2[0] = '\0';
         return 2;   // found, but empty record
@@ -882,21 +908,22 @@ static int ESP32_DB_query(uint8_t type, uint32_t id, char *buf, size_t size,
 #endif
       return 1;  // found
   }
-
   return 0;   // not found
 }
 
+// shutdown DB
 static void ESP32_DB_fini()
 {
 #if !defined(BUILD_SKYVIEW_HD)
-  if (settings->adapter == ADAPTER_TTGO_T5S) {
-
-    if (ADB_is_open) {
+  if (settings->adapter == ADAPTER_TTGO_T5S) 
+  {
+    if (ADB_is_open) 
+    {
       ucdb.close();
       ADB_is_open = false;
     }
-
-    SD.end();
+    // ok to shutdown SD_MMC here too
+    SD_MMC.end();
     SD_is_ok = false;
   }
 }
@@ -904,22 +931,23 @@ static void ESP32_DB_fini()
 #endif
 
 #if defined(AUDIO)
+// Text To Speach is supported on this board
 void ESP32_TTS(char *message)
 {
-    Serial.println("TTS: '" + String(message) + "'");
+    PRINTLN("TTS: '" + String(message) + "'");
+    // don't bother if Voice is disabled in settings or incorrect board
+    if (settings->voice == VOICE_OFF || settings->adapter != ADAPTER_TTGO_T5S)
+    {
+      return;
+    }
 
     // TTS not possible if sound is not correctly initialized
     if (!IsSoundInitialized())
     {
       return;
     }
-    if (settings->voice == VOICE_OFF || settings->adapter != ADAPTER_TTGO_T5S)
-    {
-      return;
-    }
 
     char filename[MAX_FILENAME_LEN];
-
     // *not* the post-booting demo
     if (strcmp(message, "POST")) 
     {
@@ -930,19 +958,12 @@ void ESP32_TTS(char *message)
       SoC->EPD_update(EPD_UPDATE_FAST);
       while (!SoC->EPD_is_ready()) {yield();}
 #endif /* USE_EPAPER */
-      bool wdt_status = loopTaskWDTEnabled;
 
-      if (SD_MMC.cardType() == CARD_NONE) {
+      if (SD_MMC.cardType() == CARD_NONE) 
+      {
         LOG_ERROR(F("TTS: no SD card"));
         return;
       }
-
-// not needed here, file playing not done in this loop
-// only added in queue
-//
-//      if (wdt_status) {
-//        disableLoopWDT(); // disable watchdog
-//      }
 
       // tokenize the message and add each word in the play queue
       // note that the actual playing of the files is handled
@@ -957,21 +978,17 @@ void ESP32_TTS(char *message)
                            "" )));
           strcat(filename, word);
           strcat(filename, WAV_FILE_SUFFIX);
+          // add sound file to sound queue for playing
           add_file(filename);
           // next word
           word = strtok(NULL," ");
       }
-
-//      if (wdt_status) {
-//        enableLoopWDT(); // enable watchdog again
-//      }
-
    }
    else
    {
        /* post-booting */
-
-      if (SD_MMC.cardType() == CARD_NONE) {
+      if (SD_MMC.cardType() == CARD_NONE) 
+      {
         /* no SD card, can't play WAV files */
         LOG_ERROR(F("POST: no SD card"));
         //if (hw_info.display == DISPLAY_EPD_2_7)
@@ -981,34 +998,9 @@ void ESP32_TTS(char *message)
         }
         return;
       }
-
-      //settings->voice = VOICE_2;
-//      strcpy(filename, AUDIO_FILE_PREFIX);
-//      strcat(filename, "startup");
-//      strcat(filename, MP3_FILE_SUFFIX);
-//      Serial.println("Play startup sound: " + String(filename));
-//      play_file(filename, 1.0);
-
-      /* demonstrate the voice output */
-/*
-      delay(1500);
-      settings->voice = VOICE_1;
-      strcpy(filename, AUDIO_FILE_PREFIX);
-      strcat(filename, VOICE1_SUBDIR);
-      strcat(filename, "notice");
-      strcat(filename, MP3_FILE_SUFFIX);
-      play_file(filename, 0);
-      delay(1500);
-      settings->voice = VOICE_3;
-      strcpy(filename, AUDIO_FILE_PREFIX);
-      strcat(filename, VOICE3_SUBDIR);
-      strcat(filename, "notice");
-      strcat(filename, MP3_FILE_SUFFIX);
-      play_file(filename, 1);   // make voice3 6dB louder
-      delay(1000);
-*/
-      // Not working?
-      add_file("/Audio/startup.wav");
+      // only very short sound is working (not sure why), 
+      // so adjusted startup.wav to produce a short startup beep
+      add_file((const char*) "/Audio/startup.wav");
     }
 }
 #endif /* AUDIO */
@@ -1023,42 +1015,55 @@ AceButton button_mode(BUTTON_MODE_PIN);
 // AceButton button_down(SOC_BUTTON_DOWN_T5S);
 
 // The event handler for the button.
-void handleEvent(AceButton* button, uint8_t eventType,
-    uint8_t buttonState) {
-
+void handleEvent(AceButton* button, uint8_t eventType, uint8_t buttonState) 
+{
 // #if 0
   // Print out a message for all events.
-  if        (button == &button_mode) {
-    Serial.print(F("MODE "));
+  if (button == &button_mode)
+  {
+    PRINT(F("MODE "));
   // } else if (button == &button_up) {
-  //   Serial.print(F("UP   "));
+  //   PRINT(F("UP   "));
   // } else if (button == &button_down) {
-  //   Serial.print(F("DOWN "));
+  //   PRINT(F("DOWN "));
   // }
 
-  Serial.print(F("handleEvent(): eventType: "));
-  Serial.print(eventType);
-  Serial.print(F("; buttonState: "));
-  Serial.println(buttonState);
+  PRINT(F("handleEvent(): eventType: "));
+  PRINT(eventType);
+  PRINT(F("; buttonState: "));
+  PRINTLN(buttonState);
 // #endif
 
-  switch (eventType) {
-    case AceButton::kEventPressed:
-      break;
-    case AceButton::kEventReleased:
-      if (button == &button_mode) {
-        TFT_Mode(true);
-      }
-      break;
-    case AceButton::kEventLongPressed:
-      if (button == &button_mode) {
-        shutdown("NORMAL OFF");
-        Serial.println(F("This will never be printed."));
-      }
-      break;
+    switch (eventType) 
+    {
+      case AceButton::kEventPressed:
+        break;
+      case AceButton::kEventReleased:
+        if (button == &button_mode) 
+        {
+          TFT_Mode(true);
+        }
+        break;
+      case AceButton::kEventLongPressed:
+        if (button == &button_mode) 
+        {
+          shutdown("NORMAL OFF");
+          PRINTLN(F("This will never be printed."));
+        }
+        break;
+    }
   }
 }
-    }
+
+int OGN_Records()
+{
+  int n = 0;
+  if (settings->adb == DB_OGN && ADB_is_open)
+  {
+    n = ucdb.recordsNumber();
+  }
+  return n;
+}
 
 /* Callbacks for push button interrupt */
 // void onModeButtonEvent() {
