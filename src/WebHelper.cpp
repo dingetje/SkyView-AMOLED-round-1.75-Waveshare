@@ -721,7 +721,7 @@ void handleRoot() {
   time_t timestamp = now();
   char str_Vcc[8];
 
-  size_t size = 2400;
+  size_t size = 3000;
   char *offset;
   size_t len = 0;
 
