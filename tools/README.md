@@ -15,3 +15,5 @@ In order for this to work, the **Connection type** in the SkyView settings page 
 After rebooting SkyView the assigned IP address can be found in the status page of the Web Viewer of SkyView at address [192.168.1.1](192.168.1.1).
 
 <img width="748" height="458" alt="image" src="https://github.com/user-attachments/assets/b534a945-5fed-438d-a9c7-9a0eac093b80" />
+
+<img width="430" height="454" alt="image" src="https://github.com/user-attachments/assets/8de725d7-b9b3-4ebb-89ac-a15874ace15f" />
