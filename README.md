@@ -3,14 +3,18 @@
 SkyView is a traffic awareness device designed to display air traffic received through EC radio devices, such as **SoftRF SenseCap Card**, and visualize **FLARM NMEA** or **Garmin GDL90** data on its screen.
 
 ### Key Features:
-- This code is a fork to support round Waveshare 1.75 AMOLED Display
+- This code is a fork to support [round Waveshare 1.75 AMOLED Display](https://www.waveshare.com/wiki/ESP32-S3-Touch-AMOLED-1.75)
+
+  <img width="300" height="300" alt="image" src="https://github.com/user-attachments/assets/ab13a9ab-3450-4c14-bfc4-0d2d30d6ca7d" />
+
 - Best suited as a companion device for **SoftRF hardware**, providing user-friendly visualization of nearby traffic.
-- Proven compatibility with **SkyEcho**, **Stratux**, and **PilotAware** devices, as reported by builders.
+- Proven compatibility with **SkyEcho**, **Stratux**, **PilotAware** and **PowerMouse** devices, as reported by builders.
 
 ### Supported Data Input Methods:
 - **Classic Serial Interface**
 - **Wi-Fi UDP Connection**
 - **Bluetooth LE**
+- **NMEA file on SD card for demo and debugging**
 
 ---
 
@@ -19,8 +23,12 @@ This is a forked repository of SkyView:
 - **Supported in PlatformIO**: A versatile tool for building and compiling firmware for various devices and screens.
 - **Supports AMOLED Colour Displays**: Optimized for vibrant and high-resolution visualizations.
 - **Swipe Page Navigation**: Switching between pages is done effortlessly by swiping **left-right** or **up-down**.
+- **Voice Output**: traffic advisory, plus danger alert, requires voice data on SD card.
 
 ---
+
+### Demo with Voice Alerts ###
+[![Demo with Voice Alerts](https://img.youtube.com/vi/eLwic-Sz4lM/hqdefault.jpg)](https://www.youtube.com/watch?v=eLwic-Sz4lM)
 
 ### Pages and Visualizations:
 
@@ -63,11 +71,7 @@ Powering Off the device (Sleep mode).
 
 ---
 #### ** 3D Case**
-The case for the 1.75" Display is relativly small even including 600mAh battery, which should last upto 6 hour continious use.
-This version of case is a watch style.
-
-
-<img src="https://github.com/user-attachments/assets/b7e3225d-762a-4fb2-83d3-c82b57f38ba8" alt="3D Case" width="300px">
+The case for the 1.75" Display is not ready yet.
 
 
 ---
