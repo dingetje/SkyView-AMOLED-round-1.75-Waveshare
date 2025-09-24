@@ -417,17 +417,19 @@ void handleSettings() {
 <th align=left>Display adapter</th>\
 <td align=right>\
 <select name='adapter'>\
+<option %s value='%d'>Display TTGO T5S</option>\
+<option %s value='%d'>e-Paper TTGO T5 4.7</option>\
+<option %s value='%d'>e-Paper Waveshare ESP32</option>\
+<option %s value='%d'>OLED</option>\
 <option %s value='%d'>Waveshare Display AMOLED 1.75</option>\
-<!-- <option %s value='%d'>e-Paper TTGO T5 4.7</option> -->\
-<!-- option %s value='%d'>e-Paper Waveshare ESP32</option> -->\
-<!-- <option %s value='%d'>OLED</option> -->\
 </select>\
 </td>\
 </tr>"),
     (settings->adapter == ADAPTER_TTGO_T5S        ? "selected" : ""), ADAPTER_TTGO_T5S,
     (settings->adapter == ADAPTER_TTGO_T5_4_7     ? "selected" : ""), ADAPTER_TTGO_T5_4_7,
     (settings->adapter == ADAPTER_WAVESHARE_ESP32 ? "selected" : ""), ADAPTER_WAVESHARE_ESP32,
-    (settings->adapter == ADAPTER_OLED            ? "selected" : ""), ADAPTER_OLED
+    (settings->adapter == ADAPTER_OLED            ? "selected" : ""), ADAPTER_OLED,
+    (settings->adapter == ADAPTER_WAVESHARE_AMOLED_1_75 ? "selected" : ""), ADAPTER_WAVESHARE_AMOLED_1_75
     );
   } else if (SoC->id == SOC_ESP8266) {
     snprintf_P ( offset, size,

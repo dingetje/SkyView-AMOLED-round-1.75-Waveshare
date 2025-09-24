@@ -51,7 +51,7 @@ void EEPROM_setup()
   else
   {
     Serial.print(F("EEPROM version: "));
-    Serial.println(eeprom_block.field.version);
+    Serial.println(eeprom_block.field.version, HEX);
 
     if (eeprom_block.field.version != SKYVIEW_EEPROM_VERSION) 
     {
@@ -73,7 +73,11 @@ void EEPROM_defaults()
 #if defined(BUILD_SKYVIEW_HD)
     eeprom_block.field.settings.adapter       = ADAPTER_TTGO_T5_4_7;
 #else
+#if defined (WAVESHARE_AMOLED_1_75)
+    eeprom_block.field.settings.adapter       = ADAPTER_WAVESHARE_AMOLED_1_75;
+#else
     eeprom_block.field.settings.adapter       = ADAPTER_TTGO_T5S;
+#endif
 #endif
 
   eeprom_block.field.settings.connection      = CON_BLUETOOTH_LE;

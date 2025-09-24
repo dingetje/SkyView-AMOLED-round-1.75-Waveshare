@@ -102,13 +102,14 @@ enum
 
 enum
 {
-	ADAPTER_WAVESHARE_PI_HAT_2_7,
-	ADAPTER_WAVESHARE_ESP8266,
-	ADAPTER_WAVESHARE_ESP32,
-	ADAPTER_TTGO_T5S,
-	ADAPTER_NODEMCU,
-	ADAPTER_OLED,
-	ADAPTER_TTGO_T5_4_7
+	ADAPTER_WAVESHARE_PI_HAT_2_7,		// 0
+	ADAPTER_WAVESHARE_ESP8266,			// 1
+	ADAPTER_WAVESHARE_ESP32,			// 2
+	ADAPTER_TTGO_T5S,					// 3
+	ADAPTER_NODEMCU,					// 4
+	ADAPTER_OLED,						// 5
+	ADAPTER_TTGO_T5_4_7,				// 6
+	ADAPTER_WAVESHARE_AMOLED_1_75		// 7
 };
 
 enum
@@ -249,5 +250,6 @@ extern hardware_info_t hw_info;
 
 extern void shutdown(const char *);
 extern void Input_loop(void);
+extern bool MountSDCard();
 
 #endif /* SKYVIEW_H */

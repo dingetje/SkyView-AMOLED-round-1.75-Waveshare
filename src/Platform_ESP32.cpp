@@ -71,6 +71,20 @@ std::shared_ptr<Arduino_IIC_DriveBus> IIC_Bus = std::make_shared<Arduino_HWIIC>(
 extern TFT_eSPI tft;
 extern TFT_eSprite sprite;
 
+static bool wireStarted = false;
+
+bool setupWireIfNeeded(int sda, int scl, int freq)
+{
+  if (!wireStarted) 
+  {
+    if (Wire.begin(sda,scl,freq))
+    {
+      wireStarted = true;
+    }
+  }
+  return wireStarted;
+}
+
 #if defined(USE_EPAPER)
 /*
  * TTGO-T5S. Pin definition
@@ -147,9 +161,11 @@ static uint32_t ESP32_getFlashId()
   return g_rom_flashchip.device_id;
 }
 
+// show shutdown reason
 void ESP32_TFT_fini(const char *msg)
 {
-  if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
+  if (xSemaphoreTake(spiMutex, portMAX_DELAY)) 
+  {
     sprite.fillSprite(TFT_BLACK);
     sprite.setTextColor(TFT_BLUEBUTTON, TFT_BLACK);
     sprite.setFreeFont(&Orbitron_Light_32);
@@ -161,19 +177,27 @@ void ESP32_TFT_fini(const char *msg)
     lcd_brightness(255);
     lcd_PushColors(display_column_offset, 0, 466, 466, (uint16_t*)sprite.getPointer());
     xSemaphoreGive(spiMutex);
-  } else {
+  }
+  else
+  {
     PRINTLN("Failed to acquire SPI semaphore!");
   }
 }
 
 void SetUpWakeupSource()
 {
-  ("Enable wake up on GPIO_NUM_0 (button press)...");
-  rtc_gpio_pullup_en(GPIO_NUM_0);
-  rtc_gpio_pulldown_dis(GPIO_NUM_0); 
+#if defined (WAVESHARE_AMOLED_1_75)
+  // No need for wake up source via BOOT button
+  // A very long press on the PWR button will power the board
+#else
+  // Make sure BOOT_BUTTON is an RTC enabled IO pin
+  PRINTLN("Enable wake up on BOOT_BUTTON...");
+  rtc_gpio_pullup_en(BOOT_BUTTON);
+  rtc_gpio_pulldown_dis(BOOT_BUTTON); 
   // make sure BOOT button is the only wake up source
   esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
-  esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, LOW);
+  esp_sleep_enable_ext0_wakeup(BOOT_BUTTON, LOW);
+#endif
 #if defined (XPOWERS_CHIP_AXP2101)
   prepare_AXP2101_deep_sleep();
 #endif
@@ -181,31 +205,31 @@ void SetUpWakeupSource()
 
 void ESP32_fini()
 {
-  WiFi_fini();
-  battery_fini();
-  // SPI.end();
   PRINTLN("Putting device to deep sleep...");
-  delay(1000);
-  lcd_sleep();
-  BuddyManager::clearBuddyList();
-  EEPROM_store();
-  delay(1000);
-  SetUpWakeupSource();
-  SPI.end();
-  esp_deep_sleep_start();
+  WiFi_fini();                    // shut down WiFi
+  battery_fini();                 // save battery usage
+  BuddyManager::clearBuddyList(); // free memory
+  EEPROM_store();                 // save current settings in EEPROM
+  delay(3000);                    // allow shutdown message on screen to be seen
+  lcd_sleep();                    // ok, shutdown display
+  SetUpWakeupSource();            // setup wake up source
+  SPI.end();                      // stop SPI bus
+  PRINTLN("Powering off, bye, bye...");
+  power_off(); // commit suicide, nothing after this call
+
+//  PRINTLN("CPU deep sleep...");
+//  esp_deep_sleep_start();
+//  PRINTLN("It's dead Jim!");
 }
 
 /*
-  Method to print the reason by which ESP32
-  has been awaken from sleep
+  Method to print the reason by which ESP32 has been awaken from sleep
 */
 void print_wakeup_reason() 
 {
-  esp_sleep_wakeup_cause_t wakeup_reason;
-
-  wakeup_reason = esp_sleep_get_wakeup_cause();
-
-  switch (wakeup_reason) {
+  esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+  switch (wakeup_reason) 
+  {
     case ESP_SLEEP_WAKEUP_EXT0:     PRINTLN("Wakeup caused by external signal using RTC_IO"); break;
     case ESP_SLEEP_WAKEUP_EXT1:     PRINTLN("Wakeup caused by external signal using RTC_CNTL"); break;
     case ESP_SLEEP_WAKEUP_TIMER:    PRINTLN("Wakeup caused by timer"); break;
@@ -217,20 +241,28 @@ void print_wakeup_reason()
 
 static void ESP32_setup()
 {
-  PRINTLN("ESP32_setup");
-  pinMode(GPIO_NUM_0, INPUT);
-
+  PRINTLN(F("******************************************"));
+  PRINTLN(F("* ESP32_setup                            *"));
+  PRINTLN(F("******************************************"));
+  
   print_wakeup_reason();
 
+  pinMode(BOOT_BUTTON, INPUT);
+  pinMode(BOOT_BUTTON, INPUT_PULLUP);
+
+#if defined (WAVESHARE_AMOLED_1_75)
+  // No longer used for Waveshare board, use very long press of PWR button instead
+  // tied to the AXP2101 PMU for board power on
+#else
   //Check if the WAKE reason was BOOT button press
   if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) 
   {
-    if (digitalRead(GPIO_NUM_0) == LOW) 
+    if (digitalRead(BOOT_BUTTON) == LOW) 
     {
       // Only proceed if BOOT button is still pressed (i.e., held)
       unsigned long start = millis();
       bool bTwoSeconds = false;
-      while (digitalRead(GPIO_NUM_0) == LOW) 
+      while (digitalRead(BOOT_BUTTON) == LOW) 
       {
         if (millis() - start >= 2000) 
         {
@@ -242,7 +274,7 @@ static void ESP32_setup()
       if (!bTwoSeconds) 
       {
       // Wait for button to be released
-        while (digitalRead(GPIO_NUM_0) == LOW) {
+        while (digitalRead(BOOT_BUTTON) == LOW) {
           delay(10);  // avoid tight loop
         }
         PRINTLN("Boot button released too soon, going back to sleep...");
@@ -259,6 +291,8 @@ static void ESP32_setup()
       esp_deep_sleep_start();
     }
   }
+#endif
+
   uint32_t cpu_freq_hz = esp_clk_cpu_freq();
   float cpu_freq_mhz = cpu_freq_hz / 1000000.0;
   PRINTLN("CPU Frequency: " + String(cpu_freq_mhz) + " Mhz");
@@ -273,8 +307,8 @@ static void ESP32_setup()
   PRINTLN("Free PSRAM: " + String(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)) + " bytes");
   PRINTLN("Largest PSRAM block: " + String(heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM)) + " bytes");
 
-  // start I2C
-  if (!Wire.begin(IIC_SDA,IIC_SCL))
+  // start I2C bus
+  if (!setupWireIfNeeded(IIC_SDA,IIC_SCL))
   {
     PRINTLN("Failed to init I2C bus!");
     while(true)
@@ -285,7 +319,8 @@ static void ESP32_setup()
 
   // Flash size
   uint32_t flash_size = 0;
-  if (esp_flash_get_size(nullptr, &flash_size) == ESP_OK) {
+  if (esp_flash_get_size(nullptr, &flash_size) == ESP_OK) 
+  {
     PRINTLN("Flash size: " + String(flash_size) + " bytes");
   }
   else 
@@ -708,8 +743,21 @@ static bool ESP32_DB_init()
   bool rval = false;
   SD_is_ok = ADB_is_open = false;
 
-  if (settings->adapter != ADAPTER_TTGO_T5S) 
+#if defined (WAVESHARE_AMOLED_1_75)
+  if (settings->adapter != ADAPTER_WAVESHARE_AMOLED_1_75)
+#else
+  if (settings->adapter != ADAPTER_TTGO_T5S)
+#endif
   {
+    PRINT("Got Adapter: ");
+    PRINT(settings->adapter);
+    PRINT(" but expected ");
+#if defined (WAVESHARE_AMOLED_1_75)
+    PRINT(ADAPTER_WAVESHARE_AMOLED_1_75);
+#else
+    PRINT(ADAPTER_TTGO_T5S);
+#endif
+    PRINTLN(F("ESP32_DB_init: wrong Adapter from settings, cannot load OGN DB!"));
     return rval;
   }
   if (settings->adb == DB_NONE)
@@ -721,6 +769,7 @@ static bool ESP32_DB_init()
   // but check if card is found
   if (SD_MMC.cardType() == CARD_NONE)
   {
+    PRINTLN(F("ESP32_DB_init: no SD card, cannot load OGN DB!"));
     return rval;
   }
   SD_is_ok = true;
@@ -744,7 +793,7 @@ static bool ESP32_DB_init()
 
   if (settings->adb == DB_OGN) 
   {
-    PRINTLN("Loading /Aircrafts/ogn.cdb...");
+    PRINTLN("ESP32_DB_init: loading /Aircrafts/ogn.cdb...");
     if (ucdb.open("/Aircrafts/ogn.cdb") == CDB_OK) 
     {
       PRINT("OGN records: ");
@@ -753,8 +802,12 @@ static bool ESP32_DB_init()
     }
     else
     {
-      PRINTLN(F("Failed to open OGN DB"));
+      PRINTLN(F("ESP32_DB_init: failed to open OGN DB!"));
     }
+  }
+  else
+  {
+    PRINTLN(F("ESP32_DB_init: OGN not enabled in settings"));
   }
 
 #if 0
@@ -915,7 +968,7 @@ static int ESP32_DB_query(uint8_t type, uint32_t id, char *buf, size_t size,
 static void ESP32_DB_fini()
 {
 #if !defined(BUILD_SKYVIEW_HD)
-  if (settings->adapter == ADAPTER_TTGO_T5S) 
+  if (settings->adapter == ADAPTER_TTGO_T5S || settings->adapter == ADAPTER_WAVESHARE_AMOLED_1_75)
   {
     if (ADB_is_open) 
     {
@@ -936,16 +989,19 @@ void ESP32_TTS(char *message)
 {
     PRINTLN("TTS: '" + String(message) + "'");
     // don't bother if Voice is disabled in settings or incorrect board
-    if (settings->voice == VOICE_OFF || settings->adapter != ADAPTER_TTGO_T5S)
+    if (settings->voice == VOICE_OFF || 
+      (settings->adapter != ADAPTER_TTGO_T5S && settings->adapter != ADAPTER_WAVESHARE_AMOLED_1_75))
     {
       return;
     }
 
+#if defined (ES8311_AUDIO)
     // TTS not possible if sound is not correctly initialized
     if (!IsSoundInitialized())
     {
       return;
     }
+#endif
 
     char filename[MAX_FILENAME_LEN];
     // *not* the post-booting demo
@@ -1044,6 +1100,10 @@ void handleEvent(AceButton* button, uint8_t eventType, uint8_t buttonState)
           TFT_Mode(true);
         }
         break;
+// don't use the BOOT button to power off
+// this conflicts with the AXP2101 PWR button
+// so use that one instead for NORMAL OFF
+#if not defined(WAVESHARE_AMOLED_1_75)
       case AceButton::kEventLongPressed:
         if (button == &button_mode) 
         {
@@ -1051,6 +1111,7 @@ void handleEvent(AceButton* button, uint8_t eventType, uint8_t buttonState)
           PRINTLN(F("This will never be printed."));
         }
         break;
+#endif
     }
   }
 }

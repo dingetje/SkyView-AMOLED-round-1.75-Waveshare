@@ -1,4 +1,4 @@
-#if defined(AUDIO)
+#if defined(ES8311_AUDIO)
 
 #include "driver/audio/es8311.h"
 #include <Audio.h>

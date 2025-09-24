@@ -51,6 +51,7 @@ extern float read_AXP2101_voltage(void);
 extern int read_AXP2101_charge_current();
 extern uint8_t read_AXP2101_charging_status(void);
 extern void prepare_AXP2101_deep_sleep(void);
+extern void power_off();
 #endif
 
 extern int charging_status();

@@ -219,13 +219,17 @@ void draw_splash_screen()
   for (int i = 0; i <= MAX_BRIGHTNESS; i++)
   {
     lcd_brightness(i);
-    delay(5);
+    delay(4);
   }
+
+  // required for Voice output, mount it during splash time
+  MountSDCard();
+
   delay(2000);
   for (int i = MAX_BRIGHTNESS; i > 0; i--)
   {
     lcd_brightness(i);
-    delay(5);
+    delay(4);
   }
   PRINTLN("Exit splash screen...");
 }
@@ -240,7 +244,7 @@ void TFT_setup(void)
   delay(30);
   digitalWrite(SENSOR_RST, HIGH);
   delay(50);
-  Wire.begin(SENSOR_SDA, SENSOR_SCL);
+  setupWireIfNeeded(SENSOR_SDA, SENSOR_SCL);
   CO5300_init();
   sprite.setColorDepth(16);
   PRINT("TFT_setup. PSRAM_ENABLE: ");

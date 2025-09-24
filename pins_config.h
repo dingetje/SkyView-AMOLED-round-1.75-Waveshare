@@ -68,6 +68,9 @@ const int SDMMC_CS = 41;
 #define DIPIN               10
 #define PAPIN               46
 
+// BOOT button is tied to GPIO_NUM_0 pin
+#define BOOT_BUTTON            GPIO_NUM_0
+
 // IO Expander
 #define PWR_BUTTON  4   // PWR button via EXI04?
 #define AXP_IRQ     5   // AXP2101 interrupt is tied to EXIO5

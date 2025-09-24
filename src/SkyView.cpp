@@ -86,6 +86,8 @@ hardware_info_t hw_info = {
   .display  = DISPLAY_NONE
 };
 
+static bool SDCard_Mounted = false;
+
 /* Poll input source(s) */
 void Input_loop() {
   switch (settings->protocol)
@@ -100,31 +102,39 @@ void Input_loop() {
   }
 }
 
-String listDir(fs::FS &fs, const char *dirname, uint8_t levels) {
+String listDir(fs::FS &fs, const char *dirname, uint8_t levels) 
+{
   Serial.println("Listing directory: " + String(dirname));
 
   String dirContent = "Listing directory: " + String(dirname) + "\n";
 
   fs::File root = fs.open(dirname);
-  if (!root) {
+  if (!root) 
+  {
     Serial.println("Failed to open directory");
     return "Failed to open directory\n";
   }
-  if (!root.isDirectory()) {
+  if (!root.isDirectory()) 
+  {
     Serial.println("Not a directory");
     return "Not a directory\n";
   }
 
   fs::File file = root.openNextFile();
-  while (file) {
-    if (file.isDirectory()) {
+  while (file) 
+  {
+    if (file.isDirectory()) 
+    {
       String dirName = "  DIR : " + String(file.name());
       Serial.println(dirName);
       dirContent += dirName;
-      if (levels) {
+      if (levels) 
+      {
         dirContent += listDir(fs, file.path(), levels - 1);
       }
-    } else {
+    }
+    else 
+    {
       String fileInfo = "  FILE: " + String(file.name()) + "  SIZE: " + String(file.size());
       Serial.println(fileInfo);
       dirContent += fileInfo;
@@ -134,8 +144,9 @@ String listDir(fs::FS &fs, const char *dirname, uint8_t levels) {
   return dirContent;
 }
 
-void MountSDCard()
+bool MountSDCard()
 {
+  bool result = false;
   PRINTLN("Mounting SD card...");
   if (!SD_MMC.setPins(SDMMC_CLK, SDMMC_CMD, SDMMC_DATA))
   {
@@ -168,9 +179,9 @@ void MountSDCard()
         PRINTLN("SD_MMC Card Size: " + String(cardSize) + "MB");
         listDir(SD_MMC, "/", 1);
         PRINTLN("SD_MMC fileSystem initialization success");
-        String filename = "/logs/log_" + String(__TIME__) + ".txt";
 
 #if defined(DEBUG_MODE)
+        String filename = "/logs/log_" + String(__TIME__) + ".txt";
         // Set file system to save every log automatically
         LOG_ATTACH_FS_AUTO(SD_MMC, filename, FILE_WRITE);  // overwrite file
         LOG_FILE_SET_LEVEL(DebugLogLevel::LVL_INFO);
@@ -180,9 +191,12 @@ void MountSDCard()
         // 0: NONE, 1: ERROR, 2: WARN, 3: INFO, 4: DEBUG, 5: TRACE
         PRINTLN_FILE("current file log level is", (int)LOG_FILE_GET_LEVEL());
 #endif
+        result = true;
       }
     }
   }
+  SDCard_Mounted = result;
+  return result;
 }
 
 void setup()
@@ -236,10 +250,6 @@ void setup()
   {
     Serial.println(F(" failed!"));
   }
-
-
-  // required for Voice output
-  MountSDCard();
 
   // BuddyList.txt
   if (!SPIFFS.begin(true)) 

@@ -120,6 +120,7 @@ extern void print_wakeup_reason();
 extern bool SetupSound();
 
 extern int OGN_Records();
+extern bool setupWireIfNeeded(int sda, int scl, int freq = 0U);
 
 #endif /* PLATFORM_ESP32_H */
 
