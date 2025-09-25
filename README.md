@@ -11,8 +11,15 @@ SkyView is a traffic awareness device designed to display air traffic received t
 - Proven compatibility with **SkyEcho**, **Stratux**, **PilotAware** and **PowerMouse** devices, as reported by builders.
 
 ### Waveshare board shenanigans
-- the Waveshare board offers two buttons. One labeled BOOT, the other PWR. The BOOT button can be used to power off the device with a long press > 2 sec, but then use the PWR button very long press (~7 sec.) to power back on. The PWR button very long press can also be used to power off the device.
+- the Waveshare board offers two buttons. One labeled BOOT, the other PWR.
+- The PWR button can be used to power off the device with a long press > 3 sec, and **very long** press (~7 sec.) to power back on.
 - The SLEEP button on the **Settings** page of the touch screen can also be used to power the device off.
+- The board will also power on when:
+  - A battery is inserted
+  - A powered USB cable is inserted
+- The BOOT button acts as a MODE switch to step through the SkyView screens in a circular method:
+  
+   **Radar Screen** ➡️ **Traffic Info Screen** ➡️ **Compass Screen** (if enabled)
 - sometimes the board is not recognized by Windows when the USB-C cable is connected. In that case press both PWR and BOOT simulataneously and then release BOOT button. This should result in a COM port again (check Windows Device Manager).
 
 ### Supported Data Input Methods:
@@ -60,7 +67,7 @@ Provides detailed information on nearby traffic, including individual aircraft v
 ---
 
 #### **Compass Page**  
-A specialised page for orientation and navigation.
+A specialised page for orientation and navigation. Can be switched off in settings via the Web Server.
 
 <img src="https://github.com/user-attachments/assets/9613bb03-ed0b-48e4-b963-74c99b9cf339" alt="Compass Page" width="300px">
 
