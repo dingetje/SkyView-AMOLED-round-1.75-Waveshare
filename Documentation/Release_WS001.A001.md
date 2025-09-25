@@ -1,6 +1,6 @@
 # First release
 This is the first release for the Waveshare AMOLED 1.75 Round board.
-It is based on the VB006 firmware for the LilyGo board: (https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/)[https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/] but has a few modifications and enhancements.
+It is based on the VB006 firmware for the LilyGo board: [https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/) but has a few modifications and enhancements.
 
 ## PWR button
 - Use PWR button to power on/off the device:
