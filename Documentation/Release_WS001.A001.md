@@ -1,4 +1,5 @@
-# First release
+# First release WS001.A001
+
 This is the first release for the Waveshare AMOLED 1.75 Round board.
 It is based on the VB006 firmware for the LilyGo board: [https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/) but has a few modifications and enhancements.
 
@@ -21,5 +22,5 @@ It is based on the VB006 firmware for the LilyGo board: [https://github.com/slas
   - Voice is enabled in **Settings** page of the Web Server.
 
 ## Battery
-- The Waveshare board uses an AXP2101 PMU for the battery management.
+- The Waveshare board uses an AXP2101 PMU for the battery management vs the SY6970 on the LilyGo board.
 - Battery usage is higher than the LilyGo board (~180mA), a 3.7V/1100mAh Lithium battery lasts at least 6 hours.
