@@ -461,9 +461,9 @@ void handleSettings() {
 <select name='connection'>\
 <option %s value='%d'>Serial</option>\
 <option %s value='%d'>WiFi UDP</option>\
-<option %s value='%d'>Bluetooth SPP</option>\
+<!-- option %s value='%d'>Bluetooth SPP</option -->\
 <option %s value='%d'>Bluetooth LE</option>\
-<option %s value='%d'>NMEA File</option>\
+<!-- option %s value='%d'>NMEA File</option -->\
 </select>\
 </td>\
 </tr>\
