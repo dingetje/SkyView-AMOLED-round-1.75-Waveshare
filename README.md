@@ -17,7 +17,9 @@ SkyView is a traffic awareness device designed to display air traffic received t
 - The board will also power on when:
   - A battery is inserted
   - A powered USB cable is inserted
-- The BOOT button acts as a MODE switch to step through the SkyView screens in a circular method: **Radar Screen** ➡️ **Traffic Info Screen** ➡️ **Compass Screen** (if enabled)
+- The BOOT button acts as a MODE switch to step through the SkyView screens in a circular method:
+  
+   **Radar Screen** ➡️ **Traffic Info Screen** ➡️ **Compass Screen** (if enabled)
 - sometimes the board is not recognized by Windows when the USB-C cable is connected. In that case press both PWR and BOOT simulataneously and then release BOOT button. This should result in a COM port again (check Windows Device Manager).
 
 ### Supported Data Input Methods:
