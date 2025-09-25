@@ -34,19 +34,15 @@
 #include "XPowersLib.h"
 #include "ESP_IOExpander_Library.h"
 
-#define _EXAMPLE_CHIP_CLASS(name, ...) ESP_IOExpander_##name(__VA_ARGS__)
-#define EXAMPLE_CHIP_CLASS(name, ...) _EXAMPLE_CHIP_CLASS(name, ##__VA_ARGS__)
-
 uint32_t printTime = 0;
-
 XPowersPMU power;
 ESP_IOExpander *expander = NULL;
 
-static bool pmu_irq = false;
-void setPmuIrqFlag(bool flag)
-{
-    pmu_irq = flag;
-}
+//static bool pmu_irq = false;
+//void setPmuIrqFlag(bool flag)
+//{
+//    pmu_irq = flag;
+//}
 
 #endif
 
@@ -116,6 +112,8 @@ int read_SY6970_charging_status()
 
 
 #if defined(XPOWERS_CHIP_AXP2101)
+static unsigned long longPressStart = 0;
+
 static void adcOn() 
 {
   power.enableTemperatureMeasure();
@@ -202,20 +200,20 @@ static void I2C_Scan()
 }
 #endif
 
-void AXP2101_ChkIRQ()
-{
-  static int last_chk_pmu_irq = -1;
-  int chk_pmu_irq = expander->digitalRead(AXP_IRQ); // HIGH or LOW?
-  if (last_chk_pmu_irq != chk_pmu_irq)
-  {
-    last_chk_pmu_irq = chk_pmu_irq;
-    PRINTLN("AXP2101_ChkIRQ: " + String(chk_pmu_irq));
-    if (chk_pmu_irq == 0)
-    {
-      setPmuIrqFlag(true);
-    }
-  }
-}
+//void AXP2101_ChkIRQ()
+//{
+//  static int last_chk_pmu_irq = -1;
+//  int chk_pmu_irq = expander->digitalRead(AXP_IRQ); // HIGH or LOW?
+//  if (last_chk_pmu_irq != chk_pmu_irq)
+//  {
+//    last_chk_pmu_irq = chk_pmu_irq;
+//    PRINTLN("AXP2101_ChkIRQ: " + String(chk_pmu_irq));
+//    if (chk_pmu_irq == 0)
+//    {
+//      setPmuIrqFlag(true);
+//    }
+//  }
+//}
 
 void ShowPowerOffTime(uint opt)
 {
@@ -256,13 +254,9 @@ void AXP2101_setup()
 #if defined(I2C_SCAN)
   I2C_Scan();
 #endif
-
+  // I2C bus already started at this point, so we can use this constuctor
   LOG_DEBUG("Create TCA95xx_8bit IOExpander object...");
-  expander = new EXAMPLE_CHIP_CLASS(TCA95xx_8bit,
-                                    (i2c_port_t)0, 
-                                    ESP_IO_EXPANDER_I2C_TCA9554_ADDRESS_000,
-                                    IIC_SCL, IIC_SDA);
-
+  expander = new ESP_IOExpander_TCA95xx_8bit((i2c_port_t)0,ESP_IO_EXPANDER_I2C_TCA9554_ADDRESS_000);
   expander->begin();
   expander->pinMode(AXP_IRQ, INPUT);
   expander->pinMode(PWR_BUTTON, INPUT);
@@ -280,14 +274,16 @@ void AXP2101_setup()
 
   // Clear all interrupt flags
   power.clearIrqStatus();
+
   // Enable the required interrupt function
-  power.enableIRQ(
-      XPOWERS_AXP2101_BAT_INSERT_IRQ    | XPOWERS_AXP2101_BAT_REMOVE_IRQ      |   //BATTERY
-      XPOWERS_AXP2101_VBUS_INSERT_IRQ   | XPOWERS_AXP2101_VBUS_REMOVE_IRQ     |   //VBUS
-      XPOWERS_AXP2101_PKEY_SHORT_IRQ    | XPOWERS_AXP2101_PKEY_LONG_IRQ       |   //POWER KEY
-      XPOWERS_AXP2101_BAT_CHG_DONE_IRQ  | XPOWERS_AXP2101_BAT_CHG_START_IRQ       //CHARGE
-  );
-  power.printIntRegister(&Serial);
+  // IRQ not used anymore
+//  power.enableIRQ(
+//      XPOWERS_AXP2101_BAT_INSERT_IRQ    | XPOWERS_AXP2101_BAT_REMOVE_IRQ      |   //BATTERY
+//      XPOWERS_AXP2101_VBUS_INSERT_IRQ   | XPOWERS_AXP2101_VBUS_REMOVE_IRQ     |   //VBUS
+//      XPOWERS_AXP2101_PKEY_SHORT_IRQ    | XPOWERS_AXP2101_PKEY_LONG_IRQ       |   //POWER KEY
+//      XPOWERS_AXP2101_BAT_CHG_DONE_IRQ  | XPOWERS_AXP2101_BAT_CHG_START_IRQ       //CHARGE
+//  );
+//  power.printIntRegister(&Serial);
 
   // Set the minimum common working voltage of the PMU VBUS input,
   // below this value will turn off the power
@@ -312,15 +308,15 @@ void AXP2101_setup()
   opt = power.getPowerKeyPressOnTime();
   ShowPowerOnTime(opt);
 
-  LOG_DEBUG("Read ESP_IOExpander IRQ pin of AXP2101...");
-  AXP2101_ChkIRQ();
+//  LOG_DEBUG("Read ESP_IOExpander IRQ pin of AXP2101...");
+//  AXP2101_ChkIRQ();
 
   // power OLED
-  power.setBLDO1Voltage(3300);
-  power.enableALDO1();
+//  power.setBLDO1Voltage(3300);
+//  power.enableALDO1();
 
   // Set the time of pressing the button to turn off
-  power.setPowerKeyPressOffTime(XPOWERS_POWEROFF_4S);
+  power.setPowerKeyPressOffTime(XPOWERS_POWEROFF_6S);
   opt = power.getPowerKeyPressOffTime();
   ShowPowerOffTime(opt);
 
@@ -485,46 +481,61 @@ void Battery_loop()
   }
 
 #if defined (WAVESHARE_AMOLED_1_75)
-  static int pwr_button_last = 0;
-//  PWR button is tied to IO Expander pin 4
-//  int pwr_button = expander->digitalRead(PWR_BUTTON);
-//  if (pwr_button != pwr_button_last) 
-//  {
-//      PRINTLN("PWR button state changed: " + String(pwr_button));
-//      // TODO: button press not tied to anything yet
-//      pwr_button_last = pwr_button;
-//  }
-#endif
-
-  // Get PMU Interrupt Status Register
-  static uint8_t last_status = 0;
-  uint8_t status = power.readRegister(XPOWERS_AXP2101_INTSTS2); // AXP2101 IRQ Status register 2
-  if (status != last_status)
+  static int pwr_button_last = -1;
+  // PWR button is tied to IO Expander pin 4
+  int pwr_button = expander->digitalRead(PWR_BUTTON);
+  if (pwr_button != pwr_button_last) 
   {
-    last_status = status;
-    // not cleared?
-    if (status != 0)
+      PRINTLN("PWR button state changed: " + String(pwr_button));
+      pwr_button_last = pwr_button;
+  }
+  // PWR button pressed?
+  if (pwr_button_last == HIGH)
+  {
+    if (longPressStart == 0U)
     {
-      PRINTLN(F("============================================================================="));
-      Serial.print("AXP2101 IRQ status HEX: ");
-      Serial.print(status, HEX);
-      Serial.print(" BIN:");
-      Serial.println(status, BIN);
-      power.clearIrqStatus();
-
-      if (status & 8)
-      {
-        PRINTLN("PWR ON/OFF short press");
-        // not used yet
-      }
-      if (status & 4)
-      {
-        PRINTLN("PWR ON/OFF long press");
-        shutdown("NORMAL OFF");
-      }
-      PRINTLN(F("============================================================================="));
+      longPressStart = millis();
+    }
+    else if (millis() - longPressStart > 3000)
+    {
+      shutdown("NORMAL OFF");
     }
   }
+  else
+  {
+    longPressStart = 0U;
+  }
+#endif
+
+//  Get PMU Interrupt Status Register
+//  static uint8_t last_status = 0;
+//  
+//  uint8_t status = power.readRegister(XPOWERS_AXP2101_INTSTS2); // AXP2101 IRQ Status register 2
+//  if (status != last_status)
+//  {
+//    last_status = status;
+    // not cleared?
+//    if (status != 0)
+//    {
+//      PRINTLN(F("============================================================================="));
+//      Serial.print("AXP2101 IRQ status HEX: ");
+//      Serial.print(status, HEX);
+//      Serial.print(" BIN:");
+//      Serial.println(status, BIN);
+//      PRINTLN(F("============================================================================="));
+//
+//      power.clearIrqStatus();
+//
+//      if (status & 8)
+//      {
+//        PRINTLN("PWR ON/OFF short press");
+//        // not used yet
+//      }
+//      if (status & 4)
+//      {
+//        PRINTLN("PWR ON/OFF long press");
+//    }
+//  }
 #endif
 
   // Read battery voltage and charging status every 30 seconds
