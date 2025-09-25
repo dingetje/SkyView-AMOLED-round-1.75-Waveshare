@@ -26,7 +26,7 @@ SkyView is a traffic awareness device designed to display air traffic received t
 - **Classic Serial Interface**
 - **Wi-Fi UDP Connection**
 - **Bluetooth LE**
-
+- **Legacy Bluetooth SPP is NOT possible**
 ---
 
 ### Enhanced Functionality:
