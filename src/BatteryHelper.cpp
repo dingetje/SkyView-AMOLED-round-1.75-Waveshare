@@ -339,6 +339,12 @@ void AXP2101_setup()
     case XPOWER_POWERON_SRC_UNKONW:      PRINTLN("UNKNOWN"); break;
   }
 
+#if defined(WAVESHARE_AMOLED_1_75)
+  // disable analog power path, saves ~10mA, we don't need the microphones (ES7210 chip)
+  // this does not seem to affect the sound from the I2S DAC
+  power.disableALDO1();
+#endif
+
   LOG_DEBUG("AXP2101 Power chip initialized");
   adcOn();
 }
