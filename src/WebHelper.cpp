@@ -416,22 +416,42 @@ void handleSettings() {
 <tr>\
 <th align=left>Display adapter</th>\
 <td align=right>\
-<select name='adapter'>\
+<select name='adapter'>"));
+  len = strlen(offset);
+  offset += len;
+  size -= len;
+
+#if not defined(WAVESHARE_AMOLED_1_75)
+    snprintf_P ( offset, size,
+      PSTR("\
 <option %s value='%d'>Display TTGO T5S</option>\
 <option %s value='%d'>e-Paper TTGO T5 4.7</option>\
 <option %s value='%d'>e-Paper Waveshare ESP32</option>\
-<option %s value='%d'>OLED</option>\
-<option %s value='%d'>Waveshare Display AMOLED 1.75</option>\
+<option %s value='%d'>OLED</option>"),
+  (settings->adapter == ADAPTER_TTGO_T5S        ? "selected" : ""), ADAPTER_TTGO_T5S,
+  (settings->adapter == ADAPTER_TTGO_T5_4_7     ? "selected" : ""), ADAPTER_TTGO_T5_4_7,
+  (settings->adapter == ADAPTER_WAVESHARE_ESP32 ? "selected" : ""), ADAPTER_WAVESHARE_ESP32,
+  (settings->adapter == ADAPTER_OLED            ? "selected" : ""), ADAPTER_OLED
+      );
+#else
+    snprintf_P ( offset, size,
+      PSTR("\
+<option %s value='%d'>Waveshare Display AMOLED 1.75</option>"),
+  (settings->adapter == ADAPTER_WAVESHARE_AMOLED_1_75 ? "selected" : ""), ADAPTER_WAVESHARE_AMOLED_1_75
+      );
+#endif
+
+    len = strlen(offset);
+    offset += len;
+    size -= len;
+
+    snprintf_P ( offset, size,
+      PSTR("\
 </select>\
 </td>\
-</tr>"),
-    (settings->adapter == ADAPTER_TTGO_T5S        ? "selected" : ""), ADAPTER_TTGO_T5S,
-    (settings->adapter == ADAPTER_TTGO_T5_4_7     ? "selected" : ""), ADAPTER_TTGO_T5_4_7,
-    (settings->adapter == ADAPTER_WAVESHARE_ESP32 ? "selected" : ""), ADAPTER_WAVESHARE_ESP32,
-    (settings->adapter == ADAPTER_OLED            ? "selected" : ""), ADAPTER_OLED,
-    (settings->adapter == ADAPTER_WAVESHARE_AMOLED_1_75 ? "selected" : ""), ADAPTER_WAVESHARE_AMOLED_1_75
-    );
-  } else if (SoC->id == SOC_ESP8266) {
+</tr>"));
+  }
+  else if (SoC->id == SOC_ESP8266) {
     snprintf_P ( offset, size,
       PSTR("\
 <tr>\
