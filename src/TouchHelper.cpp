@@ -37,7 +37,8 @@ bool isLabels = true;
 bool show_compass = true;;
 extern bool isLocked;
 
-void Touch_2D_Unrotate(float &tX, float &tY) {
+void Touch_2D_Unrotate(float &tX, float &tY) 
+{
     float angleRad = D2R * ThisAircraft.Track;
     float trSin = sin(angleRad);
     float trCos = cos(angleRad);
@@ -48,8 +49,13 @@ void Touch_2D_Unrotate(float &tX, float &tY) {
 }
 
 
-void findTouchedTarget(int rawTouchX, int rawTouchY) {
-  if (TFT_view_mode != VIEW_MODE_RADAR) return;
+void findTouchedTarget(int rawTouchX, int rawTouchY) 
+{
+  // ignore if not in radar view
+  if (TFT_view_mode != VIEW_MODE_RADAR)
+  {
+    return;
+  }
   int zoom = getCurrentZoom();
   int range = 3000;  // default
   // Convert touch to center-relative coordinates (pixels)
@@ -58,22 +64,28 @@ void findTouchedTarget(int rawTouchX, int rawTouchY) {
   Serial.printf("Touch coordinates: (%f, %f)\n", touchX, touchY);
 
   // Rotate to NORTH_UP if needed
-  if (settings->orientation == DIRECTION_TRACK_UP) {
+  if (settings->orientation == DIRECTION_TRACK_UP) 
+  {
     Touch_2D_Unrotate(touchX, touchY);
     //Serial.printf("Unrotated touch coordinates: (%f, %f)\n", touchX, touchY);
   }
 
   // Get current range in meters
-  if (settings->units == UNITS_METRIC || settings->units == UNITS_MIXED) {
-    switch (zoom) {
+  if (settings->units == UNITS_METRIC || settings->units == UNITS_MIXED) 
+  {
+    switch (zoom) 
+    {
       case ZOOM_LOWEST:  range = 9000; break;
       case ZOOM_LOW:     range = 6000; break;
       case ZOOM_HIGH:    range = 900;  break;
       case ZOOM_MEDIUM:
       default:           range = 3000; break;
     }
-  } else {
-    switch (zoom) {
+  }
+  else 
+  {
+    switch (zoom) 
+    {
       case ZOOM_LOWEST:  range = 9260; break;
       case ZOOM_LOW:     range = 4630; break;
       case ZOOM_HIGH:    range = 926;  break;
@@ -92,6 +104,7 @@ void findTouchedTarget(int rawTouchX, int rawTouchY) {
   //Serial.printf("Touch in meters: (%f, %f)\n", touchXMeters, touchYMeters);
 
   for (int i = 0; i < MAX_TRACKING_OBJECTS; i++) {
+
     if (Container[i].ID == 0) continue;
     if ((now() - Container[i].timestamp) > TFT_EXPIRATION_TIME) continue;
 
@@ -101,7 +114,8 @@ void findTouchedTarget(int rawTouchX, int rawTouchY) {
     float dx = Container[i].RelativeEast - touchXMeters;
     float dy = Container[i].RelativeNorth - touchYMeters;
 
-    if ((dx * dx + dy * dy) < (touchHitRadius * touchHitRadius)) {
+    if ((dx * dx + dy * dy) < (touchHitRadius * touchHitRadius)) 
+    {
       Serial.printf("Touched target ID: %06X at (%f, %f)\n", Container[i].ID, Container[i].RelativeEast, Container[i].RelativeNorth);
       // TODO: handle selection
       isLocked = true;
@@ -122,22 +136,22 @@ void touchWakeUp()
 
 void Touch_setup() 
 {
+  PRINTLN("Initializing touch sensor...");
+  attachInterrupt(TP_INT, []()
+  { IIC_Interrupt_Flag = true; }, FALLING);
   
-    PRINTLN("Initializing touch sensor...");
-    attachInterrupt(TP_INT, []()
-    { IIC_Interrupt_Flag = true; }, FALLING);
-  
-        touchSensor.setPins(SENSOR_RST, SENSOR_IRQ);
+  touchSensor.setPins(SENSOR_RST, SENSOR_IRQ);
   if (touchSensor.begin(Wire, touchAddress, IIC_SDA, IIC_SCL) == false)
   {
-      PRINTLN("[ERROR] CST9217 initialization failed!");
+    PRINTLN("[ERROR] CST9217 initialization failed!");
   }
   else
   {
-      PRINT("Model :");
-      PRINTLN(touchSensor.getModelName());
-      touchSensor.setMaxCoordinates(LCD_WIDTH, LCD_HEIGHT); // Set touch max xy
+    PRINT("Model :");
+    PRINTLN(touchSensor.getModelName());
+    touchSensor.setMaxCoordinates(LCD_WIDTH, LCD_HEIGHT); // Set touch max xy
   }
+  // start the touch task on core 1
   xTaskCreatePinnedToCore(touchTask, "Touch Task", 4096, NULL, 1, &touchTaskHandle, 1);
 }
 
@@ -149,7 +163,8 @@ void tapHandler(int x, int y)
   PRINTLN("Tap detected at coordinates: " + String(x) + ", " + String(y));
   bool hasFix = settings->protocol == PROTOCOL_NMEA  ? isValidGNSSFix() : false;
   if (LCD_WIDTH - x > 290 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 360 && LCD_HEIGHT - y <  466
-    && (TFT_view_mode == VIEW_MODE_TEXT || (TFT_view_mode == VIEW_MODE_RADAR && !hasFix))) {
+    && (TFT_view_mode == VIEW_MODE_TEXT || (TFT_view_mode == VIEW_MODE_RADAR && !hasFix))) 
+  {
     PRINTLN("Going to SettingsPage ");
     settings_page();
   }
@@ -166,83 +181,101 @@ void tapHandler(int x, int y)
     // delay(1000);
   } 
   else if (LCD_WIDTH - x > 160 && LCD_WIDTH - x < 330 && LCD_HEIGHT - y > 410 && LCD_HEIGHT - y < 466
-    && TFT_view_mode == VIEW_MODE_SETTINGS) {
+    && TFT_view_mode == VIEW_MODE_SETTINGS) 
+  {
     //Back button
     PRINTLN("Going Back to previous page ");
     TFT_Mode(true);
   } 
   else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 110 && LCD_HEIGHT - y < 170
-    && TFT_view_mode == VIEW_MODE_SETTINGS) {
+    && TFT_view_mode == VIEW_MODE_SETTINGS) 
+  {
     //Traffic Filter +- 500m
     PRINTLN("Changing Traffic Filter +- 500m ");
-    if (settings->filter  == TRAFFIC_FILTER_500M) {
+    if (settings->filter  == TRAFFIC_FILTER_500M) 
+    {
       settings->filter  = TRAFFIC_FILTER_OFF;
       settings_page();
     }
-    else {
+    else 
+    {
       settings->filter  = TRAFFIC_FILTER_500M;
       settings_page();
     }
   } 
-  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 227 && LCD_HEIGHT - y < 290 && TFT_view_mode == VIEW_MODE_SETTINGS) {
+  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 227 && LCD_HEIGHT - y < 290 && TFT_view_mode == VIEW_MODE_SETTINGS) 
+  {
     //Radar Orientation North Up / Track Up
     PRINTLN("Changing Radar Orientation North Up / Track Up ");
-    if (settings->orientation  == DIRECTION_NORTH_UP) {
+    if (settings->orientation  == DIRECTION_NORTH_UP) 
+    {
       settings->orientation  = DIRECTION_TRACK_UP;
       settings_page();
     }
-    else {
+    else
+    {
       settings->orientation  = DIRECTION_NORTH_UP;
       settings_page();
     }
   } 
-  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 290 && LCD_HEIGHT - y < 350 && TFT_view_mode == VIEW_MODE_SETTINGS) {
+  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 290 && LCD_HEIGHT - y < 350 && TFT_view_mode == VIEW_MODE_SETTINGS) 
+  {
     //Enable Labels (Initials)
     PRINTLN("Toggle Labels ");
-    if (!isLabels) {
+    if (!isLabels) 
+    {
       isLabels = true;
       settings->show_labels = true;
       settings_page();
     }
-    else {
+    else
+    {
       isLabels = false;
       settings->show_labels = false;
       settings_page();
     }
   } 
-  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 170 && LCD_HEIGHT - y < 230 && TFT_view_mode == VIEW_MODE_SETTINGS) {
+  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 170 && LCD_HEIGHT - y < 230 && TFT_view_mode == VIEW_MODE_SETTINGS) 
+  {
     //Show Compass Page
     PRINTLN("Changing Compass View ");
-    if (!show_compass) {
+    if (!show_compass) 
+    {
       show_compass = true;
       settings_page();
     }
-    else {
+    else 
+    {
       show_compass = false;
       settings_page();
     }
   } 
-  else if (LCD_WIDTH - x > 0 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 70 && LCD_HEIGHT - y < 150 && TFT_view_mode == VIEW_MODE_TEXT) {
+  else if (LCD_WIDTH - x > 0 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 70 && LCD_HEIGHT - y < 150 && TFT_view_mode == VIEW_MODE_TEXT) 
+  {
     //Lock focus on current target
-    if (!isLocked) {
-      isLocked = true;
+    if (!isLocked) 
+    {
+     isLocked = true;
      setFocusOn(true);
      PRINTLN("Locking focus on current target ");
     }
-    else {
+    else 
+    {
       isLocked = false;
       setFocusOn(false);
       PRINTLN("Unlocking focus from current target ");
     }
     TFTTimeMarker = 0; // Force update of the display
-  } else if (TFT_view_mode == VIEW_MODE_RADAR) {
+  }
+  else if (TFT_view_mode == VIEW_MODE_RADAR) 
+  {
     findTouchedTarget(LCD_WIDTH - x, LCD_HEIGHT - y);
-
-  } else {
+  }
+  else
+  {
     PRINTLN("No Tap match found...");
   }
 }
-
 
 void touchTask(void *parameter) 
 {   

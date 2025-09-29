@@ -40,6 +40,10 @@ uint16_t lock_color = TFT_LIGHTGREY;
 const char* buddy_name = " ";
 static int32_t focusOn = 0;
 
+#if defined(DB)
+static char ogn_name[64];
+#endif
+
 void setFocusOn(bool on, uint32_t id = 0) {
   if (on) {
     if (id !=0) {
@@ -104,6 +108,16 @@ void TFT_draw_text() {
     if (buddy_name) {
       bud_color = TFT_GREEN;
     } else {
+#if defined(DB)
+      // search OGN database
+      // if found, use the data from there based on ID preferences
+      // there's only room for one field, so no need for the additional data
+      if (SoC->DB_query(DB_OGN, traffic[TFT_current - 1].fop->ID, &ogn_name[0], sizeof(ogn_name), NULL, 0)) 
+      {
+        bud_color = TFT_YELLOW;
+        buddy_name = ogn_name;
+      } else
+#endif
       buddy_name = "Unknown";
     }
     
@@ -124,7 +138,6 @@ void TFT_draw_text() {
     int disp_alt = (int)((vertical + ThisAircraft.altitude) * alt_mult);  //converting meter to feet
     float traffic_vario = (traffic[TFT_current - 1].climbrate);
     // float speed = (traffic[TFT_current - 1].fop->GroundSpeed);
-
 
 #if defined(DEBUG_CONTAINER)
     Serial.print(F(" ID="));

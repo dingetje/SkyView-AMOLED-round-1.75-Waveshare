@@ -860,8 +860,10 @@ static int ESP32_DB_query(uint8_t type, uint32_t id, char *buf, size_t size,
   rt = ucdb.findKey(key, strlen(key));
   if (rt == KEY_FOUND) 
   {
+      // found, now parse the record into tokens
       while ((c = ucdb.readValue()) != -1 && i < (sizeof(out) - 1)) 
       {
+        // next field, first field is right after ID and has no leading '|'
         if (c == '|') 
         {
           if (token_cnt < sizeof(tokens)) 
@@ -879,10 +881,27 @@ static int ESP32_DB_query(uint8_t type, uint32_t id, char *buf, size_t size,
       if (token_cnt < 3)  tokens[2] = nothing;
       if (token_cnt < 4)  tokens[3] = nothing;
 
+#if defined (DB_DEBUG)
+      // DB: tokens: 
+      // 0:'Duo Discus' // M&M
+      // 1:'PH-1035'    // Reg
+      // 2:'SAL'        // CN
+      // 3: ??          // Optional, future use?
+      PRINT("DB found id ");
+      PRINTLN(key);
+      PRINTLN("DB tokens: ");
+      for (int j=0; j < token_cnt; j++)
+      {
+        PRINT(j);
+        PRINT(":'");
+        PRINT(&out[tokens[j]]);
+        PRINTLN("'");
+      }
+#endif
       // this code is specific to ogn.cdb
       // if we ever use fln.cdb need specific code for that
-
       int pref1, pref2, pref3;
+      // ID preference setting determines which fields are shown first
       switch (settings->idpref)
       {
       case ID_TAIL:
@@ -954,6 +973,7 @@ static int ESP32_DB_query(uint8_t type, uint32_t id, char *buf, size_t size,
       }
       else 
       {
+        // nothing
         buf[0] = '\0';
         if (buf2)  buf2[0] = '\0';
         return 2;   // found, but empty record

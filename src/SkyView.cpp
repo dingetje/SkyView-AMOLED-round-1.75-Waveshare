@@ -344,12 +344,34 @@ void setup()
   WiFi_setup();
 
 #if defined(DB)
-  SoC->DB_init();
+  if (SoC->DB_init())
+  {
+    PRINTLN("OGN database initialized successfully");
+#if defined (DB_DEBUG)
+    char ogn_name[64];
+    char ogn_additional[64];
+    // do a test query with a known ID
+    if (SoC->DB_query(DB_OGN, 0x484BBC, ogn_name, sizeof(ogn_name), ogn_additional, sizeof(ogn_additional)))
+    {
+      PRINT("OGN DB query test: 0x484BBC = ");
+      PRINT(ogn_name);
+      PRINT(" (");
+      PRINT(ogn_additional);
+      PRINTLN(")");
+    }
+    else
+    {
+      PRINTLN("OGN database query failed!");
+    }
+#endif
+  }
+  else
+  {
+    PRINTLN("OGN database initialization failed");
+  }
 #endif
 #if defined(AUDIO)
-  char buf[8];
-  strcpy(buf,"POST");
-  SoC->TTS(buf);
+  SoC->TTS((char *)"POST");
 #endif
   Web_setup();
   Traffic_setup();
