@@ -47,58 +47,63 @@ unsigned long lastBatteryCheck = 0;
 const unsigned long batteryPollInterval = 60000;  // Check every 60 seconds
 
 
-std::vector<String> scanForBLEDevices(uint32_t scanTimeSeconds) {
-  // disableLoopWDT();
-  scanResults.clear();
-
+std::vector<String> scanForBLEDevices(uint32_t scanTimeSeconds) 
+{
   // Prevent scanning while a connection is active
-  if (ESP32_BT_ctl.status == BT_STATUS_CON) {
+  if (ESP32_BT_ctl.status == BT_STATUS_CON) 
+  {
     Serial.println("[BLE] Scan aborted: BLE already connected.");
     return scanResults;
   }
 
+  scanResults.clear();
+
   // Initialize BLE only once for scanning context
-  if (!bleInitializedForScan) {
+  if (!bleInitializedForScan) 
+  {
     NimBLEDevice::init("");  // Empty name
     bleInitializedForScan = true;
   }
 
-  NimBLEScan* scanner = NimBLEDevice::getScan();
-  
+  NimBLEScan* scanner = NimBLEDevice::getScan();  
   scanner->setActiveScan(true);
   scanner->setInterval(1349);
   scanner->setWindow(449);
   scanner->clearResults();  // Free memory from last scan
 
+  disableLoopWDT();
   Serial.println("[BLE] Starting scan...");
-  NimBLEScanResults results = scanner->getResults(3, true);  // Convert seconds to milliseconds
+  NimBLEScanResults results = scanner->getResults(500, true);  // Convert seconds to milliseconds
   Serial.printf("[BLE] Scan completed: %d device(s) found.\n", results.getCount());
+  enableLoopWDT();
 
   std::set<String> uniqueNames;
 
-  for (int i = 0; i < results.getCount(); i++) {
+  for (int i = 0; i < results.getCount(); i++) 
+  {
     const NimBLEAdvertisedDevice* device = results.getDevice(i);
     // Skip devices that don’t advertise the name or service
-    if (!device->haveServiceUUID() || !device->isAdvertisingService(targetService)) {
+    if (!device->haveServiceUUID() || !device->isAdvertisingService(targetService)) 
+    {
       continue;  // Filter out non-SoftRF devices
     }
-    if (device->haveName()) {
+    if (device->haveName()) 
+    {
       String name = device->getName().c_str();
       name.trim();
-      if (name.length() > 0) {
+      if (name.length() > 0) 
+      {
         uniqueNames.insert(name);
       }
     }
   }
 
-  for (const auto& name : uniqueNames) {
+  for (const auto& name : uniqueNames) 
+  {
     scanResults.push_back(name);
     Serial.println("[BLE] Found: " + name);
   }
-
   scanner->clearResults();  // Free memory again
-  // enableLoopWDT();
-
   return scanResults;
 }
 
