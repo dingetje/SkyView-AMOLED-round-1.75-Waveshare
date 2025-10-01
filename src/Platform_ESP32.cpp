@@ -308,7 +308,7 @@ static void ESP32_setup()
   PRINTLN("Largest PSRAM block: " + String(heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM)) + " bytes");
 
   // start I2C bus
-  if (!setupWireIfNeeded(IIC_SDA,IIC_SCL))
+  if (!setupWireIfNeeded(IIC_SDA,IIC_SCL, 400000))
   {
     PRINTLN("Failed to init I2C bus!");
     while(true)
@@ -328,8 +328,8 @@ static void ESP32_setup()
     PRINTLN("[ERROR] Failed to get flash size!");
   }  
   esp_err_t ret = ESP_OK;
-  uint8_t null_mac[6] = {0};
 
+  uint8_t null_mac[6] = {0};
   ret = esp_efuse_mac_get_custom(efuse_mac);
   if (ret != ESP_OK) 
   {
@@ -370,7 +370,7 @@ static void ESP32_setup()
   // Check if PSRAM is available (it should)
   if (psramFound()) 
   {
-    PRINTLN("PSRAM available");
+    PRINT("PSRAM available, hw_info.revision = ");
     hw_info.revision = HW_REV_H741_01;
     // switch(flash_id)
     // {

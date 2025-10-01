@@ -252,4 +252,7 @@ extern void shutdown(const char *);
 extern void Input_loop(void);
 extern bool MountSDCard();
 
+// flag to avoid multiple mounts
+extern bool SPIFFS_is_mounted;
+
 #endif /* SKYVIEW_H */

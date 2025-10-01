@@ -187,12 +187,12 @@ std::vector<String> getAllowedBLENameList()
 {
   std::vector<String> allowedNames;
 
-  if (!SPIFFS.begin(true)) 
+  // SPIFFS should already be mounted at this point
+  if (SPIFFS_is_mounted == false)
   {
-    PRINTLN("[BLE] Failed to mount SPIFFS");
+    PRINTLN("[BLE] SPIFFS not mounted");
     return allowedNames;
   }
-
   File file = SPIFFS.open("/BLEConnections.txt", "r");
   if (!file || file.isDirectory()) 
   {
@@ -1130,9 +1130,9 @@ void handleNotFound()
 
 void Web_setup()
 {
-  if (!SPIFFS.begin(true))
-  {
-    PRINTLN("SPIFFS Mount Failed!");
+//  if (!SPIFFS.begin(true))
+//  {
+//    PRINTLN("SPIFFS Mount Failed!");
     // if (!SPIFFS.format()) {
     //   PRINTLN("SPIFFS Format Failed");
     //   return;
@@ -1141,9 +1141,13 @@ void Web_setup()
     //   PRINTLN("SPIFFS Mount Failed again");
     //   return;
     // }
-  }
+//  }
 
-  PRINTLN("SPIFFS mounted successfully");
+  if (SPIFFS_is_mounted == false) 
+  {
+    PRINTLN("[WEB] SPIFFS expected to be mounted already, but it's not. Aborting web server setup.");
+    return;
+  }
   server.on ( "/", handleRoot );
   server.on ( "/settings", handleSettings );
   server.on("/buddylist", handleBuddyList);

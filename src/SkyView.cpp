@@ -87,6 +87,7 @@ hardware_info_t hw_info = {
 };
 
 static bool SDCard_Mounted = false;
+bool SPIFFS_is_mounted = false;
 
 /* Poll input source(s) */
 void Input_loop() {
@@ -254,10 +255,12 @@ void setup()
   // BuddyList.txt
   if (!SPIFFS.begin(true)) 
   {
+    SPIFFS_is_mounted = false;
     PRINTLN("SPIFFS Mount Failed");
   }
   else
   {
+    SPIFFS_is_mounted = true;
     PRINTLN("SPIFFS mounted successfully");
     PRINT("SPIFFS Total space: ");
     PRINTLN(SPIFFS.totalBytes());

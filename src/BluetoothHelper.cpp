@@ -35,6 +35,7 @@
 #include <FS.h>
 #include <SPIFFS.h>
 #include <set>
+#include <DebugLog.h>
 
 std::vector<String> scanResults;
 
@@ -52,7 +53,7 @@ std::vector<String> scanForBLEDevices(uint32_t scanTimeSeconds)
   // Prevent scanning while a connection is active
   if (ESP32_BT_ctl.status == BT_STATUS_CON) 
   {
-    Serial.println("[BLE] Scan aborted: BLE already connected.");
+    PRINTLN("[BLE] Scan aborted: BLE already connected.");
     return scanResults;
   }
 
@@ -71,14 +72,23 @@ std::vector<String> scanForBLEDevices(uint32_t scanTimeSeconds)
   scanner->setWindow(449);
   scanner->clearResults();  // Free memory from last scan
 
-  disableLoopWDT();
-  Serial.println("[BLE] Starting scan...");
+
+  // disable watchdog during scan (if enabled)
+  bool wdt_status = loopTaskWDTEnabled;
+  if (wdt_status) 
+  {
+      disableLoopWDT();
+  }
+  PRINTLN("[BLE] Starting scan...");
   NimBLEScanResults results = scanner->getResults(500, true);  // Convert seconds to milliseconds
   Serial.printf("[BLE] Scan completed: %d device(s) found.\n", results.getCount());
-  enableLoopWDT();
+  // enable watchdog again after scan (if it was enabled)
+  if (wdt_status) 
+  {
+    enableLoopWDT();
+  }
 
   std::set<String> uniqueNames;
-
   for (int i = 0; i < results.getCount(); i++) 
   {
     const NimBLEAdvertisedDevice* device = results.getDevice(i);
@@ -101,37 +111,44 @@ std::vector<String> scanForBLEDevices(uint32_t scanTimeSeconds)
   for (const auto& name : uniqueNames) 
   {
     scanResults.push_back(name);
-    Serial.println("[BLE] Found: " + name);
+    PRINTLN("[BLE] Found: " + name);
   }
   scanner->clearResults();  // Free memory again
   return scanResults;
 }
 
-
-
 std::vector<String> allowedBLENames;
 
-void loadAllowedBLENames() {
+void loadAllowedBLENames() 
+{
   allowedBLENames.clear();
-  if (!SPIFFS.begin(true)) {
-    Serial.println("Failed to mount SPIFFS");
+//  if (!SPIFFS.begin(true)) 
+//  {
+//    PRINTLN("Failed to mount SPIFFS");
+//    return;
+//  }
+  if (SPIFFS_is_mounted == false) 
+  {
+    PRINTLN("[BLE] SPIFFS not mounted");
     return;
   }
-
   File file = SPIFFS.open("/BLEConnections.txt");
-  if (!file) {
-    Serial.println("BLEConnections.txt not found");
+  if (!file) 
+  {
+    PRINTLN("BLEConnections.txt not found");
     return;
   }
 
-  while (file.available()) {
+  while (file.available()) 
+  {
     String name = file.readStringUntil('\n');
     name.trim();
-    if (name.length() > 0) {
+    if (name.length() > 0) 
+    {
       allowedBLENames.push_back(name);
+      PRINTLN("[BLE] Allowed device: " + name);
     }
   }
-
   file.close();
 }
 
@@ -139,7 +156,8 @@ void loadAllowedBLENames() {
 // BluetoothSerial SerialBT;
 String BT_name = HOSTNAME;
 
-Bluetooth_ctl_t ESP32_BT_ctl = {
+Bluetooth_ctl_t ESP32_BT_ctl = 
+{
   .mutex   = portMUX_INITIALIZER_UNLOCKED,
   .command = BT_CMD_NONE,
   .status  = BT_STATUS_NC
@@ -148,7 +166,7 @@ Bluetooth_ctl_t ESP32_BT_ctl = {
 /* LE */
 static NimBLERemoteCharacteristic* pRemoteCharacteristic;
 static NimBLEAdvertisedDevice* AppDevice;
-static NimBLEClient* pClient;
+static NimBLEClient* pClient = nullptr;
 
 static NimBLEUUID serviceUUID(SERVICE_UUID16);
 static NimBLEUUID charUUID(CHARACTERISTIC_UUID16);
@@ -163,39 +181,48 @@ static void AppNotifyCallback(
   NimBLERemoteCharacteristic* pBLERemoteCharacteristic,
   uint8_t* pData,
   size_t length,
-  bool isNotify) {
-    if (length > 0) {
+  bool isNotify) 
+  {
+    if (length > 0) 
+    {
       BLE_FIFO_RX->write((char *) pData, (BLE_FIFO_RX->room() > length ?
                                           length : BLE_FIFO_RX->room()));
     }
 }
 
-class AppClientCallback : public NimBLEClientCallbacks {
-  void onConnect(NimBLEClient* pclient) {
+class AppClientCallback : public NimBLEClientCallbacks 
+{
+  void onConnect(NimBLEClient* pclient) 
+  {
   }
 
-  void onDisconnect(NimBLEClient* pclient) {
+  void onDisconnect(NimBLEClient* pclient) 
+  {
     ESP32_BT_ctl.status = BT_STATUS_NC;
-
-    Serial.println(F("BLE: disconnected from Server."));
+    PRINTLN(F("BLE: disconnected from Server."));
   }
 };
 
-class AppAdvertisedDeviceCallbacks : public NimBLEScanCallbacks {
+class AppAdvertisedDeviceCallbacks : public NimBLEScanCallbacks 
+{
 public:
 
-  void onResult(const NimBLEAdvertisedDevice* advertisedDevice) override {
+  void onResult(const NimBLEAdvertisedDevice* advertisedDevice) override 
+  {
     if (!advertisedDevice->haveName()) return;
 
     String devName = advertisedDevice->getName().c_str();
-    bool known = std::any_of(
-      allowedBLENames.begin(), allowedBLENames.end(),
-      [&](const String& name) { return name == devName; }
+    bool known = std::any_of(allowedBLENames.begin(), allowedBLENames.end(),
+                            [&](const String& name)
+                            {
+                              return name == devName; 
+                            }
     );
 
     if (known && advertisedDevice->haveServiceUUID() &&
-        advertisedDevice->isAdvertisingService(serviceUUID)) {
-      Serial.println(F("  --> Known device and matching service UUID. Connecting..."));
+        advertisedDevice->isAdvertisingService(serviceUUID)) 
+    {
+      PRINTLN(F("  --> Known device and matching service UUID. Connecting..."));
       NimBLEDevice::getScan()->stop();
 
       delete AppDevice;
@@ -208,37 +235,45 @@ public:
 #endif /* USE_NIMBLE */
 
 
-static bool ESP32_BLEConnectToServer() {
-  if (!pClient->connect(AppDevice)) {
-    Serial.println(F("BLE: Failed to connect to device."));
+static bool ESP32_BLEConnectToServer() 
+{
+  if (!pClient->connect(AppDevice)) 
+  {
+    PRINTLN(F("BLE: Failed to connect to device."));
     return false;
   }
 
   NimBLERemoteService* pRemoteService = pClient->getService(serviceUUID);
-  if (pRemoteService == nullptr) {
+  if (pRemoteService == nullptr) 
+  {
     Serial.print(F("BLE: Failed to find our service UUID: "));
-    Serial.println(serviceUUID.toString().c_str());
+    PRINTLN(serviceUUID.toString().c_str());
     pClient->disconnect();
     return false;
   }
 
   pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
-  if (pRemoteCharacteristic == nullptr) {
+  if (pRemoteCharacteristic == nullptr) 
+  {
     Serial.print(F("BLE: Failed to find our characteristic UUID: "));
-    Serial.println(charUUID.toString().c_str());
+    PRINTLN(charUUID.toString().c_str());
     pClient->disconnect();
     return false;
   }
 
-    if(pRemoteCharacteristic->canNotify())
-      pRemoteCharacteristic->subscribe(true, AppNotifyCallback);
+  if(pRemoteCharacteristic->canNotify())
+  {
+    pRemoteCharacteristic->subscribe(true, AppNotifyCallback);
+  }
 
-    ESP32_BT_ctl.status = BT_STATUS_CON;
-    return true;
+  ESP32_BT_ctl.status = BT_STATUS_CON;
+  return true;
 }
 
-static void ESP32_Bluetooth_setup(){
-  switch (settings->connection) {
+static void ESP32_Bluetooth_setup()
+{
+  switch (settings->connection) 
+  {
 
   case CON_BLUETOOTH_LE:
     {
@@ -250,7 +285,7 @@ static void ESP32_Bluetooth_setup(){
       esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
 
 #if defined(USE_NIMBLE)
-      Serial.println("[BLE] Initializing NimBLE...");
+      PRINTLN("[BLE] Initializing NimBLE...");
       NimBLEDevice::init("");
       pClient = NimBLEDevice::createClient();
       pClient->setClientCallbacks(new AppClientCallback());
@@ -269,8 +304,7 @@ static void ESP32_Bluetooth_setup(){
       pBLEScan->setInterval(1349);
       pBLEScan->setWindow(449);
       pBLEScan->setActiveScan(true);
-      pBLEScan->start(3, false);
-
+      pBLEScan->start(500, false);
       BLE_Notify_TimeMarker = millis();
     }
     break;
@@ -278,34 +312,43 @@ static void ESP32_Bluetooth_setup(){
     break;
   }
 }
-uint8_t getBLEbattery() {
+
+uint8_t getBLEbattery() 
+{
   return BLEbatteryCache;
 }
 
-void pollBLEbattery() {
-  if (!pClient || !pClient->isConnected()) {
-    Serial.println("[BLE] Battery poll skipped: not connected");
+void pollBLEbattery() 
+{
+  if (!pClient || !pClient->isConnected()) 
+  {
+    PRINTLN("[BLE] Battery poll skipped: not connected");
     return;
   }
 
   NimBLERemoteService* batteryService = pClient->getService("180F");
-  if (!batteryService) {
-    Serial.println("[BLE] Battery service not found");
+  if (!batteryService) 
+  {
+    PRINTLN("[BLE] Battery service not found");
     return;
   }
 
   NimBLERemoteCharacteristic* batteryChar = batteryService->getCharacteristic("2A19");
-  if (!batteryChar || !batteryChar->canRead()) {
-    Serial.println("[BLE] Battery characteristic not found or unreadable");
+  if (!batteryChar || !batteryChar->canRead()) 
+  {
+    PRINTLN("[BLE] Battery characteristic not found or unreadable");
     return;
   }
 
   std::string value = batteryChar->readValue();
-  if (!value.empty()) {
+  if (!value.empty()) 
+  {
     BLEbatteryCache = static_cast<uint8_t>(value[0]);
     Serial.printf("[BLE] Polled battery level: %d%%\n", BLEbatteryCache);
-  } else {
-    Serial.println("[BLE] Battery level read failed");
+  }
+  else 
+  {
+    PRINTLN("[BLE] Battery level read failed");
   }
 }
 
@@ -319,9 +362,11 @@ static void ESP32_Bluetooth_loop()
   {
   case CON_BLUETOOTH_LE:
     {
-      if (ESP32_BT_ctl.command == BT_CMD_CONNECT) {
-        if (ESP32_BLEConnectToServer()) {
-          Serial.println(F("BLE: connected to Server."));
+      if (ESP32_BT_ctl.command == BT_CMD_CONNECT) 
+      {
+        if (ESP32_BLEConnectToServer()) 
+        {
+          PRINTLN(F("BLE: connected to Server."));
         }
         ESP32_BT_ctl.command = BT_CMD_NONE;
       }
@@ -339,12 +384,15 @@ static void ESP32_Bluetooth_loop()
 
       if (hasData) {
         BT_TimeMarker = millis();
-      } else if (millis() - BT_TimeMarker > BT_NODATA_TIMEOUT) {
+      }
+      else if (millis() - BT_TimeMarker > BT_NODATA_TIMEOUT) 
+      {
 
-        Serial.println(F("BLE: attempt to (re)connect..."));
-
-        if (pClient) {
-          if (pClient->isConnected()) {
+        PRINTLN(F("BLE: attempt to (re)connect..."));
+        if (pClient) 
+        {
+          if (pClient->isConnected()) 
+          {
             pClient->disconnect();
           }
         }
@@ -353,7 +401,7 @@ static void ESP32_Bluetooth_loop()
         NimBLEScan* scan = NimBLEDevice::getScan();
         scan->setScanCallbacks(new AppAdvertisedDeviceCallbacks(), false);
         scan->setActiveScan(true);
-        scan->start(5, false);
+        scan->start(50, false);
 #else
         BLEDevice::getScan()->start(3, false);
 #endif /* USE_NIMBLE */
@@ -361,7 +409,7 @@ static void ESP32_Bluetooth_loop()
 #if 0
         /* approx. 170 bytes memory leak still remains */
         Serial.print("Free Heap: ");
-        Serial.println(ESP.getFreeHeap());
+        PRINTLN(ESP.getFreeHeap());
 #endif
 
         BT_TimeMarker = millis();
@@ -370,24 +418,25 @@ static void ESP32_Bluetooth_loop()
       // notify changed value
       // bluetooth stack will go into congestion, if too many packets are sent
       if (ESP32_BT_ctl.status == BT_STATUS_CON &&
-          (millis() - BLE_Notify_TimeMarker > 10)) { /* < 18000 baud */
+          (millis() - BLE_Notify_TimeMarker > 10)) 
+          { /* < 18000 baud */
 
           uint8_t chunk[BLE_MAX_WRITE_CHUNK_SIZE];
           size_t size = (BLE_FIFO_TX->available() < BLE_MAX_WRITE_CHUNK_SIZE ?
                          BLE_FIFO_TX->available() : BLE_MAX_WRITE_CHUNK_SIZE);
 
-          if (size > 0) {
+          if (size > 0) 
+          {
             BLE_FIFO_TX->read((char *) chunk, size);
-
             pRemoteCharacteristic->writeValue((uint8_t*)chunk, size, false);
-
             BLE_Notify_TimeMarker = millis();
           }
       }
-      if (ESP32_BT_ctl.status == BT_STATUS_CON && millis() - lastBatteryCheck > batteryPollInterval) {
+      if (ESP32_BT_ctl.status == BT_STATUS_CON && millis() - lastBatteryCheck > batteryPollInterval) 
+      {
         lastBatteryCheck = millis();
         pollBLEbattery();
-        }
+      }
     }
     break;
   default:
