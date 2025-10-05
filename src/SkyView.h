@@ -207,15 +207,17 @@ enum
 	ID_MAM
 };
 
-enum
+enum VoiceSetting
 {
 	VOICE_OFF,
 	VOICE_1,
 	VOICE_2,
-	VOICE_3
+	VOICE_3,
+	VOICE_ON,
+	VOICE_DANGER
 };
 
-#define VOICE_ON VOICE_1
+#define DEFAULT_VOICE VOICE_1
 
 enum
 {

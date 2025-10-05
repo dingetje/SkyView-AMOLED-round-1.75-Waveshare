@@ -33,6 +33,7 @@ traffic_by_dist_t traffic[MAX_TRACKING_OBJECTS];
 
 static unsigned long UpdateTrafficTimeMarker = 0;
 static unsigned long Traffic_Voice_TimeMarker = 0;
+enum VoiceSetting initialVoiceSetting = VOICE_ON;
 
 int max_alarm_level = ALARM_LEVEL_NONE;
 
@@ -50,20 +51,26 @@ void Traffic_Add()
 
       int i;
 
-      for (i=0; i < MAX_TRACKING_OBJECTS; i++) {
+      for (i=0; i < MAX_TRACKING_OBJECTS; i++) 
+      {
         traffic_t *cip = &Container[i];
-        if (cip->ID == fo.ID) {
+        if (cip->ID == fo.ID) 
+        {
           fo.alert = cip->alert;
           fo.alert_level = cip->alert_level;
           if (fo.packet_type == 2) {  // PFLAU
             time_t interval = fo.timestamp - cip->timestamp;
-            if (interval <= 3) {
-              if (cip->packet_type == 1) {
+            if (interval <= 3) 
+            {
+              if (cip->packet_type == 1) 
+              {
                 // PFLAU following PFLAA, use the track from the previous packet
                 fo.Track = cip->Track;
                 fo.ClimbRate = cip->ClimbRate;
                 fo.AcftType = cip->AcftType;
-              } else {
+              }
+              else 
+              {
                 // compute track from the two distance/bearing points
                 // also taking into account that this aircraft has moved too
                 //  (very approximate since the time interval units are coarse)
@@ -74,7 +81,9 @@ void Traffic_Add()
                              - cip->distance * cos_approx(cip->RelativeBearing);
                 fo.Track = atan2_approx(y,x) + ThisAircraft.Track;
               }
-            } else {
+            }
+            else 
+            {
               // if PFLAU with no recent history, track remains unknown
             }
           }
@@ -89,34 +98,41 @@ void Traffic_Add()
       int min_level_ndx = 0;
       float max_distance = 0;
 
-      for (i=0; i < MAX_TRACKING_OBJECTS; i++) {
+      for (i=0; i < MAX_TRACKING_OBJECTS; i++) 
+      {
 
-        if (! Container[i].ID) {
+        if (! Container[i].ID) 
+        {
             Container[i] = fo;            // use an empty slot
             return;
         }
 
-        if (ThisAircraft.timestamp > Container[i].timestamp + ENTRY_EXPIRATION_TIME) {
+        if (ThisAircraft.timestamp > Container[i].timestamp + ENTRY_EXPIRATION_TIME) 
+        {
             Container[i] = fo;            // overwrite expired
             return;
         }
 
         float distance = Container[i].distance;
-        if  (distance > max_distance) {
+        if  (distance > max_distance) 
+        {
           max_dist_ndx = i;
           max_distance = distance;
         }
         if (Container[i].alarm_level < Container[min_level_ndx].alarm_level)
+        {
             min_level_ndx = i;
+        }
       }
 
-      if (fo.alarm_level > Container[min_level_ndx].alarm_level) {
+      if (fo.alarm_level > Container[min_level_ndx].alarm_level) 
+      {
         Container[min_level_ndx] = fo;     // alarming traffic overrides
         return;
       }
 
-      if (fo_distance <  max_distance &&
-          fo.alarm_level >= Container[max_dist_ndx].alarm_level) {
+      if (fo_distance <  max_distance && fo.alarm_level >= Container[max_dist_ndx].alarm_level) 
+      {
         Container[max_dist_ndx] = fo;      // overwrite farthest traffic
         return;
       }
@@ -226,20 +242,24 @@ static void Traffic_Voice_One(traffic_t *fop)
     }
 
     /* for alarm messages use very short wording */
-    if (max_alarm_level > ALARM_LEVEL_NONE) {
-//        Serial.printf("Alarm: max_alarm_level = %d\r\n", max_alarm_level);
+    if (max_alarm_level > ALARM_LEVEL_NONE) 
+    {
         voc_alt = (int) fop->RelativeVertical;
         snprintf(message, sizeof(message), "%s %s %s",
              (fop->alarm_level < ALARM_LEVEL_URGENT ? WARNING_WORD1 : WARNING_WORD3),
              where, (voc_alt > 70 ? "high" : voc_alt < -70 ? "low" : "level"));
         settings->voice = VOICE_3;  // faster female voice
-//        Serial.println("TTS(" + String(message) + ")");
         SoC->TTS(message);
         return;
     }
 
-    /* for traffic advisory messages use longer wording */
+    // don't play Traffic advisories if disabled in settings
+    if (initialVoiceSetting != VOICE_ON)
+    {
+      return;
+    }
 
+    /* for traffic advisory messages use longer wording and slower male voice */
     switch (settings->units)
     {
     case UNITS_IMPERIAL:
@@ -292,10 +312,8 @@ static void Traffic_Voice_One(traffic_t *fop)
                 ADVISORY_WORD, where, how_far, elev);
 
     settings->voice = VOICE_1;  // slower male voice
-//    Serial.println("TTS(" + String(message) + ")");
     SoC->TTS(message);
 }
-
 
 static void Traffic_Voice()
 {
@@ -306,39 +324,45 @@ static void Traffic_Voice()
   max_alarm_level = ALARM_LEVEL_NONE;
   int sound_alarm_level = ALARM_LEVEL_NONE;
 
-  for (i=0; i < MAX_TRACKING_OBJECTS; i++) {
+  for (i=0; i < MAX_TRACKING_OBJECTS; i++) 
+  {
     // every 5 seconds
-    if (Container[i].ID && (ThisAircraft.timestamp <= Container[i].timestamp + VOICE_EXPIRATION_TIME)) {
+    if (Container[i].ID && (ThisAircraft.timestamp <= Container[i].timestamp + VOICE_EXPIRATION_TIME)) 
+    {
+      /* find the maximum alarm level, whether to be alerted or not */
+      if (Container[i].alarm_level > max_alarm_level) 
+      {
+          max_alarm_level = Container[i].alarm_level;
+      }
 
-         /* find the maximum alarm level, whether to be alerted or not */
-         if (Container[i].alarm_level > max_alarm_level) {
-             max_alarm_level = Container[i].alarm_level;
-         }
+      /* figure out what is the highest alarm level needing a sound alert */
+      if (Container[i].alarm_level > sound_alarm_level
+                && Container[i].alarm_level > Container[i].alert_level) 
+      {
+            sound_alarm_level = Container[i].alarm_level;
+            sound_alarm_ndx = i;
+      }
+      else if (Container[i].alarm_level == sound_alarm_level
+                && Container[i].alarm_level > Container[i].alert_level)   // can't be NONE
+      {
+            if (sound_alarm_ndx < 0)
+                sound_alarm_ndx = i;
+            else if (Container[i].adj_dist < Container[sound_alarm_ndx].adj_dist)
+                sound_alarm_ndx = i;
+      }
+      else if (Container[i].distance < ALARM_ZONE_CLOSE
+                && (Container[i].alert & TRAFFIC_ALERT_VOICE) == 0) 
+      {
+            if (sound_advisory_ndx < 0)
+                sound_advisory_ndx = i;
+            else if (Container[i].adj_dist < Container[sound_advisory_ndx].adj_dist)
+                sound_advisory_ndx = i;
+      }
 
-         /* figure out what is the highest alarm level needing a sound alert */
-         if (Container[i].alarm_level > sound_alarm_level
-                  && Container[i].alarm_level > Container[i].alert_level) {
-             sound_alarm_level = Container[i].alarm_level;
-             sound_alarm_ndx = i;
-         } else if (Container[i].alarm_level == sound_alarm_level
-                  && Container[i].alarm_level > Container[i].alert_level) {  // can't be NONE
-             if (sound_alarm_ndx < 0)
-                 sound_alarm_ndx = i;
-             else if (Container[i].adj_dist < Container[sound_alarm_ndx].adj_dist)
-                 sound_alarm_ndx = i;
-         } else if (Container[i].distance < ALARM_ZONE_CLOSE
-                  && (Container[i].alert & TRAFFIC_ALERT_VOICE) == 0) {
-             if (sound_advisory_ndx < 0)
-                 sound_advisory_ndx = i;
-             else if (Container[i].adj_dist < Container[sound_advisory_ndx].adj_dist)
-                 sound_advisory_ndx = i;
-         }
-
-         // traffic[ntraffic].fop = &Container[i];
-         // traffic[ntraffic].distance = Container[i].distance;
-         
-         ntraffic++;
-       }
+      // traffic[ntraffic].fop = &Container[i];
+      // traffic[ntraffic].distance = Container[i].distance;  
+      ntraffic++;
+    }
   }
 
   // no traffic
@@ -350,7 +374,8 @@ static void Traffic_Voice()
 //  Serial.printf("sound_alarm_level = %d, max_alarm_level = %d, sound_advisory_ndx = %d, sound_alarm_ndx = %d\r\n",
 //      sound_alarm_level, max_alarm_level, sound_advisory_ndx, sound_alarm_ndx);
 
-  if (sound_alarm_level > ALARM_LEVEL_NONE) {
+  if (sound_alarm_level > ALARM_LEVEL_NONE) 
+  {
       traffic_t *fop = &Container[sound_alarm_ndx];
       Traffic_Voice_One(fop);
       /* no more alerts for this aircraft at this alarm level */
@@ -365,7 +390,8 @@ static void Traffic_Voice()
   }
 
   /* do issue voice advisories for non-alarm traffic, if no alarms */
-  if (sound_advisory_ndx >= 0 && settings->filter < TRAFFIC_FILTER_ALARM) {
+  if (sound_advisory_ndx >= 0 && settings->filter < TRAFFIC_FILTER_ALARM) 
+  {
       traffic_t *fop = &Container[sound_advisory_ndx];
       Traffic_Voice_One(fop);
       /* no more advisories for this aircraft until it expires or alarms */
@@ -378,6 +404,7 @@ void Traffic_setup()
 {
   UpdateTrafficTimeMarker = millis();
   Traffic_Voice_TimeMarker = millis();
+  initialVoiceSetting = (VoiceSetting) settings->voice; // save initial voice settings
 }
 
 char* TimeToString(time_t t)
@@ -393,13 +420,16 @@ char* TimeToString(time_t t)
 void Traffic_loop()
 {
   time_t timenow = now();
-  if (timenow > ThisAircraft.timestamp + ENTRY_EXPIRATION_TIME) {
+  if (timenow > ThisAircraft.timestamp + ENTRY_EXPIRATION_TIME) 
+  {
       return;    /* data stream broken */
   }
 
-  if (isTimeToUpdateTraffic()) {
+  if (isTimeToUpdateTraffic()) 
+  {
 //    Serial.println("Updating Traffic...");
-    for (int i=0; i < MAX_TRACKING_OBJECTS; i++) {
+    for (int i=0; i < MAX_TRACKING_OBJECTS; i++) 
+    {
       traffic_t *fop = &Container[i];
       // not an empty slot?
       if (fop->ID) 
@@ -416,8 +446,10 @@ void Traffic_loop()
     UpdateTrafficTimeMarker = millis();
   }
 
-  if (isTimeToVoice()) {
-    if (settings->voice != VOICE_OFF) {
+  if (isTimeToVoice()) 
+  {
+    if (initialVoiceSetting != VOICE_OFF)
+    {
       Traffic_Voice();
       Traffic_Voice_TimeMarker = millis();
     }
@@ -427,9 +459,10 @@ void Traffic_loop()
 void Traffic_ClearExpired()
 {
   time_t timenow = now();
-  for (int i=0; i < MAX_TRACKING_OBJECTS; i++) {
-    if (Container[i].ID &&
-        (timenow > Container[i].timestamp + ENTRY_EXPIRATION_TIME)) {
+  for (int i=0; i < MAX_TRACKING_OBJECTS; i++) 
+  {
+    if (Container[i].ID && (timenow > Container[i].timestamp + ENTRY_EXPIRATION_TIME))
+    {
       Container[i] = EmptyFO;
     }
   }
@@ -439,12 +472,13 @@ int Traffic_Count()
 {
   int count = 0;
 
-  for (int i=0; i < MAX_TRACKING_OBJECTS; i++) {
-    if (Container[i].ID) {
+  for (int i=0; i < MAX_TRACKING_OBJECTS; i++) 
+  {
+    if (Container[i].ID) 
+    {
       count++;
     }
   }
-
   return count;
 }
 

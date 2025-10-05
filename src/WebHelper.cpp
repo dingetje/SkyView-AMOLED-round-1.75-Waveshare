@@ -671,7 +671,8 @@ void handleSettings() {
 <td align=right>\
 <select name='voice'>\
 <option %s value='%d'>Off</option>\
-<option %s value='%d'>On</option>\
+<option %s value='%d'>Traffic Advisories and Collision alerts</option>\
+<option %s value='%d'>Collisions Alerts only</option>\
 </select>\
 </td>\
 </tr>"),
@@ -679,7 +680,8 @@ void handleSettings() {
 //<option %s value='%d'>voice 2</option>\
 //<option %s value='%d'>voice 3</option>
     (settings->voice == VOICE_OFF ? "selected" : ""), VOICE_OFF,
-    (settings->voice != VOICE_OFF ? "selected" : ""), VOICE_ON
+    (settings->voice == VOICE_ON ? "selected" : ""), VOICE_ON,
+    (settings->voice == VOICE_DANGER ? "selected" : ""), VOICE_DANGER
 //    (settings->voice == VOICE_1    ? "selected" : ""), VOICE_1,
 //    (settings->voice == VOICE_2    ? "selected" : ""), VOICE_2,
 //    (settings->voice == VOICE_3    ? "selected" : ""), VOICE_3
