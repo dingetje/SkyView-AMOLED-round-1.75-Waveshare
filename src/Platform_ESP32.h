@@ -122,6 +122,8 @@ extern bool SetupSound();
 extern int OGN_Records();
 extern bool setupWireIfNeeded(int sda, int scl, int freq = 0U);
 
+extern SemaphoreHandle_t audioMutex;
+
 #endif /* PLATFORM_ESP32_H */
 
 #endif /* ESP32 */

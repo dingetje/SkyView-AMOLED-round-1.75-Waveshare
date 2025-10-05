@@ -7,7 +7,7 @@
 #include "../pins_config.h"
 #include <SD_MMC.h>
 
-void add_file(const char* filePath);
+void add_file(const char *filePath);
 
 extern void SoundLoop();
 extern bool SetupSound();

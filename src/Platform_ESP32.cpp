@@ -55,6 +55,8 @@ uCDB<fs::SDMMCFS,fs::File> ucdb(SD_MMC);
 #if defined(ES8311_AUDIO)
 #include "SoundHelper.h"
 static const int8_t i2s_num = 0;
+// Declare a mutex handle
+SemaphoreHandle_t audioMutex;
 #endif
 #include <esp_mac.h>
 
@@ -406,6 +408,14 @@ static void ESP32_setup()
     //   break;
     // }
   }
+#ifdef ES8311_AUDIO
+  // Create the mutex
+  audioMutex = xSemaphoreCreateMutex();
+  if (audioMutex == NULL) 
+  {
+    Serial.println("Failed to create mutex");
+  } 
+#endif
   PRINTLN(hw_info.revision);
 }
 
@@ -1045,19 +1055,25 @@ void ESP32_TTS(char *message)
       // note that the actual playing of the files is handled
       // in the SoundHelper loop.
       char *word = strtok (message, " ");
-      while (word != NULL)
+      // protect the file list from concurrent access
+      // to make sure all the files are added before playing starts
+      if (xSemaphoreTake(audioMutex, portMAX_DELAY)) 
       {
-          strcpy(filename, AUDIO_FILE_PREFIX);
-          strcat(filename, settings->voice == VOICE_1 ? VOICE1_SUBDIR :
-                          (settings->voice == VOICE_2 ? VOICE2_SUBDIR :
-                          (settings->voice == VOICE_3 ? VOICE3_SUBDIR :
-                           "" )));
-          strcat(filename, word);
-          strcat(filename, WAV_FILE_SUFFIX);
-          // add sound file to sound queue for playing
-          add_file(filename);
-          // next word
-          word = strtok(NULL," ");
+        while (word != NULL)
+        {
+            strcpy(filename, AUDIO_FILE_PREFIX);
+            strcat(filename, settings->voice == VOICE_1 ? VOICE1_SUBDIR :
+                            (settings->voice == VOICE_2 ? VOICE2_SUBDIR :
+                            (settings->voice == VOICE_3 ? VOICE3_SUBDIR :
+                            "" )));
+            strcat(filename, word);
+            strcat(filename, WAV_FILE_SUFFIX);
+            // add sound file to sound queue for playing
+            add_file(filename);
+            // next word
+            word = strtok(NULL," ");
+        }
+        xSemaphoreGive(audioMutex);
       }
    }
    else
@@ -1074,9 +1090,12 @@ void ESP32_TTS(char *message)
         }
         return;
       }
-      // only very short sound is working (not sure why), 
-      // so adjusted startup.wav to produce a short startup beep
-      add_file((const char*) "/Audio/startup.wav");
+      // startup.wav to produce a short startup beep
+      if (xSemaphoreTake(audioMutex, portMAX_DELAY)) 
+      {
+        add_file((const char*) "/Audio/startup.wav");
+        xSemaphoreGive(audioMutex);
+      }
     }
 }
 #endif /* AUDIO */

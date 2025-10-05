@@ -5,29 +5,35 @@
 #include <vector>
 #include <string>
 #include "SoundHelper.h"
+#include "Platform_ESP32.h"
 #include <DebugLog.h>
 
 Audio audio; // I2S channel 0 by default
 static std::vector<String> fileVector;
 
-static es8311_handle_t es_handle;
-static unsigned long LastSoundLoop = 0;
+static es8311_handle_t es_handle = NULL;
 static bool bSoundInitialized = false;
+const int powerOnDelay = 3000; // small delay before playing "power on" speech
 
-#define EXAMPLE_SAMPLE_RATE 8000
+#define SAMPLE_RATE 22050
 // too high volume leads to distortion on the tiny speaker
 #define DEFAULT_VOICE_VOLUME 80
 
-esp_err_t es8311_codec_init(void) {
+unsigned long lastSoundMillis = 0;
+bool bStartupSoundPlayed = false;
+
+esp_err_t es8311_codec_init(void) 
+{
   es_handle = es8311_create(0, ES8311_ADDRRES_0);
   ESP_RETURN_ON_FALSE(es_handle, ESP_FAIL, "ES8311", "create failed");
 
-  const es8311_clock_config_t es_clk = {
+  const es8311_clock_config_t es_clk = 
+  {
     .mclk_inverted = false,
     .sclk_inverted = false,
     .mclk_from_mclk_pin = true,
-    .mclk_frequency = EXAMPLE_SAMPLE_RATE * 256,
-    .sample_frequency = EXAMPLE_SAMPLE_RATE
+    .mclk_frequency = SAMPLE_RATE * 256, // MCLK frequency = 22050 * 256 = ~5.6 MHz
+    .sample_frequency = SAMPLE_RATE
   };
 
   ESP_ERROR_CHECK(es8311_init(es_handle, &es_clk, ES8311_RESOLUTION_16, ES8311_RESOLUTION_16));
@@ -35,6 +41,17 @@ esp_err_t es8311_codec_init(void) {
   ESP_ERROR_CHECK(es8311_microphone_config(es_handle, false));
   ESP_ERROR_CHECK(es8311_voice_volume_set(es_handle, DEFAULT_VOICE_VOLUME, NULL));
   return ESP_OK;
+}
+
+bool playFileList(int volume)
+{
+  if (bSoundInitialized && es_handle != NULL && !fileVector.empty())
+  {
+//    PRINTLN("playFileList: " + String(fileVector.size()) + " files in queue");
+    es8311_voice_volume_set(es_handle, volume, NULL);
+    return audio.playSDFileList(fileVector);
+  }
+  return true;
 }
 
 bool SetupSound()
@@ -75,23 +92,27 @@ bool SetupSound()
   PRINTLN("I2S and ES8311 DAC initialized!");
    
   bSoundInitialized = true;
+
   return true;
 }
 
-bool play_file(char *filename, int volume)
+/*
+bool play_file(String filename, int volume)
 {
-  if (bSoundInitialized)
+  if (bSoundInitialized && audioTaskHandle != NULL)
   {
-    PRINTLN("play_file: '" + String(filename) + "'");
-    if (!SD_MMC.exists(filename)) {
-      Serial.println("play_file: '" + String(filename) + "' does not exist");
+    PRINTLN("play_file: '" + filename + "'");
+    if (!SD_MMC.exists(filename)) 
+    {
+      Serial.println("play_file: '" + filename + "' does not exist");
       return false;
     }
     es8311_voice_volume_set(es_handle, volume, NULL);
-    audio.connecttoFS(SD_MMC,filename);
+    return audio.connecttoFS(SD_MMC,filename);
   }
   return true;
 }
+*/
 
 void SoundLoop()
 {
@@ -100,23 +121,41 @@ void SoundLoop()
   {
     return;
   }
-
-  unsigned long now = millis();
   if (audio.isRunning())
   {
       audio.loop();
       vTaskDelay(1);
       return;
   }
-  // next file in the vector?
-  if (!fileVector.empty())
+
+  // play startup sound once after ~2.5 seconds
+  // to avoid interfering with other startup processes
+  if (lastSoundMillis == 0)
   {
-    Serial.printf("SoundLoop: %u ms\r\n", now - LastSoundLoop);
-    LastSoundLoop = now;
-    // pop next filename from the playlist
-    String fileName = fileVector.front();
-    fileVector.erase(fileVector.begin());
-    play_file((char*)fileName.c_str(),DEFAULT_VOICE_VOLUME);
+    lastSoundMillis = millis();
+  }
+  else if (millis() - lastSoundMillis > powerOnDelay && !bStartupSoundPlayed)
+  {
+      bStartupSoundPlayed = true;
+      // play "power on" sound
+      if (xSemaphoreTake(audioMutex, portMAX_DELAY)) 
+      {
+        add_file((const char*) "/Audio/power_on.wav");
+        xSemaphoreGive(audioMutex);
+        playFileList(DEFAULT_VOICE_VOLUME);
+        return;
+      }
+  }
+
+  // check the queue
+  if (xSemaphoreTake(audioMutex, portMAX_DELAY)) 
+  {
+    // files in the vector?
+    if (!fileVector.empty())
+    {
+      playFileList(DEFAULT_VOICE_VOLUME);
+    }
+    xSemaphoreGive(audioMutex);
   }
 }
 
@@ -131,10 +170,12 @@ void add_file(const char* filePath)
 }
 
 /* if defined, print info about audio process */
-//void audio_info(const char *info)
-//{
-//    Serial.println(info);
-//}
+/*
+void audio_info(const char *info)
+{
+    Serial.println(info); Serial.flush();
+}
+*/
 
 bool IsSoundInitialized()
 {
