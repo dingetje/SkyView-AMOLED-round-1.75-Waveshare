@@ -1,4 +1,4 @@
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 /*
  * aac_decoder.cpp
  * libhelix_HAACDECODER
@@ -10219,4 +10219,4 @@ void UnpackSBRChannelPair(int chBase) {
     }
 }
 
-#endif // LEAN_AND_MEAN
+#endif // AUDIO_LIB_LEAN_AND_MEAN

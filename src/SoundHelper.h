@@ -12,5 +12,6 @@ void add_file(const char *filePath);
 extern void SoundLoop();
 extern bool SetupSound();
 extern bool IsSoundInitialized();
+extern void PlayFileList(bool alarm);
 #endif
 #endif

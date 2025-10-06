@@ -25,7 +25,7 @@
 #include "EEPROMHelper.h"
 #include "EPDHelper.h"
 #include "ApproxMath.h"
-
+#include "SoundHelper.h"
 #include "SkyView.h"
 
 traffic_t ThisAircraft, Container[MAX_TRACKING_OBJECTS], fo, EmptyFO;
@@ -33,7 +33,6 @@ traffic_by_dist_t traffic[MAX_TRACKING_OBJECTS];
 
 static unsigned long UpdateTrafficTimeMarker = 0;
 static unsigned long Traffic_Voice_TimeMarker = 0;
-enum VoiceSetting initialVoiceSetting = VOICE_ON;
 
 int max_alarm_level = ALARM_LEVEL_NONE;
 
@@ -241,20 +240,20 @@ static void Traffic_Voice_One(traffic_t *fop)
       break;
     }
 
-    /* for alarm messages use very short wording */
+    /* for alarm messages use very short wording and always the fast female voice */
     if (max_alarm_level > ALARM_LEVEL_NONE) 
     {
         voc_alt = (int) fop->RelativeVertical;
         snprintf(message, sizeof(message), "%s %s %s",
              (fop->alarm_level < ALARM_LEVEL_URGENT ? WARNING_WORD1 : WARNING_WORD3),
              where, (voc_alt > 70 ? "high" : voc_alt < -70 ? "low" : "level"));
-        settings->voice = VOICE_3;  // faster female voice
+        settings->resvd0 = VOICE_3;  // faster female voice
         SoC->TTS(message);
         return;
     }
 
     // don't play Traffic advisories if disabled in settings
-    if (initialVoiceSetting != VOICE_ON)
+    if (settings->voice != VOICE_ON)
     {
       return;
     }
@@ -295,10 +294,14 @@ static void Traffic_Voice_One(traffic_t *fop)
       snprintf(how_far, sizeof(how_far), "%u %s", (int) voc_dist, u_dist);
     }
 
-    if (voc_alt < 100) {
+    if (voc_alt < 100)
+    {
       strcpy(elev, "level");
-    } else {
-      if (voc_alt > 500) {
+    }
+    else
+    {
+      if (voc_alt > 500) 
+      {
         voc_alt = 500;
       }
 
@@ -311,7 +314,7 @@ static void Traffic_Voice_One(traffic_t *fop)
                 "%s %s %s %s",           // was "traffic %s distance %s altitude %s"
                 ADVISORY_WORD, where, how_far, elev);
 
-    settings->voice = VOICE_1;  // slower male voice
+    settings->resvd0 = VOICE_1;  // slower male voice
     SoC->TTS(message);
 }
 
@@ -374,11 +377,12 @@ static void Traffic_Voice()
 //  Serial.printf("sound_alarm_level = %d, max_alarm_level = %d, sound_advisory_ndx = %d, sound_alarm_ndx = %d\r\n",
 //      sound_alarm_level, max_alarm_level, sound_advisory_ndx, sound_alarm_ndx);
 
-  if (sound_alarm_level > ALARM_LEVEL_NONE) 
+  if (sound_alarm_level > ALARM_LEVEL_NONE && sound_alarm_ndx >= 0) 
   {
       traffic_t *fop = &Container[sound_alarm_ndx];
       Traffic_Voice_One(fop);
       /* no more alerts for this aircraft at this alarm level */
+      /* only if alarm level increases, sound alert again */
       fop->alert_level = sound_alarm_level;
       fop->timestamp = now();
   }
@@ -387,6 +391,11 @@ static void Traffic_Voice()
   if (max_alarm_level > ALARM_LEVEL_NONE)
   {
     return; 
+  }
+  // skip traffic advisories completely?
+  if (settings->voice == VOICE_DANGER)
+  {
+    return;
   }
 
   /* do issue voice advisories for non-alarm traffic, if no alarms */
@@ -404,7 +413,6 @@ void Traffic_setup()
 {
   UpdateTrafficTimeMarker = millis();
   Traffic_Voice_TimeMarker = millis();
-  initialVoiceSetting = (VoiceSetting) settings->voice; // save initial voice settings
 }
 
 char* TimeToString(time_t t)
@@ -434,11 +442,12 @@ void Traffic_loop()
       // not an empty slot?
       if (fop->ID) 
       {
-        if (timenow > fop->timestamp + ENTRY_EXPIRATION_TIME) {    // 7s
-          //Serial.printf("Traffic_Loop: set to expired: %s\r\n", TimeToString(ThisAircraft.timestamp + ENTRY_EXPIRATION_TIME));
-          *fop = EmptyFO;
+        if (timenow > fop->timestamp + ENTRY_EXPIRATION_TIME)    // 7s
+        {
+          *fop = EmptyFO; // set expired
         }
-        else if (ThisAircraft.timestamp >= fop->timestamp + TRAFFIC_VECTOR_UPDATE_INTERVAL) {  // 2s
+        else if (ThisAircraft.timestamp >= fop->timestamp + TRAFFIC_VECTOR_UPDATE_INTERVAL)    // 2s
+        {
           Traffic_Update(fop);
         }
       }
@@ -448,7 +457,7 @@ void Traffic_loop()
 
   if (isTimeToVoice()) 
   {
-    if (initialVoiceSetting != VOICE_OFF)
+    if (settings->voice != VOICE_OFF)
     {
       Traffic_Voice();
       Traffic_Voice_TimeMarker = millis();

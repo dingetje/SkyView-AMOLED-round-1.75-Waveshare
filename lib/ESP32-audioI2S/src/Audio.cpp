@@ -9,7 +9,7 @@
  *
  */
 #include "Audio.h"
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 #include "mp3_decoder/mp3_decoder.h"
 #include "aac_decoder/aac_decoder.h"
 #include "flac_decoder/flac_decoder.h"
@@ -208,7 +208,7 @@ Audio::Audio(bool internalDAC /* = false */, uint8_t channelEnabled /* = I2S_DAC
     if(psramInit()) {m_chbufSize = 8192;     m_chbuf = (char*)ps_malloc(m_chbufSize);}
     else            {m_chbufSize = 512 + 64; m_chbuf = (char*)malloc(m_chbufSize);}
 
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     clientsecure.setInsecure();  // if that can't be resolved update to ESP32 Arduino version 1.0.5-rc05 or higher
 #endif
     m_f_channelEnabled = channelEnabled;
@@ -355,7 +355,7 @@ Audio::~Audio()
     //I2Sstop(m_i2s_num);
     //InBuff.~AudioBuffer(); #215 the AudioBuffer is automatically destroyed by the destructor
     setDefaults();
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     if(m_playlistBuff) {free(m_playlistBuff); m_playlistBuff = NULL;}
 #endif
     i2s_driver_uninstall((i2s_port_t)m_i2s_num); // #215 free I2S buffer
@@ -368,7 +368,7 @@ void Audio::setDefaults()
     stopSong();
     initInBuff(); // initialize InputBuffer if not already done
     InBuff.resetBuffer();
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     MP3Decoder_FreeBuffers();
     FLACDecoder_FreeBuffers();
     AACDecoder_FreeBuffers();
@@ -378,7 +378,7 @@ void Audio::setDefaults()
 #endif
     m_hashQueue.clear(); m_hashQueue.shrink_to_fit(); // uint32_t vector
 
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     client.stop();
     client.flush(); // release memory
     clientsecure.stop();
@@ -386,7 +386,7 @@ void Audio::setDefaults()
     _client = static_cast<WiFiClient*>(&client); /* default to *something* so that no NULL deref can happen */
 #endif
     playI2Sremains();
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     ts_parsePacket(0, 0, 0); // reset ts routine
 #endif
     AUDIO_INFO("buffers freed, free Heap: %u bytes", ESP.getFreeHeap());
@@ -394,7 +394,7 @@ void Audio::setDefaults()
     m_f_chunked = false;                                    // Assume not chunked
     m_f_firstmetabyte = false;
     m_f_playing = false;
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     m_f_ssl = false;
     m_f_metadata = false;
     m_f_tts = false;
@@ -439,7 +439,7 @@ void Audio::setConnectionTimeout(uint16_t timeout_ms, uint16_t timeout_ms_ssl)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 bool Audio::connecttohost(const char* host, const char* user, const char* pwd) 
 {
     // user and pwd for authentification only, can be empty
@@ -691,7 +691,7 @@ bool Audio::setFileLoop(bool input){
     return input;
 }
 //---------------------------------------------------------------------------------------------------------------------
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 void Audio::UTF8toASCII(char* str){
 
 #ifdef SDFATFS_USED
@@ -738,7 +738,7 @@ void Audio::UTF8toASCII(char* str){
     }
     str[j] = 0;
 }
-#endif // LEAN_AND_MEAN
+#endif // AUDIO_LIB_LEAN_AND_MEAN
 //---------------------------------------------------------------------------------------------------------------------
 #ifndef AUDIO_NO_SD_FS
 bool Audio::connecttoSD(const String path, uint32_t resumeFilePos) 
@@ -755,14 +755,34 @@ bool Audio::playSDFileList(std::vector<String>& playlist)
         String("()")).c_str());
 #endif
     if(playlist.size() == 0) return false;
+    // keep a reference to the play list
     m_fileList = &playlist;
+    // only do this is not busy with the file list
+    if (!m_f_running)
+    {
+        m_fileListIndex = 0;
+        m_fileEndMilis = 0;
+        String fileName = m_fileList->at(0);
+        connecttoFS(SD_MMC, fileName.c_str(), 0);
+    }
+    Serial.printf("Audio::playSDFileList: %d files in playlist\r\n", m_fileList->size());
+    Serial.flush();
+    return true;
+}
+
+void Audio::resetPlayList()
+{
+    m_f_running = false;
+    stopSong();
     m_fileListIndex = 0;
     m_fileEndMilis = 0;
-    Serial.printf("Audio::playSDFileList: %d files in playlist\r\n", m_fileList->size());
-    String fileName = m_fileList->at(0);
-    m_f_running = false;
-    connecttoFS(SD_MMC, fileName.c_str(), 0);
-    return true;
+    if (!m_fileList->empty())
+    {
+        String fileName = m_fileList->at(0);
+        Serial.printf("Audio::resetPlayList: %d files in playlist, resume playing with: '%s'\r\n", m_fileList->size(), fileName.c_str());
+        Serial.flush();
+        connecttoFS(SD_MMC, fileName.c_str(), 0);        
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -815,7 +835,7 @@ bool Audio::connecttoFS(fs::FS &fs, String path, uint32_t resumeFilePos)
         return false;
     }
 
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     if(endsWith(afn, ".mp3"))  m_codec = CODEC_MP3; // m_codec is by default CODEC_NONE
     if(endsWith(afn, ".m4a"))  m_codec = CODEC_M4A;
     if(endsWith(afn, ".aac"))  m_codec = CODEC_AAC;
@@ -848,7 +868,7 @@ bool Audio::connecttoFS(fs::FS &fs, String path, uint32_t resumeFilePos)
 }
 #endif // AUDIO_NO_SD_FS
 
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 //---------------------------------------------------------------------------------------------------------------------
 bool Audio::connecttospeech(const char* speech, const char* lang){
 
@@ -1254,7 +1274,7 @@ size_t Audio::readAudioHeader(uint32_t bytes)
             m_controlCounter = 100;
         }
     }
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     if(m_codec == CODEC_MP3){
         int res = read_ID3_Header(InBuff.getReadPtr(), bytes);
         if(res >= 0) bytesReaded = res;
@@ -1463,7 +1483,7 @@ int Audio::read_WAV_Header(uint8_t* data, size_t len)
     return 0;
 }
 //---------------------------------------------------------------------------------------------------------------------
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 int Audio::read_FLAC_Header(uint8_t *data, size_t len) {
     static size_t headerSize;
     static size_t retvalue = 0;
@@ -2440,7 +2460,8 @@ uint32_t Audio::stopSong()
 #endif                                           // AUDIO_NO_SD_FS
     memset(m_outBuff, 0, sizeof(m_outBuff));     //Clear OutputBuffer
     i2s_zero_dma_buffer((i2s_port_t) m_i2s_num);
-    vTaskDelay(1);
+    vTaskDelay(1); // allow buffers to be cleared
+    // if we were running, check if there's something left in the playlist
     if (wasRunning && getDatamode() == AUDIO_LOCALFILE)
     {
         // Play next file in the playlist (if any)
@@ -2450,17 +2471,19 @@ uint32_t Audio::stopSong()
             // reach the end of the playlist?
             if (m_fileListIndex >= m_fileList->size()) 
             {
-//                Serial.println("End of playlist reached");
                 m_fileList->clear();
                 m_fileListIndex = 0;
             }
             else
             {
-              m_fileEndMilis = millis();
-//              Serial.println(String(m_fileEndMilis - m_fileStartMilis) + " next file: " + fileName);
+                m_fileEndMilis = millis();
                 String fileName = m_fileList->at(m_fileListIndex);
                 connecttoFS(SD_MMC, fileName);
             }
+        }
+        else
+        {
+            m_fileListIndex = 0;
         }
     }
     return pos;
@@ -2483,7 +2506,7 @@ void Audio::playI2Sremains()
     return;
 }
 //---------------------------------------------------------------------------------------------------------------------
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 bool Audio::pauseResume() 
 {
     bool retVal = false;
@@ -2626,7 +2649,7 @@ void Audio::loop()
         return;
     }
 
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     if(m_playlistFormat != FORMAT_M3U8)
 #endif
     {   // normal process
@@ -2638,7 +2661,7 @@ void Audio::loop()
 #endif  // AUDIO_NO_SD_FS
                 break;
 
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
             case HTTP_RESPONSE_HEADER:
                 parseHttpResponseHeader();
                 break;
@@ -2657,7 +2680,7 @@ void Audio::loop()
 #endif
         }
     }
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     else 
     {   // m3u8 datastream only
         static bool f_noNewHost = false;
@@ -2711,7 +2734,7 @@ void Audio::loop()
 #endif
 }
 //---------------------------------------------------------------------------------------------------------------------
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 bool Audio::readPlayListData() 
 {
     if(getDatamode() != AUDIO_PLAYLISTINIT) return false;
@@ -3097,7 +3120,7 @@ bool Audio::STfromEXTINF(char* str){
     }
     return true;
 }
-#endif // LEAN_AND_MEAN
+#endif // AUDIO_LIB_LEAN_AND_MEAN
 #ifndef AUDIO_NO_SD_FS
 //---------------------------------------------------------------------------------------------------------------------
 void Audio::processLocalFile() {
@@ -3166,7 +3189,7 @@ void Audio::processLocalFile() {
     {
         if(m_resumeFilePos < m_audioDataStart) m_resumeFilePos = m_audioDataStart;
         if(m_resumeFilePos > m_file_size) m_resumeFilePos = m_file_size;
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
         if(m_codec == CODEC_M4A) m_resumeFilePos = m4a_correctResumeFilePos(m_resumeFilePos);
         if(m_codec == CODEC_WAV) {while((m_resumeFilePos % 4) != 0) m_resumeFilePos++;} // must be divisible by four
         if(m_codec == CODEC_FLAC) {m_resumeFilePos = flac_correctResumeFilePos(m_resumeFilePos); FLACDecoderReset();}
@@ -3194,7 +3217,7 @@ void Audio::processLocalFile() {
     {
         if(InBuff.bufferFilled())
         {
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
             if(!readID3V1Tag()) // for MP3 files only
 #endif
             {
@@ -3208,7 +3231,7 @@ void Audio::processLocalFile() {
         {
             AUDIO_INFO("loop from: %u to: %u", getFilePos(), m_audioDataStart); //TEST loop
             setFilePos(m_audioDataStart);
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
             if(m_codec == CODEC_FLAC) FLACDecoderReset();
 #endif
             /*
@@ -3231,7 +3254,7 @@ void Audio::processLocalFile() {
 #endif
 
         stopSong();
-#ifndef LEAN_AND_MEAN        
+#ifndef AUDIO_LIB_LEAN_AND_MEAN        
         if(m_codec == CODEC_MP3)   MP3Decoder_FreeBuffers();
         if(m_codec == CODEC_AAC)   AACDecoder_FreeBuffers();
         if(m_codec == CODEC_M4A)   AACDecoder_FreeBuffers();
@@ -3262,7 +3285,7 @@ void Audio::processLocalFile() {
 }
 #endif // AUDIO_NO_SD_FS
 //----------------------------------------------------------------------------------------------------------------------
-#ifndef LEAN_AND_MEAN        
+#ifndef AUDIO_LIB_LEAN_AND_MEAN        
 void Audio::processWebStream() 
 {
     const uint16_t  maxFrameSize = InBuff.getMaxBlockSize();    // every mp3/aac frame is not bigger
@@ -3730,7 +3753,7 @@ void Audio::playAudioData() {
     return;
 }
 //---------------------------------------------------------------------------------------------------------------------
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 bool Audio::parseHttpResponseHeader() { // this is the response to a GET / request
 
     if(getDatamode() != HTTP_RESPONSE_HEADER) return false;
@@ -3957,7 +3980,7 @@ bool Audio:: initializeDecoder()
 {
     switch(m_codec)
     {
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
         case CODEC_MP3:
             if(!MP3Decoder_AllocateBuffers()) goto exit;
             AUDIO_INFO("MP3Decoder has been initialized, free Heap: %u bytes", ESP.getFreeHeap());
@@ -3990,7 +4013,7 @@ bool Audio:: initializeDecoder()
         case CODEC_WAV:
             InBuff.changeMaxBlockSize(m_frameSizeWav);
             break;
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
         case CODEC_OGG:
             m_codec = CODEC_OGG;
             AUDIO_INFO("ogg not supported");
@@ -4011,7 +4034,7 @@ bool Audio:: initializeDecoder()
         return false;
 }
 //---------------------------------------------------------------------------------------------------------------------
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 bool Audio::parseContentType(char* ct) {
 
     enum : int {CT_NONE, CT_MP3, CT_AAC, CT_M4A, CT_WAV, CT_OGG, CT_FLAC, CT_PLS, CT_M3U, CT_ASX,
@@ -4241,7 +4264,7 @@ void Audio::showCodecParams()
     if(getBitRate()) {AUDIO_INFO("BitRate: %i", getBitRate());}
     else             {AUDIO_INFO("BitRate: N/A");}
 
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     if(m_codec == CODEC_AAC || m_codec == CODEC_M4A)
     {
         uint8_t answ;
@@ -4281,7 +4304,7 @@ int Audio::findNextSync(uint8_t* data, size_t len)
     if(m_codec == CODEC_WAV)  {
         m_f_playing = true; nextSync = 0;
     }
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     if(m_codec == CODEC_MP3) {
         nextSync = MP3FindSyncWord(data, len);
     }
@@ -4353,7 +4376,7 @@ int Audio::sendBytes(uint8_t* data, size_t len)
                              if(getBitsPerSample() == 16) m_validSamples = len / (2 * getChannels());
                              if(getBitsPerSample() == 8 ) m_validSamples = len / 2;
                              bytesLeft = 0; break;
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
         case CODEC_MP3:      ret = MP3Decode(data, &bytesLeft, m_outBuff, 0); break;
         case CODEC_AAC:      ret = AACDecode(data, &bytesLeft, m_outBuff);    break;
         case CODEC_M4A:      ret = AACDecode(data, &bytesLeft, m_outBuff);    break;
@@ -4393,7 +4416,7 @@ int Audio::sendBytes(uint8_t* data, size_t len)
         {
             f_setDecodeParamsOnce = false;
             m_PlayingStartTime = millis();
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
             if(m_codec == CODEC_MP3)
             {
                 setChannels(MP3GetChannels());
@@ -4418,7 +4441,7 @@ int Audio::sendBytes(uint8_t* data, size_t len)
             showCodecParams();
 #endif
         }
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
         if(m_codec == CODEC_MP3)
         {
             m_validSamples = MP3GetOutputSamps() / getChannels();
@@ -4433,7 +4456,7 @@ int Audio::sendBytes(uint8_t* data, size_t len)
         }
 #endif
     }
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     compute_audioCurrentTime(bytesDecoded);
 #endif
     if(audio_process_extern)
@@ -4452,7 +4475,7 @@ int Audio::sendBytes(uint8_t* data, size_t len)
     return bytesDecoded;
 }
 //---------------------------------------------------------------------------------------------------------------------
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 void Audio::compute_audioCurrentTime(int bd) 
 {
     static uint16_t loop_counter = 0;
@@ -4627,12 +4650,12 @@ uint32_t Audio::getAudioFileDuration() {
 #endif
     if(m_streamType == ST_WEBFILE)   {if(!m_contentlength) return 0;}
 
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     if     (m_avr_bitrate && m_codec == CODEC_MP3)   m_audioFileDuration = 8 * (m_audioDataSize / m_avr_bitrate); // #289
     else
 #endif
     if(m_avr_bitrate && m_codec == CODEC_WAV)   m_audioFileDuration = 8 * (m_audioDataSize / m_avr_bitrate);
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     else if(m_avr_bitrate && m_codec == CODEC_M4A)   m_audioFileDuration = 8 * (m_audioDataSize / m_avr_bitrate);
     else if(m_avr_bitrate && m_codec == CODEC_AAC)   m_audioFileDuration = 8 * (m_audioDataSize / m_avr_bitrate);
     else if(                 m_codec == CODEC_FLAC)  m_audioFileDuration = FLACGetAudioFileDuration();
@@ -4716,7 +4739,7 @@ bool Audio::setSampleRate(uint32_t sampRate)
     if(!sampRate) sampRate = 16000; // fuse, if there is no value -> set default #209
     i2s_set_sample_rates((i2s_port_t)m_i2s_num, sampRate); // 22050, 32000, 44100, 48000, 96000
     m_sampleRate = sampRate;
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     IIR_calculateCoefficients(m_gain0, m_gain1, m_gain2); // must be recalculated after each samplerate change
 #endif
     return true;
@@ -4808,7 +4831,7 @@ bool Audio::playSample(int16_t sample[2])
     sample[LEFTCHANNEL]  = sample[LEFTCHANNEL]  >> 1; // half Vin so we can boost up to 6dB in filters
     sample[RIGHTCHANNEL] = sample[RIGHTCHANNEL] >> 1;
 
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     // Filterchain, can commented out if not used
     sample = IIR_filterChain0(sample);
     sample = IIR_filterChain1(sample);
@@ -4848,7 +4871,7 @@ bool Audio::playSample(int16_t sample[2])
     return true;
 }
 //---------------------------------------------------------------------------------------------------------------------
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 void Audio::setTone(int8_t gainLowPass, int8_t gainBandPass, int8_t gainHighPass)
 {
     // see https://www.earlevel.com/main/2013/10/13/biquad-calculator-v2/
@@ -4941,7 +4964,7 @@ uint32_t Audio::inBufferFree()
     // current audio input buffer free space in bytes
     return InBuff.freeSpace();
 }
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 //---------------------------------------------------------------------------------------------------------------------
 //            ***     D i g i t a l   b i q u a d r a t i c     f i l t e r     ***
 //---------------------------------------------------------------------------------------------------------------------
@@ -5578,7 +5601,7 @@ void Audio::lostStreamDetection(uint32_t bytesAvail){
 #endif
 //----------------------------------------------------------------------------------------------------------------------
 #ifndef AUDIO_NO_SD_FS
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 void Audio::seek_m4a_stsz(){
     // stsz says what size each sample is in bytes. This is important for the decoder to be able to start at a chunk,
     // and then go through each sample by its size. The stsz atom can be behind the audio block. Therefore, searching

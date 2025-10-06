@@ -1017,10 +1017,8 @@ static void ESP32_DB_fini()
 // Text To Speach is supported on this board
 void ESP32_TTS(char *message)
 {
-    PRINTLN("TTS: '" + String(message) + "'");
     // don't bother if Voice is disabled in settings or incorrect board
-    if (settings->voice == VOICE_OFF || 
-      (settings->adapter != ADAPTER_TTGO_T5S && settings->adapter != ADAPTER_WAVESHARE_AMOLED_1_75))
+    if (settings->voice == VOICE_OFF || settings->adapter != ADAPTER_WAVESHARE_AMOLED_1_75)
     {
       return;
     }
@@ -1032,8 +1030,13 @@ void ESP32_TTS(char *message)
       return;
     }
 #endif
-
+    const char* voiceFolder = settings->resvd0 == VOICE_1 ? VOICE1_SUBDIR :
+                              (settings->resvd0 == VOICE_3 ? VOICE3_SUBDIR : "");
+    String folder = String(voiceFolder);
+    bool isAlarm = (settings->resvd0 == VOICE_3);
+    PRINTLN("TTS: '" + String(message) + "' using " + folder + " => " + String(isAlarm));
     char filename[MAX_FILENAME_LEN];
+
     // *not* the post-booting demo
     if (strcmp(message, "POST")) 
     {
@@ -1050,7 +1053,11 @@ void ESP32_TTS(char *message)
         LOG_ERROR(F("TTS: no SD card"));
         return;
       }
-
+      if (folder.length() == 0)
+      {
+        LOG_ERROR(F("TTS: no folder name?!"));
+        return;
+      }
       // tokenize the message and add each word in the play queue
       // note that the actual playing of the files is handled
       // in the SoundHelper loop.
@@ -1062,10 +1069,7 @@ void ESP32_TTS(char *message)
         while (word != NULL)
         {
             strcpy(filename, AUDIO_FILE_PREFIX);
-            strcat(filename, settings->voice == VOICE_1 ? VOICE1_SUBDIR :
-                            (settings->voice == VOICE_2 ? VOICE2_SUBDIR :
-                            (settings->voice == VOICE_3 ? VOICE3_SUBDIR :
-                            "" )));
+            strcat(filename, voiceFolder);
             strcat(filename, word);
             strcat(filename, WAV_FILE_SUFFIX);
             // add sound file to sound queue for playing
@@ -1075,6 +1079,7 @@ void ESP32_TTS(char *message)
         }
         xSemaphoreGive(audioMutex);
       }
+      PlayFileList(isAlarm);
    }
    else
    {
@@ -1096,6 +1101,7 @@ void ESP32_TTS(char *message)
         add_file((const char*) "/Audio/startup.wav");
         xSemaphoreGive(audioMutex);
       }
+      PlayFileList(false);
     }
 }
 #endif /* AUDIO */

@@ -1,4 +1,4 @@
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 /*
  * flac_decoder.cpp
  * Java source code from https://www.nayuki.io/page/simple-flac-implementation
@@ -555,4 +555,4 @@ void restoreLinearPrediction(uint8_t ch, uint8_t shift) {
 }
 //----------------------------------------------------------------------------------------------------------------------
 
-#endif // LEAN_AND_MEAN
+#endif // AUDIO_LIB_LEAN_AND_MEAN

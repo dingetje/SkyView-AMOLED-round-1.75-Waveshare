@@ -33,9 +33,6 @@
 #include <FFat.h>
 #endif // SDFATFS_USED
 
-// remove all the internet related code if not wanted
-#define LEAN_AND_MEAN
-
 #ifdef SDFATFS_USED
 //typedef File32 File;
 typedef FsFile File;
@@ -180,7 +177,8 @@ public:
     bool connecttoFS(fs::FS &fs, const String path, uint32_t resumeFilePos = 0);
     bool connecttoSD(const String path, uint32_t resumeFilePos = 0);
     bool playSDFileList(std::vector<String>& fileList);
-#endif                           // AUDIO_NO_SD_FS
+    void resetPlayList();
+#endif // AUDIO_NO_SD_FS
     bool setFileLoop(bool input);//TEST loop
     void setConnectionTimeout(uint16_t timeout_ms, uint16_t timeout_ms_ssl);
     bool setAudioPlayPosition(uint16_t sec);
@@ -188,7 +186,7 @@ public:
     bool audioFileSeek(const float speed);
     bool setTimeOffset(int sec);
     bool setPinout(uint8_t BCLK, uint8_t LRC, uint8_t DOUT, int8_t DIN = I2S_PIN_NO_CHANGE, int8_t MCK = I2S_PIN_NO_CHANGE);
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     bool pauseResume();
 #endif
     bool isRunning() {return m_f_running;}
@@ -234,7 +232,7 @@ private:
     void processLocalFile();
 #endif // AUDIO_NO_SD_FS
     void playAudioData();
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     void UTF8toASCII(char* str);
     bool latinToUTF8(char* buff, size_t bufflen);
     void processWebStream();
@@ -287,7 +285,7 @@ private:
     bool initializeDecoder();
     esp_err_t I2Sstart(uint8_t i2s_num);
     esp_err_t I2Sstop(uint8_t i2s_num);
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     int16_t* IIR_filterChain0(int16_t iir_in[2], bool clear = false);
     int16_t* IIR_filterChain1(int16_t* iir_in, bool clear = false);
     int16_t* IIR_filterChain2(int16_t* iir_in, bool clear = false);
@@ -437,7 +435,7 @@ private:
         }
         return false;
     }
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     size_t urlencode_expected_len(const char* source)
     {
         size_t expectedLen = strlen(source);
@@ -512,7 +510,7 @@ private:
 #ifndef AUDIO_NO_SD_FS
     File                  audiofile;    // @suppress("Abstract class cannot be instantiated")
 #endif  // AUDIO_NO_SD_FS
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     WiFiClient            client;       // @suppress("Abstract class cannot be instantiated")
     WiFiClientSecure      clientsecure; // @suppress("Abstract class cannot be instantiated")
     WiFiClient*           _client = nullptr;
@@ -528,7 +526,7 @@ private:
     unsigned long         m_fileEndMilis;
 
     const size_t    m_frameSizeWav  = 1024;
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     const size_t    m_frameSizeMP3  = 1600;
     const size_t    m_frameSizeAAC  = 1600;
     const size_t    m_frameSizeFLAC = 4096 * 4;

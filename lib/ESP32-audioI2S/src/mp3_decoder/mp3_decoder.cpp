@@ -1,4 +1,4 @@
-#ifndef LEAN_AND_MEAN
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 /*
  * mp3_decoder.cpp
  * libhelix_HMP3DECODER

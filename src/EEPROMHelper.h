@@ -50,13 +50,15 @@ typedef struct Settings {
     uint8_t  vmode:2;
     uint8_t  voice:3;
     uint8_t  compass:3;
+
     uint8_t  filter:4;
     uint8_t  resvd0:4;
+
     bool     show_labels:1;
 
     uint32_t team;
 
-    uint8_t  resvd3;
+    uint8_t  resvd3;    // used for VoiceType
     uint8_t  resvd4;
     uint8_t  resvd5;
     uint8_t  resvd6;

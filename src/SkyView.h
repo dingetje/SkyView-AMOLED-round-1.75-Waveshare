@@ -25,7 +25,7 @@
 #include <Arduino.h>
 #endif /* ARDUINO */
 
-#define SKYVIEW_FIRMWARE_VERSION  "WS001.A002"
+#define SKYVIEW_FIRMWARE_VERSION  "WS002.A001"
 #define SKYVIEW_IDENT     "SkyView-"
 
 #define DEFAULT_AP_SSID   "SoftRF-abc123"
@@ -210,11 +210,15 @@ enum
 enum VoiceSetting
 {
 	VOICE_OFF,
-	VOICE_1,
-	VOICE_2,
-	VOICE_3,
 	VOICE_ON,
 	VOICE_DANGER
+};
+
+enum VoiceType
+{
+	VOICE_1,
+	VOICE_2,
+	VOICE_3
 };
 
 #define DEFAULT_VOICE VOICE_1
