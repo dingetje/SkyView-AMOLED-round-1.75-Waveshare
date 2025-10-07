@@ -15,15 +15,11 @@ static std::vector<String> fileVector;
 
 static es8311_handle_t es_handle = NULL;
 static bool bSoundInitialized = false;
-const int powerOnDelay = 3500; // small delay before playing "power on" speech
 
 #define SAMPLE_RATE 22050
 // too high volume leads to distortion on the tiny speaker
 #define DEFAULT_VOICE_VOLUME 80
-
 unsigned long lastSoundMillis = 0;
-bool bStartupSoundPlayed = false;
-bool bTrafficPlayed = false;
 
 esp_err_t es8311_codec_init(void) 
 {
@@ -125,32 +121,13 @@ void SoundLoop()
     return;
   }
 
-  if (audio.isRunning())
-  {
-      audio.loop();
-      vTaskDelay(1);
-      return;
-  }
-
-  // play startup sound once after ~2.5 seconds
-  // to avoid interfering with other startup processes
-  if (lastSoundMillis == 0)
-  {
-    lastSoundMillis = millis();
-  }
-  else if (millis() - lastSoundMillis > powerOnDelay && !bStartupSoundPlayed && !bTrafficPlayed)
-  {
-    // only play this if not played yet and no traffic or danger advisories played yet
-    bStartupSoundPlayed = true;
-    // play "power on" sound
-    if (xSemaphoreTake(audioMutex, portMAX_DELAY)) 
-    {
-      add_file((const char*) "/Audio/power_on.wav");
-      xSemaphoreGive(audioMutex);
-      playFileList(DEFAULT_VOICE_VOLUME);
-      return;
-    }
-  }
+// obsolete, replaced with AudioTask
+//  if (audio.isRunning())
+//  {
+//      audio.loop();
+//      vTaskDelay(1);
+//      return;
+//  }
 }
 
 /* add a file to the audio queue, file already checked for existance on SD */
@@ -160,14 +137,7 @@ void add_file(const char* filePath)
   // only makes sense if sound was correctly initialized
   if (bSoundInitialized)
   {
-    String audioFile = String(filePath);
-    // traffic advisory or alert?
-    if (!bTrafficPlayed && audioFile.indexOf("/voice") > 0)
-    {
-      // prevent playing "Power On" message at startup
-      bTrafficPlayed = true;
-    }
-    fileVector.push_back(String(audioFile));
+    fileVector.push_back(String(filePath));
   }
 }
 

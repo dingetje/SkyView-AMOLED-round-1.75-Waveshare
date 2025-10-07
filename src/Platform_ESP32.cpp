@@ -1096,9 +1096,11 @@ void ESP32_TTS(char *message)
         return;
       }
       // startup.wav to produce a short startup beep
+      // followed by "Power On"
       if (xSemaphoreTake(audioMutex, portMAX_DELAY)) 
       {
         add_file((const char*) "/Audio/startup.wav");
+        add_file((const char*) "/Audio/power_on.wav");
         xSemaphoreGive(audioMutex);
       }
       PlayFileList(false);
