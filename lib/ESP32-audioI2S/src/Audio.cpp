@@ -28,6 +28,61 @@ fs::SDFATFS SD_SDFAT;
 #endif
 #endif // AUDIO_NO_SD_FS
 
+static unsigned long milisSDPlayListStarted;
+// Define a task handle and initialize it to NULL
+static TaskHandle_t task_handle = NULL;
+
+fs::File Audio::currentFile()
+{
+    return audiofile;
+}
+
+#define I2S_BUFFER_SIZE 512
+#define MONO_BLOCK_SIZE 256             // Half of I2S buffer
+uint8_t mono_block[MONO_BLOCK_SIZE];    // 256 bytes raw data
+uint16_t stereo_block[MONO_BLOCK_SIZE]; // 512 bytes = 256 stereo samples
+
+void audioTask(void *parameter)
+{
+    Audio* pAudio = (Audio*) parameter;
+    pAudio->playWavFileTask();
+}
+
+void Audio::playWavFileTask()
+{
+    while(true)
+    {
+        if (!isRunning())
+        {
+            vTaskDelay(50);
+        }
+        else if (getDatamode() == AUDIO_LOCALFILE)
+        {
+            // WAV header already parsed
+            File file = currentFile();
+            size_t bytes_read, bytes_written;
+            // fixed data rate is fine, all audio files are the same
+            i2s_set_sample_rates((i2s_port_t)0, 22050);
+            while (file.available()) 
+            {
+                // convert mono data to stereo
+                bytes_read = file.read(mono_block, MONO_BLOCK_SIZE);
+                size_t samples = bytes_read / 2;
+
+                for (size_t i = 0; i < samples; ++i) 
+                {
+                    uint16_t sample = mono_block[2 * i] | (mono_block[2 * i + 1] << 8);
+                    stereo_block[i * 2] = sample;     // Left
+                    stereo_block[i * 2 + 1] = sample; // Right
+                }
+                i2s_write((i2s_port_t) 0, stereo_block, samples * 4, &bytes_written, 100);
+                vTaskDelay(1);  // Yield to avoid watchdog
+            }
+            stopSong(); // will start next file if one in the play list
+            vTaskDelay(200); // pauze between words
+        }
+    }
+}
 //---------------------------------------------------------------------------------------------------------------------
 AudioBuffer::AudioBuffer(size_t maxBlockSize) 
 {
@@ -205,8 +260,10 @@ Audio::Audio(bool internalDAC /* = false */, uint8_t channelEnabled /* = I2S_DAC
     m_f_Log = true;
 #endif
 
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     if(psramInit()) {m_chbufSize = 8192;     m_chbuf = (char*)ps_malloc(m_chbufSize);}
     else            {m_chbufSize = 512 + 64; m_chbuf = (char*)malloc(m_chbufSize);}
+#endif
 
 #ifndef AUDIO_LIB_LEAN_AND_MEAN
     clientsecure.setInsecure();  // if that can't be resolved update to ESP32 Arduino version 1.0.5-rc05 or higher
@@ -284,16 +341,19 @@ Audio::Audio(bool internalDAC /* = false */, uint8_t channelEnabled /* = I2S_DAC
 //---------------------------------------------------------------------------------------------------------------------
 void Audio::setBufsize(int rambuf_sz, int psrambuf_sz) 
 {
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     if(InBuff.isInitialized()) 
     {
         log_e("Audio::setBufsize must not be called after audio is initialized");
         return;
     }
     InBuff.setBufsize(rambuf_sz, psrambuf_sz);
+#endif
 };
 
 void Audio::initInBuff() 
 {
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     if(!InBuff.isInitialized()) 
     {
         size_t size = InBuff.init();
@@ -303,6 +363,7 @@ void Audio::initInBuff()
         }
     }
     changeMaxBlockSize(1600); // default size mp3 or aac
+#endif
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -359,7 +420,9 @@ Audio::~Audio()
     if(m_playlistBuff) {free(m_playlistBuff); m_playlistBuff = NULL;}
 #endif
     i2s_driver_uninstall((i2s_port_t)m_i2s_num); // #215 free I2S buffer
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     if(m_chbuf) {free(m_chbuf); m_chbuf = NULL;}
+#endif
 }
 //---------------------------------------------------------------------------------------------------------------------
 void Audio::setDefaults() 
@@ -368,6 +431,7 @@ void Audio::setDefaults()
     stopSong();
     initInBuff(); // initialize InputBuffer if not already done
     InBuff.resetBuffer();
+    
 #ifndef AUDIO_LIB_LEAN_AND_MEAN
     MP3Decoder_FreeBuffers();
     FLACDecoder_FreeBuffers();
@@ -384,9 +448,7 @@ void Audio::setDefaults()
     clientsecure.stop();
     clientsecure.flush();
     _client = static_cast<WiFiClient*>(&client); /* default to *something* so that no NULL deref can happen */
-#endif
     playI2Sremains();
-#ifndef AUDIO_LIB_LEAN_AND_MEAN
     ts_parsePacket(0, 0, 0); // reset ts routine
 #endif
     AUDIO_INFO("buffers freed, free Heap: %u bytes", ESP.getFreeHeap());
@@ -431,6 +493,9 @@ void Audio::setDefaults()
     m_ID3Size = 0;
 }
 
+
+//---------------------------------------------------------------------------------------------------------------------
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
 //---------------------------------------------------------------------------------------------------------------------
 void Audio::setConnectionTimeout(uint16_t timeout_ms, uint16_t timeout_ms_ssl)
 {
@@ -438,8 +503,6 @@ void Audio::setConnectionTimeout(uint16_t timeout_ms, uint16_t timeout_ms_ssl)
     if(timeout_ms_ssl) m_timeout_ms_ssl = timeout_ms_ssl;
 }
 
-//---------------------------------------------------------------------------------------------------------------------
-#ifndef AUDIO_LIB_LEAN_AND_MEAN
 bool Audio::connecttohost(const char* host, const char* user, const char* pwd) 
 {
     // user and pwd for authentification only, can be empty
@@ -762,6 +825,8 @@ bool Audio::playSDFileList(std::vector<String>& playlist)
     {
         m_fileListIndex = 0;
         m_fileEndMilis = 0;
+        milisSDPlayListStarted = millis();
+        setDefaults();
         String fileName = m_fileList->at(0);
         connecttoFS(SD_MMC, fileName.c_str(), 0);
     }
@@ -772,8 +837,9 @@ bool Audio::playSDFileList(std::vector<String>& playlist)
 
 void Audio::resetPlayList()
 {
-    m_f_running = false;
+    m_f_running = false; // has to be set first to avoid next file in playlist in stopSong!
     stopSong();
+    vTaskDelay(50);
     m_fileListIndex = 0;
     m_fileEndMilis = 0;
     if (!m_fileList->empty())
@@ -781,6 +847,7 @@ void Audio::resetPlayList()
         String fileName = m_fileList->at(0);
         Serial.printf("Audio::resetPlayList: %d files in playlist, resume playing with: '%s'\r\n", m_fileList->size(), fileName.c_str());
         Serial.flush();
+        milisSDPlayListStarted = millis();
         connecttoFS(SD_MMC, fileName.c_str(), 0);        
     }
 }
@@ -801,13 +868,6 @@ bool Audio::connecttoFS(fs::FS &fs, String path, uint32_t resumeFilePos)
     }
 
     m_resumeFilePos = resumeFilePos;
-//    Serial.printf("Audio::connecttoFS: '%s' exists=%d\r\n", path, fs.exists(path) ? 1 : 0);
-//    Serial.flush();
-
-    setDefaults(); // free buffers an set defaults
-
-//    Serial.printf("Audio::connecttoFS: after setDefaults freeHeap=%u\r\n", ESP.getFreeHeap());
-//    Serial.flush();
 
     m_fileStartMilis = millis();
     if (m_fileEndMilis > 0) 
@@ -824,7 +884,9 @@ bool Audio::connecttoFS(fs::FS &fs, String path, uint32_t resumeFilePos)
     if(fs.exists(path)) 
     {
         audiofile = fs.open(path); // #86
+        Serial.printf("Opening file at %lu\n", millis());
     }
+
     if(!audiofile) 
     {
         if(audio_info) 
@@ -856,9 +918,24 @@ bool Audio::connecttoFS(fs::FS &fs, String path, uint32_t resumeFilePos)
     bool ret = initializeDecoder();
     if(ret)
     {
-        m_f_running = true;
         setDatamode(AUDIO_LOCALFILE);
         m_file_size = audiofile.size();//TEST loop
+
+        // first time here?
+        if (task_handle == NULL)
+        {
+            // Create the task, and pass the task handle as last parameter
+            // to xTaskCreate (pointer):
+            xTaskCreate(
+                audioTask,     // Function that should be called
+                "AudioTask",   // Name of the task (for debugging)
+                8192,          // Stack size (bytes)
+                this,          // Parameter to pass
+                1,             // Task priority
+                &task_handle   // Task handle
+            );
+        }
+        m_f_running = true;
     }
     else
     {
@@ -1418,7 +1495,7 @@ int Audio::read_WAV_Header(uint8_t* data, size_t len)
         }
         if((nic != 1) && (nic != 2))
         {
-            AUDIO_INFO("num channels is %u,  must be 1 or 2" , nic); audio_info(m_chbuf);
+            AUDIO_INFO("num channels is %u,  must be 1 or 2" , nic);
             stopSong();
             return -1;
         }
@@ -1473,7 +1550,7 @@ int Audio::read_WAV_Header(uint8_t* data, size_t len)
         else 
         {   // sometimes there is nothing here
             if(getDatamode() == AUDIO_LOCALFILE) m_audioDataSize = getFileSize() - headerSize;
-            if(m_streamType == ST_WEBFILE) m_audioDataSize = m_contentlength - headerSize;
+//            if(m_streamType == ST_WEBFILE) m_audioDataSize = m_contentlength - headerSize;
         }
         AUDIO_INFO("Audio-Length: %u", m_audioDataSize);
         return 4;
@@ -2446,6 +2523,7 @@ uint32_t Audio::stopSong()
             pos = getFilePos() - inBufferFilled();
             audiofile.close();
             AUDIO_INFO("Closing audio file");
+            Serial.printf("Closed file at %lu\n", millis());
         }
 #endif // AUDIO_NO_SD_FS
     }
@@ -2473,6 +2551,8 @@ uint32_t Audio::stopSong()
             {
                 m_fileList->clear();
                 m_fileListIndex = 0;
+                unsigned long playtime = millis() - milisSDPlayListStarted;
+                Serial.printf("Playlist took %u ms to complete\r\n",playtime);
             }
             else
             {
@@ -2637,101 +2717,10 @@ bool Audio::playChunk()
     stopSong();
     return false;
 }
+
 //---------------------------------------------------------------------------------------------------------------------
 void Audio::loop() 
 {
-    if(!m_f_running) return;
-	
-    if(InBuff.isComplete() && InBuff.isEmpty()) 
-    {
-        playI2Sremains();
-        stopSong();
-        return;
-    }
-
-#ifndef AUDIO_LIB_LEAN_AND_MEAN
-    if(m_playlistFormat != FORMAT_M3U8)
-#endif
-    {   // normal process
-        switch(getDatamode())
-        {
-            case AUDIO_LOCALFILE:
-#ifndef AUDIO_NO_SD_FS
-                processLocalFile();
-#endif  // AUDIO_NO_SD_FS
-                break;
-
-#ifndef AUDIO_LIB_LEAN_AND_MEAN
-            case HTTP_RESPONSE_HEADER:
-                parseHttpResponseHeader();
-                break;
-            case AUDIO_PLAYLISTINIT:
-                readPlayListData();
-                break;
-            case AUDIO_PLAYLISTDATA:
-                if(m_playlistFormat == FORMAT_M3U)  connecttohost(parsePlaylist_M3U());
-                if(m_playlistFormat == FORMAT_PLS)  connecttohost(parsePlaylist_PLS());
-                if(m_playlistFormat == FORMAT_ASX)  connecttohost(parsePlaylist_ASX());
-                break;
-            case AUDIO_DATA:
-                if(m_streamType == ST_WEBSTREAM) processWebStream();
-                if(m_streamType == ST_WEBFILE)   processWebFile();
-                break;
-#endif
-        }
-    }
-#ifndef AUDIO_LIB_LEAN_AND_MEAN
-    else 
-    {   // m3u8 datastream only
-        static bool f_noNewHost = false;
-        static int32_t remaintime, timestamp1, timestamp2; // m3u8 time management
-        const char* host;
-
-        switch(getDatamode()){
-            case HTTP_RESPONSE_HEADER:
-                playAudioData(); // fill I2S DMA buffer
-                parseHttpResponseHeader();
-                m_codec = CODEC_AAC;
-                break;
-            case AUDIO_PLAYLISTINIT:
-                readPlayListData();
-                break;
-            case AUDIO_PLAYLISTDATA:
-                host = parsePlaylist_M3U8();
-                m_f_m3u8data = true;
-                if(host){
-                    f_noNewHost = false;
-                    timestamp1 = millis();
-                    httpPrint(host);
-                }
-                else {
-                    f_noNewHost = true;
-                    timestamp2 = millis() + remaintime;
-                    setDatamode(AUDIO_DATA); //fake datamode, we have no new audiosequence yet, so let audio run
-                }
-                break;
-            case AUDIO_DATA:
-                if(m_f_ts) processWebStreamTS();  // aac or aacp with ts packets
-                else       processWebStreamHLS(); // aac or aacp normal stream
-                if(f_noNewHost){
-                    m_f_continue = false;
-                    if(timestamp2 < millis()) {
-                        httpPrint(m_lastHost);
-                        remaintime = 1000;
-                    }
-                }
-                else{
-                    if(m_f_continue){ // processWebStream() needs more data
-                        remaintime = (int32_t)(m_m3u8_targetDuration * 1000) - (millis() - timestamp1);
-                    //    if(m_m3u8_targetDuration < 10) remaintime += 1000;
-                        m_f_continue = false;
-                        setDatamode(AUDIO_PLAYLISTDATA);
-                    }
-                }
-                break;
-        }
-    }
-#endif
 }
 //---------------------------------------------------------------------------------------------------------------------
 #ifndef AUDIO_LIB_LEAN_AND_MEAN
@@ -3123,7 +3112,8 @@ bool Audio::STfromEXTINF(char* str){
 #endif // AUDIO_LIB_LEAN_AND_MEAN
 #ifndef AUDIO_NO_SD_FS
 //---------------------------------------------------------------------------------------------------------------------
-void Audio::processLocalFile() {
+void Audio::processLocalFile() 
+{
 
     if(!(audiofile && m_f_running && getDatamode() == AUDIO_LOCALFILE)) return; // guard
 
@@ -4300,8 +4290,11 @@ int Audio::findNextSync(uint8_t* data, size_t len)
     //         -1 the sync word was not found within the block with the length len
 
     int nextSync;
+#ifndef AUDIO_LIB_LEAN_AND_MEAN    
     static uint32_t swnf = 0;
-    if(m_codec == CODEC_WAV)  {
+#endif
+    if(m_codec == CODEC_WAV)  
+    {
         m_f_playing = true; nextSync = 0;
     }
 #ifndef AUDIO_LIB_LEAN_AND_MEAN
@@ -4325,10 +4318,13 @@ int Audio::findNextSync(uint8_t* data, size_t len)
         nextSync = FLACFindSyncWord(data, len);
     }
 #endif
-    if(m_codec == CODEC_RAW) {
+    if(m_codec == CODEC_RAW) 
+    {
         m_f_playing = true; nextSync = 0;
     }
-    if(nextSync == -1) {
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
+    if(nextSync == -1) 
+    {
          if(audio_info && swnf == 0) audio_info("syncword not found");
          if(m_codec == CODEC_OGG_FLAC){
              nextSync = len;
@@ -4350,6 +4346,7 @@ int Audio::findNextSync(uint8_t* data, size_t len)
      if(nextSync > 0){
          AUDIO_INFO("syncword found at pos %i", nextSync);
      }
+#endif
      return nextSync;
 }
 //---------------------------------------------------------------------------------------------------------------------
@@ -4857,7 +4854,7 @@ bool Audio::playSample(int16_t sample[2])
         s32 += 0x80008000;
     }
     m_i2s_bytesWritten = 0;
-    esp_err_t err = i2s_write((i2s_port_t) m_i2s_num, (const char*) &s32, sizeof(uint32_t), &m_i2s_bytesWritten, 100);
+    esp_err_t err = i2s_write((i2s_port_t) m_i2s_num, (const char*) &s32, sizeof(uint32_t), &m_i2s_bytesWritten, 200);
     if(err != ESP_OK) 
     {
         log_e("ESP32 Errorcode %i", err);

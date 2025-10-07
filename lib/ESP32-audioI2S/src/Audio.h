@@ -163,16 +163,23 @@ protected:
 
 class Audio : private AudioBuffer{
 
-    AudioBuffer InBuff; // instance of input buffer
-
 public:
     Audio(bool internalDAC = false, uint8_t channelEnabled = 3, uint8_t i2sPort = I2S_NUM_0); // #99
     ~Audio();
-    void setBufsize(int rambuf_sz, int psrambuf_sz);
-    bool connecttohost(const char* host, const char* user = "", const char* pwd = "");
+    AudioBuffer InBuff; // instance of input buffer
 
+    enum : int { AUDIO_NONE, HTTP_RESPONSE_HEADER, AUDIO_DATA, AUDIO_LOCALFILE,
+                 AUDIO_PLAYLISTINIT, AUDIO_PLAYLISTHEADER,  AUDIO_PLAYLISTDATA};
+
+    void setBufsize(int rambuf_sz, int psrambuf_sz);
+#ifndef AUDIO_NO_SD_FS
+    void processLocalFile();
+#endif // AUDIO_NO_SD_FS
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
+    bool connecttohost(const char* host, const char* user = "", const char* pwd = "");
     bool connecttospeech(const char* speech, const char* lang);
     bool connecttomarytts(const char* speech, const char* lang, const char* voice);
+#endif
 #ifndef AUDIO_NO_SD_FS
     bool connecttoFS(fs::FS &fs, const String path, uint32_t resumeFilePos = 0);
     bool connecttoSD(const String path, uint32_t resumeFilePos = 0);
@@ -197,7 +204,7 @@ public:
     void setVolume(uint8_t vol);
     uint8_t getVolume();
     uint8_t getI2sPort();
-
+    fs::File currentFile();
     uint32_t getAudioDataStartPos();
     uint32_t getFileSize();
     uint32_t getFilePos();
@@ -216,6 +223,9 @@ public:
     void setI2SCommFMT_LSB(bool commFMT);
     int getCodec() {return m_codec;}
     const char *getCodecname() {return codecname[m_codec];}
+    void playI2Sremains();
+    inline uint8_t getDatamode(){return m_datamode;}
+    void playWavFileTask();
 
 private:
 
@@ -228,10 +238,8 @@ private:
     void setDefaults(); // free buffers and set defaults
     void initInBuff();
     bool httpPrint(const char* host);
-#ifndef AUDIO_NO_SD_FS
-    void processLocalFile();
-#endif // AUDIO_NO_SD_FS
     void playAudioData();
+
 #ifndef AUDIO_LIB_LEAN_AND_MEAN
     void UTF8toASCII(char* str);
     bool latinToUTF8(char* buff, size_t bufflen);
@@ -279,7 +287,6 @@ private:
     bool setBitrate(int br);
     bool playChunk();
     bool playSample(int16_t sample[2]) ;
-    void playI2Sremains();
     int32_t Gain(int16_t s[2]);
     bool fill_InputBuf();
     bool initializeDecoder();
@@ -292,7 +299,6 @@ private:
     void IIR_calculateCoefficients(int8_t G1, int8_t G2, int8_t G3);
 #endif
     inline void setDatamode(uint8_t dm){m_datamode=dm;}
-    inline uint8_t getDatamode(){return m_datamode;}
 
 #ifndef AUDIO_NO_SD_FS
     void     seek_m4a_stsz();
@@ -478,8 +484,6 @@ private:
     enum : int { APLL_AUTO = -1, APLL_ENABLE = 1, APLL_DISABLE = 0 };
     enum : int { EXTERNAL_I2S = 0, INTERNAL_DAC = 1, INTERNAL_PDM = 2 };
     enum : int { FORMAT_NONE = 0, FORMAT_M3U = 1, FORMAT_PLS = 2, FORMAT_ASX = 3, FORMAT_M3U8 = 4};
-    enum : int { AUDIO_NONE, HTTP_RESPONSE_HEADER, AUDIO_DATA, AUDIO_LOCALFILE,
-                 AUDIO_PLAYLISTINIT, AUDIO_PLAYLISTHEADER,  AUDIO_PLAYLISTDATA};
     enum : int { FLAC_BEGIN = 0, FLAC_MAGIC = 1, FLAC_MBH =2, FLAC_SINFO = 3, FLAC_PADDING = 4, FLAC_APP = 5,
                  FLAC_SEEK = 6, FLAC_VORBIS = 7, FLAC_CUESHEET = 8, FLAC_PICTURE = 9, FLAC_OKAY = 100};
     enum : int { M4A_BEGIN = 0, M4A_FTYP = 1, M4A_CHK = 2, M4A_MOOV = 3, M4A_FREE = 4, M4A_TRAK = 5, M4A_MDAT = 6,
@@ -564,8 +568,10 @@ private:
 #endif
     const size_t    m_frameSizeRaw  = 1024; // TODO
 
+#ifndef AUDIO_LIB_LEAN_AND_MEAN
     char*           m_chbuf = NULL;
     uint16_t        m_chbufSize = 0;                // will set in constructor (depending on PSRAM)
+#endif
     filter_t        m_filter[3];                    // digital filters
     int             m_LFcount = 0;                  // Detection of end of header
     uint32_t        m_sampleRate=16000;
