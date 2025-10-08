@@ -12,11 +12,11 @@ The waveshare board supports an SD card that can be used for both the OGN databa
 
 ## Updating the OGN db
 To update the OGN db follow these steps:
-1. Download most recent .CDB file that contains OGN Aircrafts Data from (this location)[http://soaringweather.no-ip.info/ADB/data/ogn.cdb]
+1. Download most recent .CDB file that contains OGN Aircrafts Data from [this location](http://soaringweather.no-ip.info/ADB/data/ogn.cdb)
 2. Eject the SD card from your Waveshareboard and mount in on your PC using a suitable SD card reader
 3. Copy the downloaded ogn.cdb in the **Arcrafts** folder, overwriting the existing file
 4. Safe eject the SD card
 5. Place the SD card back in the Waveshare board
-6. Verify on the status page at (http://192.168.1.1)[http://192.168.1.1] that the OGN records show a non-zero value
+6. Verify on the status page at [http://192.168.1.1](http://192.168.1.1) that the OGN records show a non-zero value
 
    
