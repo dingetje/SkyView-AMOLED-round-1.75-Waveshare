@@ -1,4 +1,4 @@
-# Flashing the T-Display AMOLED Board for the First Time
+# Flashing the Waveshare AMOLED Board for the First Time
 
 Follow this process to flash the board for the first time:
 
