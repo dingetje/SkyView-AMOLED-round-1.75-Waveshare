@@ -32,9 +32,10 @@ Follow this process to flash the board for the first time:
     - Wait until it says "Finished."
 
 7. **Power Cycle the Board**:  
-    - Press the reset button to power cycle the board.
+    - Unplug the USB-C cable and connect it again
 
-The SkyView software is now installed.  
+
+The SkyView software is now installed. You should be able to connect to it's AP after a few seconds and open the **Status** page at [http://192.168.1.1](http://192.168.1.1).
 
 For subsequent firmware updates, you can either repeat this method or use the much easier WebFlash process.
 
