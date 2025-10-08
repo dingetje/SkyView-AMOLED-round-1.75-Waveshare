@@ -18,5 +18,7 @@ To update the OGN db follow these steps:
 4. Safe eject the SD card
 5. Place the SD card back in the Waveshare board
 6. Verify on the status page at [http://192.168.1.1](http://192.168.1.1) that the OGN records show a non-zero value
+   <img width="566" height="31" alt="image" src="https://github.com/user-attachments/assets/ff697961-3754-48fb-a865-4109986f107b" />
+
 
    
