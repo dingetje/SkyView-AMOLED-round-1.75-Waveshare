@@ -2,7 +2,7 @@
 
 The waveshare board supports an SD card that can be used for both the OGN database and Voice data.
 
-1. In the **binaries/SDCard** folder you can download the [SD.zip](../binaries/SDCard/SD.zip) archive
+1. In the **binaries/SDCard** folder you can download the [SD.zip](../binaries/SDCard/SD.zip) archive (make sure to download **Raw**).
 2. unzip this archive in the root of a FAT32 formatted SD card
 3. This should result in a directory structure in the root of the SD card, similar to this:
 
