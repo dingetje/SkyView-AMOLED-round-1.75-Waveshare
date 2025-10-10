@@ -80,7 +80,7 @@ std::vector<String> scanForBLEDevices(uint32_t scanTimeSeconds)
       disableLoopWDT();
   }
   PRINTLN("[BLE] Starting scan...");
-  NimBLEScanResults results = scanner->getResults(500, true);  // Convert seconds to milliseconds
+  NimBLEScanResults results = scanner->getResults(3000, true);  // Convert seconds to milliseconds
   Serial.printf("[BLE] Scan completed: %d device(s) found.\n", results.getCount());
   // enable watchdog again after scan (if it was enabled)
   if (wdt_status) 

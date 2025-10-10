@@ -27,6 +27,7 @@ fs::SDFATFS SD_SDFAT;
 
 #define CCCC(c1, c2, c3, c4)    ((c4 << 24) | (c3 << 16) | (c2 << 8) | c1)
 
+/*
 void dumpBuffer(const uint8_t* buffer, size_t length) 
 {
   const size_t bytesPerLine = 16;
@@ -61,6 +62,7 @@ void dumpBuffer(const uint8_t* buffer, size_t length)
     vTaskDelay(1);
   }
 }
+*/
 
 //---------------------------------------------------------------------------------------------------------------------
 Audio::Audio(bool internalDAC /* = false */, uint8_t channelEnabled /* = I2S_DAC_CHANNEL_BOTH_EN */, uint8_t i2sPort) 
@@ -214,7 +216,6 @@ void Audio::setDefaults()
     m_f_running = false;
     m_codec = CODEC_NONE;
     m_datamode = AUDIO_NONE;
-    m_avr_bitrate = 0;                                      // the same as m_bitrate if CBR, median if VBR
     m_channels = 2;                                         // assume stereo #209
     m_file_size = 0;
 }
@@ -240,7 +241,7 @@ bool Audio::playSDFileList(std::vector<String>& playlist)
     if (!m_f_running)
     {
         m_fileListIndex = 0;
-        m_fileEndMilis = 0;
+//        m_fileEndMilis = 0;
         setDefaults();
         String fileName = m_fileList->at(0);
         connecttoFS(SD_MMC, fileName.c_str());
@@ -256,12 +257,12 @@ void Audio::resetPlayList()
     stopSong();
     vTaskDelay(50);
     m_fileListIndex = 0;
-    m_fileEndMilis = 0;
+//    m_fileEndMilis = 0;
     if (!m_fileList->empty())
     {
         String fileName = m_fileList->at(0);
-        Serial.printf("Audio::resetPlayList: %d files in playlist, resume playing with: '%s'\r\n", m_fileList->size(), fileName.c_str());
-        Serial.flush();
+//        Serial.printf("Audio::resetPlayList: %d files in playlist, resume playing with: '%s'\r\n", m_fileList->size(), fileName.c_str());
+//        Serial.flush();
         connecttoFS(SD_MMC, fileName.c_str());
     }
 }
@@ -281,11 +282,11 @@ bool Audio::connecttoFS(fs::FS &fs, String path)
         return false;
     }
 
-    m_fileStartMilis = millis();
-    if (m_fileEndMilis > 0) 
-    {
-        Serial.printf("Elapsed time since last file end: %u ms\r\n", m_fileStartMilis - m_fileEndMilis);
-    }
+//    m_fileStartMilis = millis();
+//    if (m_fileEndMilis > 0) 
+//    {
+//        Serial.printf("Elapsed time since last file end: %u ms\r\n", m_fileStartMilis - m_fileEndMilis);
+//    }
 
     if(!path.startsWith("/"))
     {
@@ -315,7 +316,7 @@ bool Audio::connecttoFS(fs::FS &fs, String path)
 
     if(m_codec == CODEC_NONE)
     {
-        AUDIO_INFO("The '%s' file format is not supported", afn);
+        AUDIO_INFO("The '%s' file format is not supported", afn.c_str());
         audiofile.close();
         return false;
     }
@@ -371,7 +372,7 @@ size_t Audio::readAudioHeader(uint32_t bytes)
         // Hardcode those values, at least for now
         setBitsPerSample(16);
         setChannels(1);
-        setSampleRate(16000);
+        setSampleRate(22050);
         // stream only, no header
         m_f_running = true;
     }
@@ -503,6 +504,7 @@ int Audio::read_WAV_Header(size_t len)
         setSampleRate(wavProps.sampleRate);
         return 0;
     }
+    AUDIO_INFO("INVALID WAV HEADER");
     return -1; // will never get here for a proper WAV file
 }
 //---------------------------------------------------------------------------------------------------------------------
@@ -518,7 +520,7 @@ uint32_t Audio::stopSong()
         {
             audiofile.close();
             AUDIO_INFO("Closing audio file");
-            Serial.printf("Closed file at %lu\n", millis());
+//            Serial.printf("Closed file at %lu\n", millis());
         }
 #endif // AUDIO_NO_SD_FS
     }
@@ -549,7 +551,7 @@ uint32_t Audio::stopSong()
             }
             else
             {
-                m_fileEndMilis = millis();
+//                m_fileEndMilis = millis();
                 String fileName = m_fileList->at(m_fileListIndex);
                 connecttoFS(SD_MMC, fileName);
             }
@@ -574,7 +576,7 @@ bool Audio:: initializeDecoder()
     {
         case CODEC_WAV:
             memset(m_headerBuff, 0, sizeof(m_headerBuff));
-            readAudioHeader(44); // fixed size for WAV header
+            readAudioHeader(WAV_HEADER_SIZE); // fixed size for WAV header
             break;
         case CODEC_RAW:
             break;

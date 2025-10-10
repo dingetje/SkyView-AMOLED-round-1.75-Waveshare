@@ -59,6 +59,8 @@ typedef struct wavProperties_s {
     uint16_t bitsPerSample;
 } wavProperties_t;
 
+#define WAV_HEADER_SIZE 44
+
 //----------------------------------------------------------------------------------------------------------------------
 
 class Audio {
@@ -233,16 +235,14 @@ private:
 
     std::vector<String>*    m_fileList;   // list of files for connecttoFS(fs, fileList)
     int                     m_fileListIndex = 0;
-    unsigned long           m_fileStartMilis;
-    unsigned long           m_fileEndMilis;
-    uint32_t                m_sampleRate=16000;
-    int                     m_readbytes = 0;                // bytes read
+//    unsigned long           m_fileStartMilis;
+//    unsigned long           m_fileEndMilis;
+    uint32_t                m_sampleRate=22050;
     uint8_t                 m_bitsPerSample = 16;           // bitsPerSample
-    uint8_t                 m_avr_bitrate;                  // average bitrate
     uint8_t                 m_channels = 2;
     uint8_t                 m_i2s_num = I2S_NUM_0;          // I2S_NUM_0 or I2S_NUM_1
     uint8_t                 m_codec = CODEC_NONE;           //
-    uint8_t                 m_headerBuff[44];               // WAV header
+    uint8_t                 m_headerBuff[WAV_HEADER_SIZE];  // WAV header buffer
     uint16_t                m_datamode = 0;                 // State machine
     bool                    m_f_running = false;
     bool                    m_f_forceMono = true;
