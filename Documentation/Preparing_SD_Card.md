@@ -24,8 +24,9 @@ The waveshare board supports an SD card that can be used for both the OGN databa
 
 
 ## Enabling voice output
-1. make sure to have a speaker attached to the **SPK** output of the Waveshare board (🔉)
-2. in the SkyView settings via [http://192.168.1.1](http://192.168.1.1) enable one of the voice options at **Voice**
+1. Make sure to have a speaker attached to the **SPK** output of the Waveshare board (🔉).
+2. Make sure to have the SD card mounted with the **Voice** files.
+3. in the SkyView settings via [http://192.168.1.1](http://192.168.1.1) enable one of the voice options at **Voice**
 
 
    <img width="560" height="295" alt="image" src="https://github.com/user-attachments/assets/e9be2fd3-3ac3-462f-885d-660831178ff4" />
