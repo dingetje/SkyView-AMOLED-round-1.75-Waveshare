@@ -4,6 +4,6 @@ This folder contains documentation for the SkyView firmware. Since this firmware
 
 ## Recommended reading
 
-- [Getting_Started_and_Flashing_Instructions](Getting_Started_and_Flashing_Instructions.md)
+- [Getting_Started_and_Flashing_Instructions](Getting_Started_and_Flashing_Instructions.MD)
 - [Preparing_SD_Card](Preparing_SD_Card.md)
 
