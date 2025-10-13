@@ -35,7 +35,6 @@
 #include "BluetoothHelper.h"
 #include "TouchHelper.h"
 #include "BuddyHelper.h"
-
 #include "SkyView.h"
 
 #include <battery.h>
@@ -74,6 +73,8 @@ extern TFT_eSPI tft;
 extern TFT_eSprite sprite;
 
 static bool wireStarted = false;
+
+void(* resetFunc) (void) = 0;//declare reset function at address 0
 
 bool setupWireIfNeeded(int sda, int scl, int freq)
 {
@@ -1158,6 +1159,15 @@ void handleEvent(AceButton* button, uint8_t eventType, uint8_t buttonState)
           PRINTLN(F("This will never be printed."));
         }
         break;
+#else
+      case AceButton::kEventLongPressed:
+        if (button == &button_mode) 
+        {
+          ESP32_TFT_fini((const char*) "RESET");
+          // call the reset function
+          resetFunc();
+        }
+        break;
 #endif
     }
   }
@@ -1203,7 +1213,7 @@ static void ESP32_Button_setup()
   ModeButtonConfig->setDebounceDelay(15);
   ModeButtonConfig->setClickDelay(100);
   ModeButtonConfig->setDoubleClickDelay(1000);
-  ModeButtonConfig->setLongPressDelay(2000);
+  ModeButtonConfig->setLongPressDelay(2000); // keep down for 2 seconds = reset board
 
   // attachInterrupt(digitalPinToInterrupt(mode_button_pin), onModeButtonEvent, CHANGE );
 

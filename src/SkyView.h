@@ -25,7 +25,7 @@
 #include <Arduino.h>
 #endif /* ARDUINO */
 
-#define SKYVIEW_FIRMWARE_VERSION  "WS003.A002"
+#define SKYVIEW_FIRMWARE_VERSION  "WS003.A003"
 #define SKYVIEW_IDENT     "SkyView-"
 
 #define DEFAULT_AP_SSID   "SoftRF-abc123"

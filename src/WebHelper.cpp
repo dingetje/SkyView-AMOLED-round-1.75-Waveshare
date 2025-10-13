@@ -676,17 +676,10 @@ void handleSettings() {
 </select>\
 </td>\
 </tr>"),
-//<option %s value='%d'>voice 1</option>\
-//<option %s value='%d'>voice 2</option>\
-//<option %s value='%d'>voice 3</option>
     (settings->voice == VOICE_OFF ? "selected" : ""), VOICE_OFF,
     (settings->voice == VOICE_ON ? "selected" : ""), VOICE_ON,
     (settings->voice == VOICE_DANGER ? "selected" : ""), VOICE_DANGER
-//    (settings->voice == VOICE_1    ? "selected" : ""), VOICE_1,
-//    (settings->voice == VOICE_2    ? "selected" : ""), VOICE_2,
-//    (settings->voice == VOICE_3    ? "selected" : ""), VOICE_3
     );
-
     len = strlen(offset);
     offset += len;
     size -= len;
@@ -761,7 +754,7 @@ void handleRoot() {
   float vdd = Battery_voltage() ;
   bool low_voltage = (Battery_voltage() <= Battery_threshold());
 
-  time_t timestamp = now();
+//  time_t timestamp = now();
   char str_Vcc[8];
 
   size_t size = 3000;
@@ -815,9 +808,9 @@ void handleRoot() {
   <tr><th align=left>Connection type</th><td align=right>%s</td></tr>"),
     SoC->getChipId() & 0xFFFFFF, SKYVIEW_FIRMWARE_VERSION,
     (SoC == NULL ? "NONE" : SoC->name),
-    hr, min % 60, sec % 60, String(cpu_freq), ESP.getFreeHeap(),
+    hr, min % 60, sec % 60, String(cpu_freq).c_str(), ESP.getFreeHeap(),
     low_voltage ? "red" : "green", str_Vcc, charge_status_str,
-    chargingCurrent, lastBatteryLog.c_str(), "AMOLED 1.75",
+    chargingCurrent.c_str(), lastBatteryLog.c_str(), "AMOLED 1.75",
     settings->connection == CON_SERIAL        ? "Serial" :
     settings->connection == CON_BLUETOOTH_SPP ? "Bluetooth SPP" :
     settings->connection == CON_BLUETOOTH_LE  ? "Bluetooth LE" :
