@@ -14,13 +14,13 @@ Follow this process to flash the board for the first time:
     - Refer to the screenshot below and configure the files and addresses exactly as shown.
 
 
-![BoardSelection](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/blob/main/Documentation/images/AMOLED_Board_Flashing_setting.png)
+![BoardSelection](https://github.com/dingetje/SkyView-AMOLED-round-1.75-Waveshare/blob/main/Documentation/images/AMOLED_Board_Flashing_setting.png)
 
 4. **Select the COM Port**:  
     - In the `COM:` dropdown list, select the COM port of the AMOLED board (after connecting it to your PC).
 
 
-![Flashing-Tool-settings](https://github.com/slash-bit/SkyView-AMOLED-round-1.75-TFT_eSPI/blob/main/Documentation/images/Flashing_Tool_Settings.png)
+![Flashing-Tool-settings](https://github.com/dingetje/SkyView-AMOLED-round-1.75-Waveshare/blob/main/Documentation/images/Flashing_Tool_Settings.png)
 
 
 5. **Erase the Board**:  
