@@ -3,7 +3,7 @@
 Follow this process to flash the board for the first time:
 
 1. **Download the required files**:  
-    - Navigate to the ["binaries"](https://github.com/dingetje/SkyView-AMOLED-round-1.75-Waveshare/binaries) folder in this repository.  
+    - Navigate to the ["binaries"](https://github.com/dingetje/SkyView-AMOLED-round-1.75-Waveshare/tree/main/binaries) folder in this repository.  
     - Download the files and place them in a folder on your PC, e.g., `C:\temp\SkyView`.
 
 2. **Download the ESP32 Flashing Tool**:  
