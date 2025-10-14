@@ -39,6 +39,8 @@ The SkyView software is now installed. You should be able to connect to it's AP 
 
 For subsequent firmware updates, you can either repeat this method or use the much easier WebFlash process.
 
+For the OGN database and Voice alerts to work, make sure to read the [Preparing_SD_Card](Preparing_SD_Card.md) document.
+
 
 
 
