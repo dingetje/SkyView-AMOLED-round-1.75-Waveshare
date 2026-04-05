@@ -83,7 +83,7 @@ Powering Off the device (Sleep mode).
 
 ---
 #### ** 3D Case**
-The case for the 1.75" Display is not ready yet.
+An STL file for a 3D printed case for the 1.75" Display can be found in the folder. The case is designed for the standard version with protective case.
 
 
 ---
