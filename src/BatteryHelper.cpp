@@ -37,6 +37,8 @@
 uint32_t printTime = 0;
 XPowersPMU power;
 ESP_IOExpander *expander = NULL;
+static unsigned long expanderRetryAtMs = 0;
+static bool expanderReady = false;
 
 //static bool pmu_irq = false;
 //void setPmuIrqFlag(bool flag)
@@ -113,6 +115,11 @@ int read_SY6970_charging_status()
 
 #if defined(XPOWERS_CHIP_AXP2101)
 static unsigned long longPressStart = 0;
+
+static bool is_expander_ready()
+{
+  return expanderReady;
+}
 
 static void adcOn() 
 {
@@ -243,11 +250,19 @@ void ShowPowerOnTime(uint8_t opt)
 
 void AXP2101_setup()
 {
-  // already been here?
-  if (expander != NULL)
+  // already initialized?
+  if (is_expander_ready())
   {
     return;
   }
+
+  // Recover from a stale object that has no valid low-level handle.
+  if (expander != NULL)
+  {
+    delete expander;
+    expander = NULL;
+  }
+  expanderReady = false;
 
   setupWireIfNeeded(IIC_SDA, IIC_SCL);
 
@@ -257,7 +272,22 @@ void AXP2101_setup()
   // I2C bus already started at this point, so we can use this constuctor
   LOG_DEBUG("Create TCA95xx_8bit IOExpander object...");
   expander = new ESP_IOExpander_TCA95xx_8bit((i2c_port_t)0,ESP_IO_EXPANDER_I2C_TCA9554_ADDRESS_000);
+  if (expander == NULL)
+  {
+    PRINTLN("[ERROR] IO expander allocation failed");
+    return;
+  }
+
   expander->begin();
+  if (expander->getHandle() == NULL)
+  {
+    PRINTLN("[ERROR] IO expander begin failed (handle invalid)");
+    expanderReady = false;
+    return;
+  }
+  expanderReady = true;
+
+  expander->reset();
   expander->pinMode(AXP_IRQ, INPUT);
   expander->pinMode(PWR_BUTTON, INPUT);
   expander->printStatus();
@@ -487,6 +517,17 @@ void Battery_loop()
   }
 
 #if defined (WAVESHARE_AMOLED_1_75)
+  if (!is_expander_ready())
+  {
+    if (millis() > expanderRetryAtMs)
+    {
+      PRINTLN("Retrying IO expander init...");
+      AXP2101_setup();
+      expanderRetryAtMs = millis() + 5000;
+    }
+    return;
+  }
+
   static int pwr_button_last = -1;
   // PWR button is tied to IO Expander pin 4
   int pwr_button = expander->digitalRead(PWR_BUTTON);

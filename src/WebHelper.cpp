@@ -89,24 +89,23 @@ static const char about_html[] PROGMEM = "<html>\
 she.braner\
 @gmail.com</p>\
 <h2 align=center>Credits</h2>\
-<p align=center>(in historical order)</p>\
+<p align=center>(components used in this firmware build)</p>\
 <table width=100%%>\
-<tr><th align=left>Ivan Grokhotkov</th><td align=left>Arduino core for ESP8266</td></tr>\
-<tr><th align=left>Paul Stoffregen</th><td align=left>Arduino Time library</td></tr>\
-<tr><th align=left>Mikal Hart</th><td align=left>TinyGPS++ and PString libraries</td></tr>\
-<tr><th align=left>Hristo Gochkov</th><td align=left>Arduino core for ESP32</td></tr>\
-<tr><th align=left>JS Foundation</th><td align=left>jQuery library</td></tr>\
-<tr><th align=left>Mike McCauley</th><td align=left>BCM2835 C library</td></tr>\
-<tr><th align=left>Jean-Marc Zingg</th><td align=left>GxEPD2 library</td></tr>\
-<tr><th align=left>Adafruit Industries</th><td align=left>SSD1306 and GFX libraries</td></tr>\
-<tr><th align=left>Ryan David</th><td align=left>GDL90 decoder</td></tr>\
-<tr><th align=left>Arundale Ramanathan</th><td align=left>uCDB Arduino library</td></tr>\
-<tr><th align=left>FlarmNet<br>GliderNet</th><td align=left>aircrafts data</td></tr>\
-<tr><th align=left>Shenzhen Xin Yuan<br>(LilyGO) ET company</th><td align=left>TTGO T5S V1.9 board</td></tr>\
-<tr><th align=left>Tuan Nha</th><td align=left>ESP32 I2S WAV player</td></tr>\
-<tr><th align=left>Brian Park</th><td align=left>AceButton library</td></tr>\
-<tr><th align=left>flashrom.org project</th><td align=left>Flashrom library</td></tr>\
-<tr><th align=left>Evandro Copercini</th><td align=left>ESP32 BT SPP library</td></tr>\
+<tr><th align=left>Espressif Systems + Arduino-ESP32 contributors</th><td align=left>Arduino core for ESP32</td></tr>\
+<tr><th align=left>Mikal Hart</th><td align=left>TinyGPSPlus</td></tr>\
+<tr><th align=left>Michael Margolis (maintainer: Paul Stoffregen)</th><td align=left>Time library</td></tr>\
+<tr><th align=left>Benoit Blanchon</th><td align=left>ArduinoJson</td></tr>\
+<tr><th align=left>h2zero (maintainer: Ryan Powell)</th><td align=left>NimBLE-Arduino</td></tr>\
+<tr><th align=left>Brian T. Park</th><td align=left>AceButton</td></tr>\
+<tr><th align=left>Bodmer</th><td align=left>TFT_eSPI</td></tr>\
+<tr><th align=left>Lewis He</th><td align=left>XPowersLib</td></tr>\
+<tr><th align=left>Lzw655 (Liu Zhongwei)</th><td align=left>ESP32_IO_Expander</td></tr>\
+<tr><th align=left>Tuan Nha + contributors</th><td align=left>ESP32-audioI2S</td></tr>\
+<tr><th align=left>Ioulianos Kakoulidis</th><td align=left>uCDB</td></tr>\
+<tr><th align=left>FlarmNet / GliderNet</th><td align=left>aircraft databases</td></tr>\
+<tr><th align=left>SensorLib maintainers</th><td align=left>sensor integration library</td></tr>\
+<tr><th align=left>flashrom.org project</th><td align=left>flashrom</td></tr>\
+<tr><th align=left>OpenJS Foundation + contributors</th><td align=left>jQuery</td></tr>\
 </table>\
 <hr>\
 Copyright (C) 2019-2022 &nbsp;&nbsp;&nbsp; Linar Yusupov\
@@ -294,7 +293,7 @@ const char* bleManagerHTML = R"rawliteral(
   <style>
     body { font-family: sans-serif; padding: 1em; }
     h2 { margin-top: 1.5em; }
-    button { margin: 0.25em; padding: 0.5em 1em; }
+    button { margin: 0.2em; padding: 0.35em 0.6em; font-size: 0.85em; }
     .device { display: flex; align-items: center; margin: 0.25em 0; }
     .device span { flex-grow: 1; }
   </style>
@@ -380,7 +379,151 @@ const char* bleManagerHTML = R"rawliteral(
 </html>
 )rawliteral";
 
+const char* wifiManagerHTML = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WiFi Scanner</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body { font-family: sans-serif; padding: 1em; }
+    h2 { margin-top: 1.5em; }
+    button { margin: 0.2em; padding: 0.35em 0.6em; font-size: 0.85em; }
+    .network { display: flex; align-items: center; margin: 0.25em 0; }
+    .network span { flex-grow: 1; }
+  </style>
+</head>
+<body>
+  <h1>WiFi Scanner</h1>
+
+  <button onclick="scanWiFi()">🔍 Scan Nearby SSID</button>
+  <button id="use-selected-btn" onclick="useSelectedSSID()" disabled>Use Selected SSID in Settings</button>
+  <label style="font-size:0.85em; margin-left:0.5em;">
+    <input type="checkbox" id="show-hidden"> Show hidden networks
+  </label>
+
+  <h2>Nearby Networks</h2>
+  <div id="scan-results">Click "Scan" to discover nearby WiFi networks...</div>
+
+  <script>
+    let selectedSSID = "";
+
+    function escHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function selectSSID(ssid) {
+      selectedSSID = ssid;
+      document.getElementById("use-selected-btn").disabled = !selectedSSID.length;
+    }
+
+    async function scanWiFi() {
+      const scanDiv = document.getElementById("scan-results");
+      selectedSSID = "";
+      document.getElementById("use-selected-btn").disabled = true;
+      scanDiv.innerHTML = "Scanning...";
+
+      try {
+        const res = await fetch("/wifi/scan");
+        const nets = await res.json();
+
+        if (!nets.length) {
+          scanDiv.innerHTML = "No networks found.";
+          return;
+        }
+
+        scanDiv.innerHTML = "";
+        const showHidden = document.getElementById("show-hidden").checked;
+        let shown = 0;
+        nets.forEach(net => {
+          const hasSsid = net.ssid && net.ssid.length;
+          if (!hasSsid && !showHidden) return;
+          const ssid = hasSsid ? net.ssid : "(hidden)";
+          const el = document.createElement("div");
+          el.className = "network";
+          if (hasSsid) {
+            el.innerHTML = `<input type="radio" name="wifi-ssid" onchange='selectSSID(${JSON.stringify(net.ssid)})'> <span>${escHtml(ssid)} | RSSI ${net.rssi} dBm | CH ${net.channel} | ${escHtml(net.security)}</span>`;
+          } else {
+            el.innerHTML = `<span>${escHtml(ssid)} | RSSI ${net.rssi} dBm | CH ${net.channel} | ${escHtml(net.security)}</span>`;
+          }
+          scanDiv.appendChild(el);
+          shown++;
+        });
+        if (!shown) { scanDiv.innerHTML = "No named networks found."; }
+      } catch (e) {
+        scanDiv.innerHTML = "Error scanning WiFi: " + e;
+      }
+    }
+
+    function useSelectedSSID() {
+      if (!selectedSSID.length) {
+        return;
+      }
+      window.location.href = "/settings?source=wifi&ssid=" + encodeURIComponent(selectedSSID);
+    }
+  </script>
+</body>
+</html>
+)rawliteral";
+
+void handleWiFiScan()
+{
+#if defined(ESP32)
+  // Match BLE scan behavior: pause loop watchdog during blocking WiFi scan.
+  bool wdt_status = loopTaskWDTEnabled;
+  if (wdt_status)
+  {
+    disableLoopWDT();
+  }
+#endif
+
+  int foundNetworks = WiFi.scanNetworks(false, true);
+
+#if defined(ESP32)
+  if (wdt_status)
+  {
+    enableLoopWDT();
+  }
+#endif
+
+  DynamicJsonDocument doc(4096);
+  JsonArray array = doc.to<JsonArray>();
+
+  for (int i = 0; i < foundNetworks; i++)
+  {
+    JsonObject item = array.createNestedObject();
+    item["ssid"] = WiFi.SSID(i);
+    item["rssi"] = WiFi.RSSI(i);
+    item["channel"] = WiFi.channel(i);
+    item["security"] = (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? "open" : "secured";
+  }
+
+  WiFi.scanDelete();
+
+  String json;
+  serializeJson(doc, json);
+  server.send(200, "application/json", json);
+}
+
 void handleSettings() {
+
+  char selected_server[sizeof(settings->server)];
+  strncpy(selected_server, settings->server, sizeof(selected_server));
+  selected_server[sizeof(selected_server) - 1] = '\0';
+
+  if (server.hasArg("source") && server.hasArg("ssid") &&
+      server.arg("source") == "wifi" &&
+      settings->connection == CON_WIFI_UDP) {
+    String ssid_arg = server.arg("ssid");
+    ssid_arg.trim();
+    ssid_arg.toCharArray(selected_server, sizeof(selected_server));
+  }
 
   size_t size = 5000;
   char *offset;
@@ -631,7 +774,7 @@ void handleSettings() {
 </select>\
 </td>\
 </tr>"),
-  settings->server, settings->key,
+  selected_server, settings->key,
   (settings->bridge == BRIDGE_NONE    ? "selected" : ""), BRIDGE_NONE,
   (settings->bridge == BRIDGE_SERIAL  ? "selected" : ""), BRIDGE_SERIAL,
   (settings->bridge == BRIDGE_UDP     ? "selected" : ""), BRIDGE_UDP,
@@ -756,16 +899,30 @@ void handleRoot() {
 
 //  time_t timestamp = now();
   char str_Vcc[8];
+  String rootHtml;
 
-  size_t size = 3000;
-  char *offset;
-  size_t len = 0;
+  auto appendFormatP = [&rootHtml](PGM_P fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
 
-  char *Root_temp = (char *) malloc(size);
-  if (Root_temp == NULL) {
-    return;
-  }
-  offset = Root_temp;
+    va_list args_copy;
+    va_copy(args_copy, args);
+    int needed = vsnprintf_P(nullptr, 0, fmt, args_copy);
+    va_end(args_copy);
+
+    if (needed > 0)
+    {
+      char* buf = (char*) malloc((size_t)needed + 1U);
+      if (buf != NULL)
+      {
+        vsnprintf_P(buf, (size_t)needed + 1U, fmt, args);
+        rootHtml += buf;
+        free(buf);
+      }
+    }
+
+    va_end(args);
+  };
 
   dtostrf(vdd, 4, 2, str_Vcc);
 
@@ -780,19 +937,22 @@ void handleRoot() {
   int cpu_freq = get_cpu_frequency_mhz();
   String lastBatteryLog = formatBatteryLog(getLastBatteryLogEntry());
 
-  snprintf_P ( offset, size,
+  appendFormatP(
     PSTR("<html>\
   <head>\
     <meta charset=\"UTF-8\">\
     <meta name='viewport' content='width=device-width, initial-scale=1'>\
+    <style>\
+      body { font-size: 0.82em; margin: 0.45em; }\
+      table { font-size: 1em; }\
+      th, td { padding: 0.06em 0; }\
+      button, input[type=button], input[type=submit] { font-size: 0.85em; padding: 0.35em 0.6em; }\
+      .nav-btn { font-size: 0.72em; padding: 0.15em 0.35em; margin: 0.08em; }\
+    </style>\
     <title>SkyView status</title>\
   </head>\
 <body>\
- <table width=100%%>\
-  <tr><!-- <td align=left><h1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</h1></td> -->\
-  <td align=center><h1>SkyView status</h1></td>\
-  <!-- <td align=right><img src='/logo.png'></td> --></tr>\
- </table>\
+ <h1 align=center>SkyView status</h1>\
  <table width=100%%>\
   <tr><th align=left>Device Id</th><td align=right>%06X</td></tr>\
   <tr><th align=left>Software Version</th><td align=right>%s&nbsp;&nbsp;%s</td></tr>\
@@ -817,14 +977,10 @@ void handleRoot() {
     settings->connection == CON_WIFI_UDP      ? "WiFi" : "NONE"
   );
 
-  len = strlen(offset);
-  offset += len;
-  size -= len;
-
   switch (settings->connection)
   {
   case CON_WIFI_UDP:
-    snprintf_P ( offset, size,
+    appendFormatP(
       PSTR("\
   <tr><th align=left>Link partner</th><td align=right>%s</td></tr>\
   <tr><th align=left>Link status</th><td align=right>%s established</td></tr>\
@@ -833,16 +989,13 @@ void handleRoot() {
       WiFi.status() == WL_CONNECTED ? "" : "not",
       WiFi.localIP().toString().c_str()
     );
-    len = strlen(offset);
-    offset += len;
-    size -= len;
   case CON_SERIAL:
   case CON_BLUETOOTH_SPP:
   case CON_BLUETOOTH_LE:
     switch (settings->protocol)
     {
     case PROTOCOL_GDL90:
-      snprintf_P ( offset, size,
+      appendFormatP(
         PSTR("\
   <tr><th align=left>Connection status</th><td align=right>%s connected</td></tr>\
   <tr><th align=left>Data type</th><td align=right>%s %s</td></tr>\
@@ -854,7 +1007,7 @@ void handleRoot() {
       break;
     case PROTOCOL_NMEA:
     default:
-      snprintf_P ( offset, size,
+      appendFormatP(
         PSTR("\
   <tr><th align=left>Connection status</th><td align=right>%s connected</td></tr>\
   <tr><th align=left>Data type</th><td align=right>%s %s %s</td></tr>\
@@ -866,10 +1019,6 @@ void handleRoot() {
       );
       break;
     }
-
-    len = strlen(offset);
-    offset += len;
-    size -= len;
     break;
   case CON_NONE:
   default:
@@ -879,17 +1028,13 @@ void handleRoot() {
   // show number of OGN records
   if (settings->adb == DB_OGN)
   {
-    snprintf_P(offset, size,
+    appendFormatP(
     PSTR("\
       <tr><th align=left>OGN Records</th><td align=right>%d</td></tr>"), 
       OGN_Records());
-
-    len = strlen(offset);
-    offset += len;
-    size -= len;
   }
 
-  snprintf_P(offset, size,
+  appendFormatP(
   PSTR("\
     <tr><th align=left>Bridge output</th><td align=right>%s</td></tr>\
     <tr><th align=left>Battery Log Actions</th>\
@@ -905,11 +1050,18 @@ void handleRoot() {
   <hr>\
   <table width=100%%>\
     <tr>\
-      <td align=left><input type=button onClick=\"location.href='/settings'\" value='Settings'></td>\
-      <td align=center><input type=button onClick=\"location.href='/buddylist'\" value='Buddy List'></td>\
-      <td align=center><input type=button onClick=\"location.href='/ble/manage'\" value='BLE Manage'></td>\
-      <td align=center><input type=button onClick=\"location.href='/about'\" value='About'></td>\
-      <td align=right><input type=button onClick=\"location.href='/firmware'\" value='Firmware update'></td>\
+      <td colspan='3' align='center'>\
+        <input class='nav-btn' type=button onClick=\"location.href='/settings'\" value='Settings'>\
+        <input class='nav-btn' type=button onClick=\"location.href='/buddylist'\" value='Buddy List'>\
+        <input class='nav-btn' type=button onClick=\"location.href='/ble/manage'\" value='BLE Manage'>\
+      </td>\
+    </tr>\
+    <tr>\
+      <td colspan='3' align='center'>\
+        <input class='nav-btn' type=button onClick=\"location.href='/wifi/manage'\" value='WiFi'>\
+        <input class='nav-btn' type=button onClick=\"location.href='/about'\" value='About'>\
+        <input class='nav-btn' type=button onClick=\"location.href='/firmware'\" value='Firmware'>\
+      </td>\
     </tr>\
   </table>\
   </body>\
@@ -924,9 +1076,8 @@ void handleRoot() {
   server.sendHeader(String(F("Cache-Control")), String(F("no-cache, no-store, must-revalidate")));
   server.sendHeader(String(F("Pragma")), String(F("no-cache")));
   server.sendHeader(String(F("Expires")), String(F("-1")));
-  server.send ( 200, "text/html", Root_temp );
+  server.send ( 200, "text/html", rootHtml );
   SoC->swSer_enableRx(true);
-  free(Root_temp);
 }
 
 
@@ -995,11 +1146,15 @@ void handleInput()
     }
     else if (server.argName(i).equals("server")) 
     {
-      server.arg(i).toCharArray(settings->server, sizeof(settings->server));
+      String ssid_arg = server.arg(i);
+      ssid_arg.trim();
+      ssid_arg.toCharArray(settings->server, sizeof(settings->server));
     }
     else if (server.argName(i).equals("key")) 
     {
-      server.arg(i).toCharArray(settings->key, sizeof(settings->key));
+      String key_arg = server.arg(i);
+      key_arg.trim();
+      key_arg.toCharArray(settings->key, sizeof(settings->key));
     }
     else if (server.argName(i).equals("units")) 
     {
@@ -1189,7 +1344,11 @@ void Web_setup()
   server.on("/ble/manage", HTTP_GET, []() {
   server.send(200, "text/html; charset=UTF-8", bleManagerHTML);
   });
+  server.on("/wifi/manage", HTTP_GET, []() {
+  server.send(200, "text/html; charset=UTF-8", wifiManagerHTML);
+  });
   server.on("/ble/scan", HTTP_GET, handleBLEScan);
+  server.on("/wifi/scan", HTTP_GET, handleWiFiScan);
   server.on("/ble/add", HTTP_POST, handleAddBLEDevice);
   server.on("/ble/delete", HTTP_POST, handleDeleteBLEDevice);
   server.on("/ble/allowed", HTTP_GET, []() {

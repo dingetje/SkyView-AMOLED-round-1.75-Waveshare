@@ -63,10 +63,66 @@ char UDPpacketBuffer[UDP_PACKET_BUFSIZE]; // buffer to hold incoming packets
 static unsigned long WiFi_STA_TimeMarker = 0;
 static bool WiFi_STA_connected = false;
 static bool WiFi_STA_trying = false;
+static unsigned long WiFi_STA_LastNearbyLogMs = 0;
 
 #if defined(POWER_SAVING_WIFI_TIMEOUT)
 static unsigned long WiFi_No_Clients_Time_ms = 0;
 #endif
+
+static void trim_in_place(char *s)
+{
+  if (s == NULL) {
+    return;
+  }
+
+  size_t len = strlen(s);
+  size_t start = 0;
+  while (start < len && isspace((unsigned char) s[start])) {
+    start++;
+  }
+
+  size_t end = len;
+  while (end > start && isspace((unsigned char) s[end - 1])) {
+    end--;
+  }
+
+  if (start > 0 || end < len) {
+    memmove(s, s + start, end - start);
+    s[end - start] = '\0';
+  }
+}
+
+static void WiFi_LogNearbySSIDs()
+{
+  int16_t found = WiFi.scanNetworks(false, true);
+  Serial.print(F("WIFI nearby SSIDs: "));
+  Serial.println(found);
+
+  if (found <= 0) {
+    WiFi.scanDelete();
+    return;
+  }
+
+  int16_t shown = 0;
+  for (int16_t i = 0; i < found && shown < 8; i++) {
+    String ssid = WiFi.SSID(i);
+    if (ssid.length() == 0) {
+      continue;
+    }
+
+    Serial.print(F("  ["));
+    Serial.print(i);
+    Serial.print(F("] '"));
+    Serial.print(ssid);
+    Serial.print(F("' RSSI="));
+    Serial.print(WiFi.RSSI(i));
+    Serial.print(F(" ch="));
+    Serial.println(WiFi.channel(i));
+    shown++;
+  }
+
+  WiFi.scanDelete();
+}
 
 size_t WiFi_Receive_UDP(uint8_t *buf, size_t max_size)
 {
@@ -183,6 +239,9 @@ void WiFi_setup()
 
   if (settings->connection == CON_WIFI_UDP ||
       settings->connection == CON_WIFI_TCP ) {
+    trim_in_place(settings->server);
+    trim_in_place(settings->key);
+
     if (strnlen(settings->server, sizeof(settings->server)) > 0 &&
         strnlen(settings->key,  sizeof(settings->key))  > 0) {
       WiFi.begin(settings->server, settings->key);
@@ -239,6 +298,11 @@ void WiFi_loop()
           WiFi.enableSTA(true);
           WiFi.reconnect();
           WiFi_STA_trying = true;
+
+          if (millis() - WiFi_STA_LastNearbyLogMs > 30000) {
+            WiFi_LogNearbySSIDs();
+            WiFi_STA_LastNearbyLogMs = millis();
+          }
         }
         WiFi_STA_TimeMarker = millis();
       }
