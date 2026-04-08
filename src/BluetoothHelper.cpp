@@ -299,6 +299,15 @@ static void ESP32_Bluetooth_setup()
         return;
       }
       pClient->setClientCallbacks(new AppClientCallback());
+      
+      // *** POWER OPTIMIZATION: Reduce BLE TX power ***
+      // This reduces power consumption significantly during BLE operation
+      // Available power levels: N12, N9, N6, N3, N0, P3, P6, P9
+      // ESP_PWR_LVL_N12 = -12dBm (lowest power, ~10mA, range ~10m)
+      // ESP_PWR_LVL_N0  = 0dBm (medium power, ~15mA, range ~30m)
+      // ESP_PWR_LVL_P9  = +9dBm (default/high power, ~70mA, range ~100m)
+      NimBLEDevice::setPower(ESP_PWR_LVL_N0); // set to 0dBm for balanced power and range
+
       NimBLEScan* pBLEScan = NimBLEDevice::getScan();
       if (!pBLEScan) 
       {
