@@ -49,9 +49,6 @@ Displays a dynamic visualization of nearby traffic.
 
 ![SkyView_Radar_Page300x300](https://github.com/user-attachments/assets/a582ca45-425f-4d3f-b65a-485dfb4d9953)
 
-
-![SkyView_Radar_Page_300x300_2](https://github.com/user-attachments/assets/6b980b27-f55a-47da-8d94-9f8d6f9b4d1f)
-
 ---
 
 #### **Traffic Info Page**  
@@ -82,8 +79,8 @@ Powering Off the device (Sleep mode).
 
 
 ---
-#### ** 3D Case**
-An STL file for a 3D printed case for the 1.75" Display can be found in the folder. The case is designed for the standard version with protective case.
+#### **3D Case**
+An STL file for a 3D printed case for the 1.75" Display can be found in the [3D Case](https://github.com/dingetje/SkyView-AMOLED-round-1.75-Waveshare/tree/98964c774fb1785b0070eeb28f082ed66c1f80e4/3D%20Case) folder. The case is designed for the standard version with protective case.
 
 
 ---
