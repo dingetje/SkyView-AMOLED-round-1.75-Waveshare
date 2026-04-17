@@ -49,9 +49,6 @@ Displays a dynamic visualization of nearby traffic.
 
 ![SkyView_Radar_Page300x300](https://github.com/user-attachments/assets/a582ca45-425f-4d3f-b65a-485dfb4d9953)
 
-
-![SkyView_Radar_Page_300x300_2](https://github.com/user-attachments/assets/6b980b27-f55a-47da-8d94-9f8d6f9b4d1f)
-
 ---
 
 #### **Traffic Info Page**  
@@ -77,13 +74,17 @@ A specialised page for orientation and navigation. Can be switched off in settin
 #### **Settings Page**
 Key added feature is the **Settings Page** which allows to change settings "on the fly". Such as Radar View Orientation- North Up or Track Up. Traffic Filtering.
 Powering Off the device (Sleep mode).
-
-<img width="405" height="410" alt="image" src="https://github.com/user-attachments/assets/d78a2057-068a-4a9d-97e6-22c7c6ca96b9" />
-
+<p>
+Since firmware version WS005.A001 there's now a 2nd settings page (swipe) that offers a BLE Manager via the TFT touch screen. It works basically the same as the HTML version. One can scan for BLE devices in the vicinity and then add them to the known BLE devices list. A connected devie is shown with a green icon. When connected the BLE Manager offers a disconnect button too, this will disconnect the device for 30 seconds and will stop the auto BLE re-connect task for that period of time.
+</p>
+<p>
+  <img width="300" alt="Settings 1" src="https://github.com/user-attachments/assets/d78a2057-068a-4a9d-97e6-22c7c6ca96b9" hspace="10">
+  <img width="300" alt="BLE Manager" src="https://github.com/user-attachments/assets/31253c6a-a687-4270-92be-da5325f9d11a" hspace="10">
+</p>
 
 ---
-#### ** 3D Case**
-An STL file for a 3D printed case for the 1.75" Display can be found in the folder. The case is designed for the standard version with protective case.
+#### **3D Case**
+An STL file for a 3D printed case for the 1.75" Display can be found in the [3D Case](https://github.com/dingetje/SkyView-AMOLED-round-1.75-Waveshare/tree/98964c774fb1785b0070eeb28f082ed66c1f80e4/3D%20Case) folder. The case is designed for the standard version with protective case.
 
 
 ---
