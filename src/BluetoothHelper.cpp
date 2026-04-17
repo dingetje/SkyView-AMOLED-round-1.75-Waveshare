@@ -24,6 +24,9 @@
 #include "BluetoothHelper.h"
 #include "NMEAHelper.h"
 #include "GDL90Helper.h"
+#if defined(USE_TFT)
+#include "TFTHelper.h"
+#endif
 
 #include "SkyView.h"
 #include <NimBLEDevice.h>
@@ -46,18 +49,25 @@ const NimBLEUUID targetService("0000ffe0-0000-1000-8000-00805f9b34fb");
 uint8_t BLEbatteryCache = 0;  // External device battery level in %
 unsigned long lastBatteryCheck = 0;
 const unsigned long batteryPollInterval = 60000;  // Check every 60 seconds
+static String connectedBLEDeviceName = "";
+static unsigned long bleManualDisconnectUntil = 0;
+static int lastBleStatusForUi = BT_STATUS_NC;
+
+static bool isManualDisconnectCooldownActive()
+{
+  return (bleManualDisconnectUntil != 0 && millis() < bleManualDisconnectUntil);
+}
 
 
 std::vector<String> scanForBLEDevices(uint32_t scanTimeSeconds) 
 {
-  // Prevent scanning while a connection is active
-  if (ESP32_BT_ctl.status == BT_STATUS_CON) 
-  {
-    PRINTLN("[BLE] Scan aborted: BLE already connected.");
-    return scanResults;
-  }
-
   scanResults.clear();
+
+  // A connected BLE peripheral may stop advertising; keep it visible in the UI list.
+  if (ESP32_BT_ctl.status == BT_STATUS_CON && connectedBLEDeviceName.length() > 0)
+  {
+    scanResults.push_back(connectedBLEDeviceName);
+  }
 
   // Initialize BLE only once for scanning context
   if (!bleInitializedForScan) 
@@ -110,8 +120,13 @@ std::vector<String> scanForBLEDevices(uint32_t scanTimeSeconds)
 
   for (const auto& name : uniqueNames) 
   {
-    scanResults.push_back(name);
-    PRINTLN("[BLE] Found: " + name);
+    bool alreadyPresent = std::any_of(scanResults.begin(), scanResults.end(),
+                                      [&](const String& existing) { return existing == name; });
+    if (!alreadyPresent)
+    {
+      scanResults.push_back(name);
+      PRINTLN("[BLE] Found: " + name);
+    }
   }
   scanner->clearResults();  // Free memory again
   return scanResults;
@@ -132,7 +147,7 @@ void loadAllowedBLENames()
     PRINTLN("[BLE] SPIFFS not mounted");
     return;
   }
-  File file = SPIFFS.open("/BLEConnections.txt");
+  fs::File file = SPIFFS.open("/BLEConnections.txt");
   if (!file) 
   {
     PRINTLN("BLEConnections.txt not found");
@@ -198,6 +213,7 @@ class AppClientCallback : public NimBLEClientCallbacks
   void onDisconnect(NimBLEClient* pclient) 
   {
     ESP32_BT_ctl.status = BT_STATUS_NC;
+    connectedBLEDeviceName = "";
     PRINTLN(F("[BLE] disconnected from Server."));
   }
 };
@@ -208,6 +224,8 @@ public:
 
   void onResult(const NimBLEAdvertisedDevice* advertisedDevice) override 
   {
+    if (isManualDisconnectCooldownActive()) return;
+
     if (!advertisedDevice->haveName()) return;
 
     String devName = advertisedDevice->getName().c_str();
@@ -242,9 +260,20 @@ static bool ESP32_BLEConnectToServer()
     PRINTLN(F("[BLE] No device to connect to."));
     return false;
   }
+
+  if (AppDevice->haveName())
+  {
+    connectedBLEDeviceName = AppDevice->getName().c_str();
+  }
+  else
+  {
+    connectedBLEDeviceName = AppDevice->getAddress().toString().c_str();
+  }
+
   if (!pClient->connect(AppDevice)) 
   {
     PRINTLN(F("[BLE] Failed to connect to device."));
+    connectedBLEDeviceName = "";
     return false;
   }
 
@@ -384,11 +413,32 @@ static void ESP32_Bluetooth_loop()
   {
   case CON_BLUETOOTH_LE:
     {
+      if (ESP32_BT_ctl.command == BT_CMD_DISCONNECT)
+      {
+        PRINTLN(F("[BLE] manual disconnect requested"));
+        if (pClient && pClient->isConnected())
+        {
+          pClient->disconnect();
+        }
+        connectedBLEDeviceName = "";
+        ESP32_BT_ctl.status = BT_STATUS_NC;
+        ESP32_BT_ctl.command = BT_CMD_NONE;
+        bleManualDisconnectUntil = millis() + 30000; // Pause auto-reconnect for 30s
+        BT_TimeMarker = millis();
+      }
+
       if (ESP32_BT_ctl.command == BT_CMD_CONNECT) 
       {
+        if (isManualDisconnectCooldownActive())
+        {
+          ESP32_BT_ctl.command = BT_CMD_NONE;
+          break;
+        }
+
         if (ESP32_BLEConnectToServer()) 
         {
           PRINTLN(F("[BLE] connected to Server."));
+          bleManualDisconnectUntil = 0;
         }
         ESP32_BT_ctl.command = BT_CMD_NONE;
       }
@@ -409,6 +459,11 @@ static void ESP32_Bluetooth_loop()
       }
       else if (millis() - BT_TimeMarker > BT_NODATA_TIMEOUT) 
       {
+        if (isManualDisconnectCooldownActive())
+        {
+          BT_TimeMarker = millis();
+          break;
+        }
 
         PRINTLN(F("[BLE] attempt to (re)connect..."));
         if (pClient) 
@@ -436,6 +491,17 @@ static void ESP32_Bluetooth_loop()
 
         BT_TimeMarker = millis();
       }
+
+#if defined(USE_TFT)
+      if (ESP32_BT_ctl.status != lastBleStatusForUi)
+      {
+        lastBleStatusForUi = ESP32_BT_ctl.status;
+        if (TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 2)
+        {
+          ble_manager_page();
+        }
+      }
+#endif
 
       // notify changed value
       // bluetooth stack will go into congestion, if too many packets are sent
@@ -545,5 +611,10 @@ Bluetooth_ops_t ESP32_Bluetooth_ops = {
   ESP32_Bluetooth_read,
   ESP32_Bluetooth_write
 };
+
+const String& getConnectedBLEDeviceName()
+{
+  return connectedBLEDeviceName;
+}
 
 #endif /* ESP32 */

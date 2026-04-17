@@ -8,6 +8,8 @@
 #include "TouchHelper.h"
 #include "WiFiHelper.h"
 #include "BatteryHelper.h"
+#include "BluetoothHelper.h"
+#include "WebHelper.h"
 // #include <Adafruit_GFX.h>    // Core graphics library
 // #include "Arduino_GFX_Library.h"
 #include "Platform_ESP32.h"
@@ -34,6 +36,16 @@ bool EPD_display_frontpage = false;
 int prev_TFT_view_mode = 0;
 extern bool wifi_sta;
 extern bool TFTrefresh;
+
+// Settings page state tracking
+uint8_t settings_page_num = 1; // 1 = general settings, 2 = BLE manager
+std::vector<String> ble_scan_results;
+bool ble_scanning = false;
+unsigned long ble_scan_start_time = 0;
+int ble_selected_device = -1;
+bool ble_device_added = false;
+uint32_t ble_add_confirmation_time = 0;
+bool ble_page_needs_refresh = false;
 
 
 #if defined(AMOLED)
@@ -531,7 +543,37 @@ void settings_button(uint16_t x, uint16_t y, bool on)
   }
 }
 
-void settings_page() 
+// BLE Scanning task - runs asynchronously to avoid blocking the UI
+void ble_scan_task(void *parameter)
+{
+  // Perform the BLE scan
+  ble_scan_results = scanForBLEDevices(10);  // 10 second scan
+  
+  // Mark scanning as complete
+  ble_scanning = false;
+  
+  // Refresh the display with results
+  ble_manager_page();
+  
+  // Delete this task after completion
+  vTaskDelete(NULL);
+}
+
+// Start BLE scanning
+void start_ble_scan()
+{
+  if (!ble_scanning)
+  {
+    ble_scanning = true;
+    ble_scan_results.clear();
+    ble_selected_device = -1;
+    
+    // Create a task to handle BLE scanning asynchronously
+    xTaskCreate(ble_scan_task, "BLE_Scan", 4096, NULL, 1, NULL);
+  }
+}
+
+void settings_page_1()
 {
   if (xSemaphoreTake(spiMutex, portMAX_DELAY)) 
   {
@@ -549,7 +591,7 @@ void settings_page()
     sprite.setTextDatum(MC_DATUM);
     sprite.setFreeFont(&Orbitron_Light_24);
     sprite.setCursor(160, 40);
-    sprite.printf("Settings");
+    sprite.printf("Settings (1/2)");
 
     text_y = 140; //bottom of the text
     sprite.setCursor(button_x - 300, text_y);
@@ -594,6 +636,13 @@ void settings_page()
     sprite.fillTriangle(180, 430, 197, 417, 197, 443, TFT_BLUEBUTTON);
     sprite.fillTriangle(160, 430, 180, 417, 180, 443, TFT_BLUEBUTTON);
 
+    // Add pagination indicator - right arrow for next page (only if BLE is the connection type)
+    if (settings->connection == CON_BLUETOOTH_LE)
+    {
+      sprite.setCursor(320, 440);
+      sprite.printf("→");
+    }
+
     sprite.setSwapBytes(true);
     sprite.pushImage(button_x, 350, 48, 47, power_button_small);
     
@@ -606,4 +655,202 @@ void settings_page()
     LOG_ERROR("Failed to acquire SPI semaphore!");
   }
 }
+
+void settings_page()
+{
+  // Only show BLE Manager page if BLE is the active connection
+  if (settings_page_num == 2 && settings->connection != CON_BLUETOOTH_LE)
+  {
+    settings_page_num = 1;
+  }
+  
+  if (settings_page_num == 1)
+  {
+    settings_page_1();
+  }
+  else if (settings_page_num == 2 && settings->connection == CON_BLUETOOTH_LE)
+  {
+    ble_manager_page();
+  }
+}
+
+void ble_manager_page()
+{
+  if (xSemaphoreTake(spiMutex, portMAX_DELAY)) 
+  {
+    delay(50);
+    if (TFT_view_mode != VIEW_MODE_SETTINGS) 
+    {
+      prev_TFT_view_mode = TFT_view_mode; 
+      TFT_view_mode = VIEW_MODE_SETTINGS;
+    }
+
+    sprite.fillSprite(TFT_BLACK);
+
+    uint16_t button_x = 340;
+    const int centerX = LCD_WIDTH / 2;
+    const int titleY = 32;
+    const int scanBtnX = 164;
+    const int scanBtnY = 72;
+    const int scanBtnW = 170;
+    const int scanBtnH = 48;
+    const int scanTextY = scanBtnY + (scanBtnH / 2) + 1;
+    const int disconnectBtnX = 58;
+    const int disconnectBtnY = 72;
+    const int disconnectBtnW = 90;
+    const int disconnectBtnH = 48;
+    const int listX = 42;
+    const int listY = 158;
+    const int rowH = 44;
+    const int nameW = 240;
+    const int addBtnX = 292;
+    const int addBtnW = 42;
+    const int maxResultsShown = 4;
+
+    sprite.setTextColor(TFT_WHITE, TFT_BLACK);
+    sprite.setTextDatum(MC_DATUM);
+    sprite.setFreeFont(&Orbitron_Light_24);
+    sprite.drawString("BLE Manager", centerX, titleY, 1);
+
+    sprite.setFreeFont(&FreeSansBold12pt7b);
+    if (ble_scanning)
+    {
+      sprite.fillSmoothRoundRect(scanBtnX, scanBtnY, scanBtnW, scanBtnH, 10, TFT_DARKGREY, TFT_BLACK);
+      sprite.drawRoundRect(scanBtnX, scanBtnY, scanBtnW, scanBtnH, 10, TFT_GREY);
+      sprite.setTextColor(TFT_WHITE, TFT_BLACK);
+      sprite.setTextDatum(MC_DATUM);
+      sprite.drawString("Scanning...", scanBtnX + (scanBtnW / 2), scanTextY, 1);
+    }
+    else
+    {
+      sprite.fillSmoothRoundRect(scanBtnX, scanBtnY, scanBtnW, scanBtnH, 10, TFT_BLUEBUTTON, TFT_BLACK);
+      sprite.drawRoundRect(scanBtnX, scanBtnY, scanBtnW, scanBtnH, 10, TFT_WHITE);
+      sprite.setTextColor(TFT_WHITE, TFT_BLUEBUTTON);
+      sprite.setTextDatum(MC_DATUM);
+      sprite.drawString("Scan", scanBtnX + (scanBtnW / 2), scanTextY, 1);
+    }
+
+    if (ESP32_BT_ctl.status == BT_STATUS_CON)
+    {
+      sprite.fillSmoothRoundRect(disconnectBtnX, disconnectBtnY, disconnectBtnW, disconnectBtnH, 10, TFT_MAROON, TFT_BLACK);
+      sprite.drawRoundRect(disconnectBtnX, disconnectBtnY, disconnectBtnW, disconnectBtnH, 10, TFT_RED);
+      sprite.setTextColor(TFT_WHITE, TFT_MAROON);
+      sprite.setTextDatum(MC_DATUM);
+      sprite.drawString("DISC", disconnectBtnX + (disconnectBtnW / 2), disconnectBtnY + (disconnectBtnH / 2) + 1, 1);
+    }
+
+    if (ble_scan_results.empty())
+    {
+      sprite.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+      sprite.setTextDatum(MC_DATUM);
+      sprite.drawString("No devices found", centerX, 190, 1);
+    }
+    else
+    {
+      // Get list of whitelisted devices
+      std::vector<String> whitelistedDevices = getAllowedBLENameList();
+      
+      for (int i = 0; i < ble_scan_results.size() && i < maxResultsShown; i++)
+      {
+        const int rowY = listY + i * rowH;
+        const bool isSelected = (i == ble_selected_device);
+        const String connectedName = getConnectedBLEDeviceName();
+        
+        // Check if this device is already whitelisted
+        bool isWhitelisted = false;
+        for (const auto& whitelistedName : whitelistedDevices)
+        {
+          if (whitelistedName == ble_scan_results[i])
+          {
+            isWhitelisted = true;
+            break;
+          }
+        }
+        const bool isConnectedDevice = (connectedName.length() > 0 && connectedName == ble_scan_results[i]);
+
+        sprite.fillSmoothRoundRect(listX, rowY, 294, 36, 6, isSelected ? TFT_NAVY : TFT_BLACK, TFT_BLACK);
+        sprite.drawRoundRect(listX, rowY, 294, 36, 6, isSelected ? TFT_CYAN : TFT_DARKGREY);
+
+        int nameX = listX + (isConnectedDevice ? 18 : 10);
+        int nameRightLimit = isConnectedDevice ? 242 : (addBtnX - 8);
+        int maxNameWidth = nameRightLimit - nameX;
+
+        String name = ble_scan_results[i];
+        while (name.length() > 1 && sprite.textWidth(name, 1) > maxNameWidth)
+        {
+          name = name.substring(0, name.length() - 2) + "~";
+        }
+
+        sprite.setTextColor(isSelected ? TFT_CYAN : TFT_WHITE, TFT_BLACK);
+        sprite.setTextDatum(TL_DATUM);
+        sprite.drawString(name, nameX, rowY + 10, 1);
+
+        if (isConnectedDevice)
+        {
+          sprite.fillCircle(listX + 8, rowY + 18, 4, TFT_GREEN);
+          sprite.fillSmoothRoundRect(246, rowY + 6, 40, 24, 5, TFT_DARKGREEN, TFT_BLACK);
+          sprite.drawRoundRect(246, rowY + 6, 40, 24, 5, TFT_GREEN);
+          sprite.setTextColor(TFT_GREEN, TFT_DARKGREEN);
+          sprite.setTextDatum(MC_DATUM);
+          sprite.drawString("ON", 266, rowY + 18, 1);
+        }
+
+        // Show checkmark if whitelisted, + button if not
+        if (isWhitelisted)
+        {
+          sprite.fillSmoothRoundRect(addBtnX, rowY + 4, addBtnW, 28, 5, TFT_DARKGREEN, TFT_BLACK);
+          sprite.drawRoundRect(addBtnX, rowY + 4, addBtnW, 28, 5, TFT_GREEN);
+          sprite.setTextColor(TFT_GREEN, TFT_DARKGREEN);
+          sprite.setTextDatum(MC_DATUM);
+          sprite.drawString("✓", addBtnX + 21, rowY + 18, 1);
+        }
+        else
+        {
+          sprite.fillSmoothRoundRect(addBtnX, rowY + 4, addBtnW, 28, 5, TFT_DARKGREEN, TFT_BLACK);
+          sprite.drawRoundRect(addBtnX, rowY + 4, addBtnW, 28, 5, TFT_CYAN);
+          sprite.setTextColor(TFT_WHITE, TFT_DARKGREEN);
+          sprite.setTextDatum(MC_DATUM);
+          sprite.drawString("+", addBtnX + 21, rowY + 18, 1);
+        }
+      }
+    }
+
+    // Back button - styled to match settings_page_1 exactly
+    sprite.setFreeFont(&Orbitron_Light_24);
+    sprite.setTextColor(TFT_WHITE, TFT_BLACK);
+    sprite.setTextDatum(TL_DATUM);
+    sprite.setCursor(button_x - 130, 440);
+    sprite.printf("BACK");
+    sprite.fillTriangle(180, 430, 197, 417, 197, 443, TFT_BLUEBUTTON);
+    sprite.fillTriangle(160, 430, 180, 417, 180, 443, TFT_BLUEBUTTON);
+
+    // Left arrow pagination indicator
+    sprite.setFreeFont(&Orbitron_Light_24);
+    sprite.setTextDatum(TL_DATUM);
+    sprite.setTextColor(TFT_CYAN, TFT_BLACK);
+    sprite.drawString("<", 32, 440, 4);
+    
+    // Device added confirmation message (show for 2 seconds)
+    if (ble_device_added && (millis() - ble_add_confirmation_time) < 2000)
+    {
+      sprite.setFreeFont(&Orbitron_Light_24);
+      sprite.setTextColor(TFT_GREEN, TFT_BLACK);
+      sprite.setTextDatum(MC_DATUM);
+      sprite.drawString("v Device Added", centerX, 120, 1);
+    }
+    else if (ble_device_added && (millis() - ble_add_confirmation_time) >= 2000)
+    {
+      ble_device_added = false;
+    }
+    
+    lcd_PushColors(display_column_offset, 0, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer());
+    lcd_brightness(MAX_BRIGHTNESS);
+    xSemaphoreGive(spiMutex);
+  }
+  else
+  {
+    LOG_ERROR("Failed to acquire SPI semaphore!");
+  }
+}
 #endif /* USE_TFT */
+

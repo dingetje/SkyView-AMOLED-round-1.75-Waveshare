@@ -10,6 +10,8 @@
 #include "Platform_ESP32.h"
 #include "SkyView.h"
 #include "EEPROMHelper.h"
+#include "WebHelper.h"
+#include "BluetoothHelper.h"
 #include <TimeLib.h>
 #include "TrafficHelper.h"
 #include <DebugLog.h>
@@ -166,9 +168,10 @@ void tapHandler(int x, int y)
     && (TFT_view_mode == VIEW_MODE_TEXT || (TFT_view_mode == VIEW_MODE_RADAR && !hasFix))) 
   {
     PRINTLN("Going to SettingsPage ");
+    settings_page_num = 1;
     settings_page();
   }
-  else if (TFT_view_mode == VIEW_MODE_SETTINGS && LCD_WIDTH - x > 340 && LCD_WIDTH - x < 410 && LCD_HEIGHT - y > 340 && LCD_HEIGHT - y < 415)
+  else if (TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 1 && LCD_WIDTH - x > 340 && LCD_WIDTH - x < 410 && LCD_HEIGHT - y > 340 && LCD_HEIGHT - y < 415)
   {
     //Sleep device and wake up on button press wake up button is PIN 0
     LOG_INFO("Going to sleep from settings page...");
@@ -180,15 +183,23 @@ void tapHandler(int x, int y)
     // ESP32_fini();
     // delay(1000);
   } 
-  else if (LCD_WIDTH - x > 160 && LCD_WIDTH - x < 330 && LCD_HEIGHT - y > 410 && LCD_HEIGHT - y < 466
+  else if (LCD_WIDTH - x > 130 && LCD_WIDTH - x < 340 && LCD_HEIGHT - y > 390 && LCD_HEIGHT - y < 450
     && TFT_view_mode == VIEW_MODE_SETTINGS) 
   {
-    //Back button
+    //Back button - from BLE page return to settings page 1, otherwise go back to previous view
     PRINTLN("Going Back to previous page ");
-    TFT_Mode(true);
+    if (settings_page_num == 2)
+    {
+      settings_page_num = 1;
+      settings_page();
+    }
+    else
+    {
+      TFT_Mode(true);
+    }
   } 
   else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 110 && LCD_HEIGHT - y < 170
-    && TFT_view_mode == VIEW_MODE_SETTINGS) 
+    && TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 1) 
   {
     //Traffic Filter +- 500m
     PRINTLN("Changing Traffic Filter +- 500m ");
@@ -203,7 +214,7 @@ void tapHandler(int x, int y)
       settings_page();
     }
   } 
-  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 227 && LCD_HEIGHT - y < 290 && TFT_view_mode == VIEW_MODE_SETTINGS) 
+  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 227 && LCD_HEIGHT - y < 290 && TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 1) 
   {
     //Radar Orientation North Up / Track Up
     PRINTLN("Changing Radar Orientation North Up / Track Up ");
@@ -218,7 +229,7 @@ void tapHandler(int x, int y)
       settings_page();
     }
   } 
-  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 290 && LCD_HEIGHT - y < 350 && TFT_view_mode == VIEW_MODE_SETTINGS) 
+  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 290 && LCD_HEIGHT - y < 350 && TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 1) 
   {
     //Enable Labels (Initials)
     PRINTLN("Toggle Labels ");
@@ -235,7 +246,7 @@ void tapHandler(int x, int y)
       settings_page();
     }
   } 
-  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 170 && LCD_HEIGHT - y < 230 && TFT_view_mode == VIEW_MODE_SETTINGS) 
+  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 170 && LCD_HEIGHT - y < 230 && TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 1) 
   {
     //Show Compass Page
     PRINTLN("Changing Compass View ");
@@ -266,6 +277,54 @@ void tapHandler(int x, int y)
       PRINTLN("Unlocking focus from current target ");
     }
     TFTTimeMarker = 0; // Force update of the display
+  }
+  else if (TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 2)
+  {
+    // BLE Manager page touch handlers
+
+    // Disconnect button (x: 58-148, y: 72-120)
+    if (LCD_WIDTH - x >= 58 && LCD_WIDTH - x <= 148 && LCD_HEIGHT - y >= 72 && LCD_HEIGHT - y <= 120)
+    {
+      if (ESP32_BT_ctl.status == BT_STATUS_CON)
+      {
+        PRINTLN("BLE Disconnect button pressed");
+        ESP32_BT_ctl.command = BT_CMD_DISCONNECT;
+        ble_manager_page();
+      }
+    }
+    
+    // Scan button (physical x: 164-334, y: 72-120)
+    else if (LCD_WIDTH - x >= 164 && LCD_WIDTH - x <= 334 && LCD_HEIGHT - y >= 72 && LCD_HEIGHT - y <= 120)
+    {
+      PRINTLN("BLE Scan button pressed");
+      start_ble_scan();
+      ble_manager_page();
+    }
+    // Add button for each row (check this before row selection)
+    else if (LCD_WIDTH - x >= 292 && LCD_WIDTH - x <= 334 && LCD_HEIGHT - y >= 158 && LCD_HEIGHT - y <= 334)
+    {
+      int device_index = (LCD_HEIGHT - y - 158) / 44;
+      if (device_index >= 0 && device_index < ble_scan_results.size() && device_index < 4)
+      {
+        PRINTLN("Adding BLE device: " + ble_scan_results[device_index]);
+        addAllowedBLEDevice(ble_scan_results[device_index]);
+        ble_selected_device = -1;
+        ble_device_added = true;
+        ble_add_confirmation_time = millis();
+        ble_manager_page(); // Refresh display
+      }
+    }
+    // Device selection (max 4 shown)
+    else if (LCD_WIDTH - x >= 42 && LCD_WIDTH - x <= 336 && LCD_HEIGHT - y >= 158 && LCD_HEIGHT - y <= 334)
+    {
+      int device_index = (LCD_HEIGHT - y - 158) / 44;
+      if (device_index >= 0 && device_index < ble_scan_results.size() && device_index < 4)
+      {
+        PRINTLN("BLE Device selected: " + String(device_index));
+        ble_selected_device = device_index;
+        ble_manager_page(); // Update display
+      }
+    }
   }
   else if (TFT_view_mode == VIEW_MODE_RADAR) 
   {
@@ -319,12 +378,34 @@ void touchTask(void *parameter)
               if (deltaX > 30) 
               {
                 LOG_DEBUG("Swipe Left");
-                TFT_Mode(true);
+                if (TFT_view_mode == VIEW_MODE_SETTINGS)
+                {
+                  // Navigate to next settings page (only if BLE is the connection type)
+                  if (settings_page_num < 2 && settings->connection == CON_BLUETOOTH_LE) {
+                    settings_page_num++;
+                    settings_page();
+                  }
+                }
+                else
+                {
+                  TFT_Mode(true);
+                }
               }
               else if (deltaX < -30) 
               {
                 LOG_DEBUG("Swipe Right");
-                TFT_Mode(false);
+                if (TFT_view_mode == VIEW_MODE_SETTINGS)
+                {
+                  // Navigate to previous settings page
+                  if (settings_page_num > 1) {
+                    settings_page_num--;
+                    settings_page();
+                  }
+                }
+                else
+                {
+                  TFT_Mode(false);
+                }
               }
             }
             else if (abs(deltaX) < abs(deltaY))    // Vertical swipe
@@ -332,12 +413,18 @@ void touchTask(void *parameter)
                 if (deltaY > 50) 
                 {
                   LOG_DEBUG("Swipe Up - Radar Zoom Out");
-                  TFT_Up();
+                  if (TFT_view_mode != VIEW_MODE_SETTINGS)
+                  {
+                    TFT_Up();
+                  }
                 }
                 else if (deltaY < -50) 
                 {
                   LOG_DEBUG("Swipe Down - Radar Zoom In");
-                  TFT_Down();
+                  if (TFT_view_mode != VIEW_MODE_SETTINGS)
+                  {
+                    TFT_Down();
+                  }
                 }
               }
               else if (abs(deltaX) < 50 && abs(deltaY) < 50) 

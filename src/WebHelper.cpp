@@ -213,6 +213,37 @@ std::vector<String> getAllowedBLENameList()
   return allowedNames;
 }
 
+// Core function to add BLE device - can be called from web or touch interface
+void addAllowedBLEDevice(const String& deviceName)
+{
+  File file = SPIFFS.open("/BLEConnections.txt", FILE_APPEND);
+  file.println(deviceName);
+  file.close();
+  
+  loadAllowedBLENames(); // refresh in memory
+}
+
+// Core function to remove BLE device - can be called from web or touch interface
+void removeAllowedBLEDevice(const String& deviceName)
+{
+  String toDelete = deviceName;
+  std::vector<String> updatedList;
+  auto allowedBLENames = getAllowedBLENameList();
+  for (const auto& name : allowedBLENames) 
+  {
+    if (name != toDelete) updatedList.push_back(name);
+  }
+
+  File file = SPIFFS.open("/BLEConnections.txt", FILE_WRITE);
+  for (const auto& name : updatedList) 
+  {
+    file.println(name);
+  }
+  file.close();
+
+  loadAllowedBLENames();
+}
+
 void handleBLEScan() 
 {
   std::vector<String> foundDevices = scanForBLEDevices(3);
@@ -236,11 +267,7 @@ void handleAddBLEDevice()
   }
 
   String newName = server.arg("name");
-  File file = SPIFFS.open("/BLEConnections.txt", FILE_APPEND);
-  file.println(newName);
-  file.close();
-
-  loadAllowedBLENames(); // refresh in memory
+  addAllowedBLEDevice(newName);
   server.send(200, "text/plain", "Added");
 }
 
@@ -252,22 +279,7 @@ void handleDeleteBLEDevice()
     return;
   }
 
-  String toDelete = server.arg("name");
-  std::vector<String> updatedList;
-  auto allowedBLENames = getAllowedBLENameList();
-  for (const auto& name : allowedBLENames) 
-  {
-    if (name != toDelete) updatedList.push_back(name);
-  }
-
-  File file = SPIFFS.open("/BLEConnections.txt", FILE_WRITE);
-  for (const auto& name : updatedList) 
-  {
-    file.println(name);
-  }
-  file.close();
-
-  loadAllowedBLENames();
+  removeAllowedBLEDevice(server.arg("name"));
   server.send(200, "text/plain", "Deleted");
 }
 

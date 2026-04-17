@@ -90,6 +90,7 @@ const std::vector<String>& getAllowedBLENames();
 bool addBLEDeviceName(const String& name);
 bool deleteBLEDeviceName(const String& name);
 extern uint8_t getBLEbattery(void);
+const String& getConnectedBLEDeviceName();
 
 std::vector<String> scanForBLEDevices(uint32_t scanTimeSeconds = 3);
 

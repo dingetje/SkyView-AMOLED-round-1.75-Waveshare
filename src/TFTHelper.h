@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stdint.h>
+#include <vector>
+#include <Arduino.h>
 #include <driver/display/CO5300.h>
 #include "Arduino_DriveBus_Library.h"
 #include "TFT_eSPI.h"
@@ -93,15 +95,27 @@ void TFT_text_prev();
 void TFT_text_Draw_Message(const char *, const char *);
 void TFT_compass_loop();
 void settings_page();
+void ble_manager_page();
+void start_ble_scan();
 void draw_battery();
 void draw_extBattery();
 
 extern unsigned long TFTTimeMarker;
 extern bool EPD_display_frontpage;
 extern volatile int EPD_task_command;
+extern int TFT_view_mode;
 extern bool show_compass;
 extern xSemaphoreHandle spiMutex;
 extern bool isLabels;
+
+// Settings page state tracking
+extern uint8_t settings_page_num;
+extern bool ble_scanning;
+extern std::vector<String> ble_scan_results;
+extern int ble_selected_device;
+extern bool ble_device_added;
+extern uint32_t ble_add_confirmation_time;
+extern bool ble_page_needs_refresh;
 
 /*
 static const uint8_t PROGMEM sleep_icon_128x128[] = {

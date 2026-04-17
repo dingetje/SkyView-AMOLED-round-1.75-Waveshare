@@ -35,6 +35,11 @@ void Web_setup(void);
 void Web_loop(void);
 void Web_fini(void);
 
+// BLE Device Management functions
+void addAllowedBLEDevice(const String& deviceName);
+void removeAllowedBLEDevice(const String& deviceName);
+std::vector<String> getAllowedBLENameList();
+
 #if DEBUG
 void Hex2Bin(String, byte *);
 #endif
