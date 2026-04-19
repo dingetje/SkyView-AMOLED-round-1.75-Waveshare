@@ -593,42 +593,36 @@ void settings_page_1()
     sprite.setCursor(160, 40);
     sprite.printf("Settings (1/2)");
 
-    text_y = 140; //bottom of the text
+    text_y = 120;
     sprite.setCursor(button_x - 300, text_y);
-    sprite.printf("Traffic filter 500m");
-    if ( settings->filter  == TRAFFIC_FILTER_500M) 
-    {
-      settings_button(button_x, text_y, true);
-    }
-    else
-    {
-      settings_button(button_x, text_y, false); 
-    }
+    sprite.printf("Alt Filter: %s",
+      settings->filter == TRAFFIC_FILTER_OFF    ? "OFF" :
+      settings->filter == TRAFFIC_FILTER_500M   ? "500m" :
+      settings->filter == TRAFFIC_FILTER_1000M  ? "1000m" :
+      settings->filter == TRAFFIC_FILTER_3500FT ? "3500ft" :
+      settings->filter == TRAFFIC_FILTER_5000FT ? "5000ft" : "OFF");
 
-    text_y = 200;
+    text_y = 175;
     sprite.setCursor(button_x - 300, text_y);
     sprite.printf("Compass Page");
-    if (show_compass) 
-    {
-      settings_button(button_x, text_y, true);
-    }
-    else
-    {
-      settings_button(button_x, text_y, false); 
-    }
-    
-    text_y = 260;
+    settings_button(button_x, text_y, show_compass);
+
+    text_y = 230;
     sprite.setCursor(button_x - 300, text_y);
     sprite.printf("Radar North Up");
     settings_button(button_x, text_y, settings->orientation == DIRECTION_NORTH_UP);
 
-    text_y = 320;
+    text_y = 285;
     sprite.setCursor(button_x - 300, text_y);
     sprite.printf("Show Labels");
     settings_button(button_x, text_y, isLabels);
 
-    text_y = 400;
-    sprite.setCursor(button_x - 120, 380);
+    text_y = 340;
+    sprite.setCursor(button_x - 300, text_y);
+    sprite.printf("Arrowhead Icons");
+    settings_button(button_x, text_y, settings->icon_style == ICON_STYLE_ARROWHEAD);
+
+    sprite.setCursor(button_x - 120, 400);
     sprite.printf("Sleep");
 
     sprite.setCursor(button_x - 130, 440);
@@ -644,7 +638,7 @@ void settings_page_1()
     }
 
     sprite.setSwapBytes(true);
-    sprite.pushImage(button_x, 350, 48, 47, power_button_small);
+    sprite.pushImage(button_x, 380, 48, 47, power_button_small);
     
     lcd_PushColors(display_column_offset, 0, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer());
     lcd_brightness(MAX_BRIGHTNESS);
