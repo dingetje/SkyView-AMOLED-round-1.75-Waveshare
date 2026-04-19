@@ -102,6 +102,7 @@ void EEPROM_defaults()
   eeprom_block.field.settings.team            = 0;
   eeprom_block.field.settings.show_labels     = 1;
   eeprom_block.field.settings.icon_style      = ICON_STYLE_ARROWHEAD;
+  eeprom_block.field.settings.rotation        = 0;
 }
 
 void EEPROM_store()
