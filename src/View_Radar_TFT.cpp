@@ -280,7 +280,7 @@ void TFT_radar_Draw_Message(const char *msg1, const char *msg2)
     if (xSemaphoreTake(spiMutex, portMAX_DELAY)) 
     {
       lcd_brightness(0);
-      lcd_PushColors(display_column_offset, 0, 466, 466, (uint16_t*)sprite.getPointer());
+      lcd_PushColors(display_column_offset, display_row_offset, 466, 466, (uint16_t*)sprite.getPointer());
       for (int i = 0; i <= 255; i++)
       {
         lcd_brightness(i);
@@ -930,13 +930,13 @@ static void TFT_Draw_Radar()
     if (xSemaphoreTake(spiMutex, portMAX_DELAY)) 
     {
       lcd_brightness(255);
-      lcd_PushColors(6, 0, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer());
+      lcd_PushColors(display_column_offset, display_row_offset, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer());
       // switch (settings->orientation)
       // {
       // case DIRECTION_NORTH_UP:
       // case DIRECTION_TRACK_UP:
       //   lcd_brightness(225);
-      //   lcd_PushColors(6, 0, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer()); 
+      //   lcd_PushColors(display_column_offset, display_row_offset, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer()); 
       //   break;
       // case DIRECTION_TRACK_UP:
       //   lcd_brightness(225);

@@ -29,6 +29,8 @@
 
 
 #include "SkyView.h"
+uint16_t display_column_offset = 6;
+uint16_t display_row_offset = 0;
 int TFT_view_mode = 0;
 unsigned long TFTTimeMarker = 0;
 bool EPD_display_frontpage = false;
@@ -227,7 +229,7 @@ void draw_splash_screen()
 
   sprite.drawString("powered by SoftRF",233,293,4);
   sprite.drawString(SKYVIEW_FIRMWARE_VERSION,180,400,2);
-  lcd_PushColors(6, 0, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer());
+  lcd_PushColors(display_column_offset, display_row_offset, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer());
   for (int i = 0; i <= MAX_BRIGHTNESS; i++)
   {
     lcd_brightness(i);
@@ -268,7 +270,17 @@ void TFT_setup(void)
   {
       PRINTLN("Failed to create SPI mutex!");
   }
+  // Clear GRAM borders in rotation 0 to avoid green artifacts at display edges
+  lcd_setRotation(0);
+  lcd_fill(0, 0, 480, 7, 0x0000);     // top 7 rows
+  lcd_fill(0, 466, 480, 480, 0x0000);  // bottom 14 rows
+  lcd_fill(0, 0, 7, 480, 0x0000);     // left 7 columns
+  lcd_fill(473, 0, 480, 480, 0x0000);  // right 7 columns
+  if (settings->rotation != 0 && settings->rotation != 2)
+    settings->rotation = 0;
   lcd_setRotation(settings->rotation);
+  display_column_offset = 7;
+  display_row_offset = 0;
   lcd_brightness(0); // 0-255
 
   Serial.printf("Free heap: %d bytes\n", esp_get_free_heap_size());
@@ -640,7 +652,7 @@ void settings_page_1()
     sprite.setSwapBytes(true);
     sprite.pushImage(button_x, 380, 48, 47, power_button_small);
     
-    lcd_PushColors(display_column_offset, 0, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer());
+    lcd_PushColors(display_column_offset, display_row_offset, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer());
     lcd_brightness(MAX_BRIGHTNESS);
     xSemaphoreGive(spiMutex);
   }
@@ -837,7 +849,7 @@ void ble_manager_page()
       ble_device_added = false;
     }
     
-    lcd_PushColors(display_column_offset, 0, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer());
+    lcd_PushColors(display_column_offset, display_row_offset, LCD_WIDTH, LCD_HEIGHT, (uint16_t*)sprite.getPointer());
     lcd_brightness(MAX_BRIGHTNESS);
     xSemaphoreGive(spiMutex);
   }

@@ -18,6 +18,16 @@
 
 // Create an instance of the CST9217 class
 
+void applyTouchRotation(int16_t &x, int16_t &y) {
+  int16_t tmp;
+  switch (settings->rotation) {
+    case 1: tmp = x; x = y; y = LCD_HEIGHT - 1 - tmp; break;
+    case 2: x = LCD_WIDTH - 1 - x; y = LCD_HEIGHT - 1 - y; break;
+    case 3: tmp = x; x = LCD_WIDTH - 1 - y; y = tmp; break;
+    default: break;
+  }
+}
+
 TouchDrvCST92xx touchSensor;
 
 uint8_t touchAddress = 0x5A;
@@ -321,11 +331,12 @@ void touchTask(void *parameter)
       // Serial.println("Touch Interrupt triggered!");
       IIC_Interrupt_Flag = false; // Reset interrupt flag
       uint8_t points = touchSensor.getPoint(currentX, currentY, 1); // Read single touch point
-  
-      if (points > 0) 
+
+      if (points > 0)
       {
+        applyTouchRotation(currentX[0], currentY[0]);
         // Record the starting touch position and time
-        if (startX == -1 && startY == -1) 
+        if (startX == -1 && startY == -1)
         {
           startX = currentX[0];
           startY = currentY[0];

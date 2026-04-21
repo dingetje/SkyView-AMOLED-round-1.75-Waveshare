@@ -103,12 +103,11 @@ void lcd_setRotation(uint8_t r)
     switch (r)
     {
     case 0: // Portrait
-        // WriteData(gbr);
         break;
     case 1: // Landscape (Portrait + 90)
         gbr = TFT_MAD_MX | TFT_MAD_MV | gbr;
         break;
-    case 2: // Inverter portrait
+    case 2: // Inverted portrait
         gbr = TFT_MAD_MX | TFT_MAD_MY | gbr;
         break;
     case 3: // Inverted landscape
