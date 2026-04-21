@@ -14,7 +14,7 @@
 #define   PROFILER_H_INCL
 
 #include <Arduino.h>
-#include <String.h>
+#include <WString.h>
 #include <Stream.h>
 
 struct profiler_t {
