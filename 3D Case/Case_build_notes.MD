@@ -6,4 +6,4 @@ Case files for the Waveshare standard version with protective case
 - upto 1100 mAh battery fits in remaining space
 - use 3x M2 screws to connect to PCB
 
-<img width="500" alt="3D case" src="/3D Case/20260405_143923.jp"/>
+<img width="500" alt="3D case" src="/3D Case/20260405_143923.jpg"/>
