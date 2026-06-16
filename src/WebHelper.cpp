@@ -872,6 +872,15 @@ void handleSettings() {
 </td>\
 </tr>\
 <tr>\
+<th align=left>Display rotation</th>\
+<td align=right>\
+<select name='rotation'>\
+<option %s value='0'>0&#176;</option>\
+<option %s value='2'>180&#176;</option>\
+</select>\
+</td>\
+</tr>\
+<tr>\
 <th align=left>Team Member Id</th>\
 <td align=right>\
 <INPUT type='text' name='team' maxlength='6' size='6' value='%06X'>\
@@ -889,6 +898,8 @@ void handleSettings() {
     (settings->filter     == TRAFFIC_FILTER_ALARM ? "selected" : ""), TRAFFIC_FILTER_ALARM,
     (settings->power_save == POWER_SAVE_NONE     ? "selected" : ""), POWER_SAVE_NONE,
     (settings->power_save == POWER_SAVE_WIFI     ? "selected" : ""), POWER_SAVE_WIFI,
+    (settings->rotation == 0 ? "selected" : ""),
+    (settings->rotation == 2 ? "selected" : ""),
      settings->team
   );
 
@@ -1208,6 +1219,10 @@ void handleInput()
     {
       settings->power_save = server.arg(i).toInt();
     }
+    else if (server.argName(i).equals("rotation"))
+    {
+      settings->rotation = server.arg(i).toInt();
+    }
     else if (server.argName(i).equals("team"))
     {
       char buf[7];
@@ -1249,6 +1264,7 @@ PSTR("<html>\
 <tr><th align=left>Compass page</th><td align=right>%d</td></tr>\
 <tr><th align=left>Filter</th><td align=right>%d</td></tr>\
 <tr><th align=left>Power Save</th><td align=right>%d</td></tr>\
+<tr><th align=left>Display rotation</th><td align=right>%d</td></tr>\
 <tr><th align=left>Team</th><td align=right>%06X</td></tr>\
 </table>\
 <hr>\
@@ -1259,7 +1275,7 @@ PSTR("<html>\
   settings->baudrate, settings->server, settings->key, settings->bridge,
   settings->units, settings->vmode, settings->orientation, settings->zoom,
   settings->adb, settings->idpref, settings->voice, settings->compass,
-  settings->filter, settings->power_save, settings->team
+  settings->filter, settings->power_save, settings->rotation, settings->team
   );
 
   SoC->swSer_enableRx(false);

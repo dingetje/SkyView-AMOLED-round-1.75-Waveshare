@@ -18,6 +18,16 @@
 
 // Create an instance of the CST9217 class
 
+void applyTouchRotation(int16_t &x, int16_t &y) {
+  int16_t tmp;
+  switch (settings->rotation) {
+    case 1: tmp = x; x = y; y = LCD_HEIGHT - 1 - tmp; break;
+    case 2: x = LCD_WIDTH - 1 - x; y = LCD_HEIGHT - 1 - y; break;
+    case 3: tmp = x; x = LCD_WIDTH - 1 - y; y = tmp; break;
+    default: break;
+  }
+}
+
 TouchDrvCST92xx touchSensor;
 
 uint8_t touchAddress = 0x5A;
@@ -171,22 +181,14 @@ void tapHandler(int x, int y)
     settings_page_num = 1;
     settings_page();
   }
-  else if (TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 1 && LCD_WIDTH - x > 340 && LCD_WIDTH - x < 410 && LCD_HEIGHT - y > 340 && LCD_HEIGHT - y < 415)
+  else if (TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 1 && LCD_WIDTH - x > 340 && LCD_WIDTH - x < 410 && LCD_HEIGHT - y > 370 && LCD_HEIGHT - y < 430)
   {
-    //Sleep device and wake up on button press wake up button is PIN 0
     LOG_INFO("Going to sleep from settings page...");
-    // vTaskDelete(touchTaskHandle);
-    // touchTaskHandle = NULL;
     shutdown("SLEEP");
-    // ESP32_TFT_fini("SLEEP");
-    // delay(1000);
-    // ESP32_fini();
-    // delay(1000);
-  } 
-  else if (LCD_WIDTH - x > 130 && LCD_WIDTH - x < 340 && LCD_HEIGHT - y > 390 && LCD_HEIGHT - y < 450
-    && TFT_view_mode == VIEW_MODE_SETTINGS) 
+  }
+  else if (LCD_WIDTH - x > 130 && LCD_WIDTH - x < 340 && LCD_HEIGHT - y > 420 && LCD_HEIGHT - y < 466
+    && TFT_view_mode == VIEW_MODE_SETTINGS)
   {
-    //Back button - from BLE page return to settings page 1, otherwise go back to previous view
     PRINTLN("Going Back to previous page ");
     if (settings_page_num == 2)
     {
@@ -197,69 +199,52 @@ void tapHandler(int x, int y)
     {
       TFT_Mode(true);
     }
-  } 
-  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 110 && LCD_HEIGHT - y < 170
-    && TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 1) 
+  }
+  else if (LCD_WIDTH - x > 40 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 95 && LCD_HEIGHT - y < 148
+    && TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 1)
   {
-    //Traffic Filter +- 500m
-    PRINTLN("Changing Traffic Filter +- 500m ");
-    if (settings->filter  == TRAFFIC_FILTER_500M) 
+    PRINTLN("Cycling Alt Filter ");
+    switch (settings->filter)
     {
-      settings->filter  = TRAFFIC_FILTER_OFF;
-      settings_page();
+      case TRAFFIC_FILTER_OFF:    settings->filter = TRAFFIC_FILTER_500M;   break;
+      case TRAFFIC_FILTER_500M:   settings->filter = TRAFFIC_FILTER_1000M;  break;
+      case TRAFFIC_FILTER_1000M:  settings->filter = TRAFFIC_FILTER_3500FT; break;
+      case TRAFFIC_FILTER_3500FT: settings->filter = TRAFFIC_FILTER_5000FT; break;
+      case TRAFFIC_FILTER_5000FT: settings->filter = TRAFFIC_FILTER_OFF;    break;
+      default:                    settings->filter = TRAFFIC_FILTER_OFF;    break;
     }
-    else 
-    {
-      settings->filter  = TRAFFIC_FILTER_500M;
-      settings_page();
-    }
-  } 
-  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 227 && LCD_HEIGHT - y < 290 && TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 1) 
+    settings_page();
+  }
+  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 150 && LCD_HEIGHT - y < 203 && TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 1)
   {
-    //Radar Orientation North Up / Track Up
-    PRINTLN("Changing Radar Orientation North Up / Track Up ");
-    if (settings->orientation  == DIRECTION_NORTH_UP) 
-    {
-      settings->orientation  = DIRECTION_TRACK_UP;
-      settings_page();
-    }
-    else
-    {
-      settings->orientation  = DIRECTION_NORTH_UP;
-      settings_page();
-    }
-  } 
-  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 290 && LCD_HEIGHT - y < 350 && TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 1) 
-  {
-    //Enable Labels (Initials)
-    PRINTLN("Toggle Labels ");
-    if (!isLabels) 
-    {
-      isLabels = true;
-      settings->show_labels = true;
-      settings_page();
-    }
-    else
-    {
-      isLabels = false;
-      settings->show_labels = false;
-      settings_page();
-    }
-  } 
-  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 170 && LCD_HEIGHT - y < 230 && TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 1) 
-  {
-    //Show Compass Page
     PRINTLN("Changing Compass View ");
-    if (!show_compass) 
-    {
-      show_compass = true;
-      settings_page();
-    }
-    else 
-    {
-      show_compass = false;
-      settings_page();
-    }
+    show_compass = !show_compass;
+    settings_page();
+  }
+  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 205 && LCD_HEIGHT - y < 258 && TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 1)
+  {
+    PRINTLN("Changing Radar Orientation North Up / Track Up ");
+    if (settings->orientation == DIRECTION_NORTH_UP)
+      settings->orientation = DIRECTION_TRACK_UP;
+    else
+      settings->orientation = DIRECTION_NORTH_UP;
+    settings_page();
+  }
+  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 260 && LCD_HEIGHT - y < 313 && TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 1)
+  {
+    PRINTLN("Toggle Labels ");
+    isLabels = !isLabels;
+    settings->show_labels = isLabels;
+    settings_page();
+  }
+  else if (LCD_WIDTH - x > 320 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 315 && LCD_HEIGHT - y < 368 && TFT_view_mode == VIEW_MODE_SETTINGS && settings_page_num == 1)
+  {
+    PRINTLN("Toggle Icon Style ");
+    if (settings->icon_style == ICON_STYLE_ARROWHEAD)
+      settings->icon_style = ICON_STYLE_CLASSIC;
+    else
+      settings->icon_style = ICON_STYLE_ARROWHEAD;
+    settings_page();
   } 
   else if (LCD_WIDTH - x > 0 && LCD_WIDTH - x < 400 && LCD_HEIGHT - y > 70 && LCD_HEIGHT - y < 150 && TFT_view_mode == VIEW_MODE_TEXT) 
   {
@@ -346,11 +331,12 @@ void touchTask(void *parameter)
       // Serial.println("Touch Interrupt triggered!");
       IIC_Interrupt_Flag = false; // Reset interrupt flag
       uint8_t points = touchSensor.getPoint(currentX, currentY, 1); // Read single touch point
-  
-      if (points > 0) 
+
+      if (points > 0)
       {
+        applyTouchRotation(currentX[0], currentY[0]);
         // Record the starting touch position and time
-        if (startX == -1 && startY == -1) 
+        if (startX == -1 && startY == -1)
         {
           startX = currentX[0];
           startY = currentY[0];

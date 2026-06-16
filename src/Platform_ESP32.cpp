@@ -178,7 +178,7 @@ void ESP32_TFT_fini(const char *msg)
     sprite.printf(msg);
   
     lcd_brightness(255);
-    lcd_PushColors(display_column_offset, 0, 466, 466, (uint16_t*)sprite.getPointer());
+    lcd_PushColors(display_column_offset, display_row_offset, 466, 466, (uint16_t*)sprite.getPointer());
     xSemaphoreGive(spiMutex);
   }
   else

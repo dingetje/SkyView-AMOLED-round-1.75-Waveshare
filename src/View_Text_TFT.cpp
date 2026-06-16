@@ -256,7 +256,7 @@ void TFT_draw_text() {
     sprite.pushImage(320, 360, 36, 36, settings_icon_small);
     if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
       lcd_brightness(225);
-      lcd_PushColors(6, 0, 466, 466, (uint16_t*)sprite.getPointer());
+      lcd_PushColors(display_column_offset, display_row_offset, 466, 466, (uint16_t*)sprite.getPointer());
       xSemaphoreGive(spiMutex);
     } else {
       Serial.println("Failed to acquire SPI semaphore!");
@@ -295,7 +295,7 @@ void TFT_text_Draw_Message(const char *msg1, const char *msg2)
     sprite.pushImage(320, 360, 36, 36, settings_icon_small);
     if (xSemaphoreTake(spiMutex, portMAX_DELAY)) {
       lcd_brightness(0);
-      lcd_PushColors(display_column_offset, 0, 466, 466, (uint16_t*)sprite.getPointer());
+      lcd_PushColors(display_column_offset, display_row_offset, 466, 466, (uint16_t*)sprite.getPointer());
         for (int i = 0; i <= 255; i++)
         {
           lcd_brightness(i);
